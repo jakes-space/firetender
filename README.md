@@ -12,8 +12,8 @@ modifying a Firestore document.
 ### Define your schemas
 
 First, define the document schemas and their validation criteria with
-[Zod](https://github.com/colinhacks/zod).  If you're used to Joi or Yup, you
-will find Zod very similar.  Optional collections should use `.default({})` or
+[Zod](https://github.com/colinhacks/zod).  If you've used Joi or Yup, you will
+find Zod very similar.  Optional collections should use `.default({})` or
 `.default([])` to simplify later access.
 
 ```javascript
@@ -27,7 +27,7 @@ const pizzaSchema = z.object({
         surcharge: z.number().positive().optional(),
         placement: z.enum(["left", "right", "entire"]).default("entire"),
       })
-      .refine((topping) => topping.included || topping.surcharge, {
+      .refine((topping) => topping.isIncluded || topping.surcharge, {
         message: "Toppings that are not included must have a surcharge.",
         path: ["surcharge"],
       })
@@ -53,8 +53,8 @@ const newPizza = FirestoreProxy.create(pizzaSchema, docRef, {
 await newPizza.write();
 ```
 
-If we don't care what the doc ID is, we can pass in a collection reference
-(e.g., `collection(db, "pizza-menu")`) rather than the doc ref.
+If we don't care about the doc ID, we can pass in a collection reference (e.g.,
+`collection(db, "pizza-menu")`).  Firestore will assign a random ID.
 
 ### Read and modify a document
 
@@ -67,11 +67,11 @@ like so:
 ```javascript
 const meats = ["pepperoni", "chicken", "sausage"];
 const pizza = await new FirestoreProxy(pizzaSchema, docRef).load();
-let isMeatIncluded = Object.entries(newPizza.ro.toppings).some(
+const isMeatIncluded = Object.entries(pizza.ro.toppings).some(
   ([name, topping]) => topping.isIncluded && name in meats
 );
 if (!isMeatIncluded) {
-  newPizza.rw.toppings.tags.push("vegetarian");
+  pizza.rw.toppings.tags.push("vegetarian");
 }
 await pizza.write();
 ```
@@ -88,7 +88,7 @@ const newPizza = sourcePizza.copy("meaty margh");
 newPizza.name = "Meaty Margh";
 newPizza.toppings.sausage = {};
 newPizza.toppings.pepperoni = { included: false, surcharge: 1.25 };
-newPizza.toppings.chicken = { included: false, surcharge: 1.50 }
+newPizza.toppings.chicken = { included: false, surcharge: 1.50 };
 delete newPizza.toppings["fresh basil"];
 delete newPizza.tags.vegetarian;
 newPizza.write();
