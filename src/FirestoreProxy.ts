@@ -262,6 +262,9 @@ export default class FirestoreProxy<
       | undefined = undefined,
     options: FirestoreProxyOptions = {}
   ): FirestoreProxy<SchemaType, DataType> {
+    if (!this.data) {
+      throw Error("You must call load() before making a copy.");
+    }
     let ref:
       | DocumentReference<DocumentData>
       | CollectionReference<DocumentData>;
@@ -287,7 +290,7 @@ export default class FirestoreProxy<
     return new FirestoreProxy(this.schema, ref, mergedOptions);
   }
 
-  async load(force = false): Promise<void> {
+  async load(force = false): Promise<this> {
     if (this.isNewDoc || !(this.ref instanceof DocumentReference)) {
       throw Error("load() should not be called for new documents.");
     }
@@ -300,11 +303,12 @@ export default class FirestoreProxy<
       // Dereference the old proxy, if any, to force a recapture of data.
       this.dataProxy = undefined;
     }
+    return this;
   }
 
   get ro(): DeepReadonly<DataType> {
     if (!this.data) {
-      throw Error("You must call load() before using the .ro pad.");
+      throw Error("You must call load() before using the .ro accessor.");
     }
     return this.data as DeepReadonly<DataType>;
   }
@@ -316,7 +320,7 @@ export default class FirestoreProxy<
     }
     if (!this.dataProxy) {
       if (!this.data) {
-        throw Error("You must call load() before using the .rw pad.");
+        throw Error("You must call load() before using the .rw accessor.");
       }
       this.dataProxy = watchFieldForChanges(
         [],
