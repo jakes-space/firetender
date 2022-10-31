@@ -8,6 +8,7 @@
  * TODO: nullable tests
  * TODO: zod effects and preprocessing, but disallowing transforms
  * TODO: timestamp tests
+ * TODO: validation tests: forbid creating, reading, or writing invalid data
  */
 
 import FirestoreProxy from "../FirestoreProxy";
