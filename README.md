@@ -47,7 +47,7 @@ import { doc } from "firebase/firestore";
 const docRef = doc(db, "pizza-menu", "margherita");
 const newPizza = FirestoreProxy.create(pizzaSchema, docRef, {
   name: "Margherita",
-  toppings: { "fresh mozzarella": {}, "basil": {} },
+  toppings: { "fresh mozzarella": {}, "fresh basil": {} },
   tags: ["traditional"],
 });
 await newPizza.write();
@@ -66,15 +66,32 @@ like so:
 
 ```javascript
 const meats = ["pepperoni", "chicken", "sausage"];
-const pizza = new FirestoreProxy(pizzaSchema, docRef);
-pizza.load();
+const pizza = await new FirestoreProxy(pizzaSchema, docRef).load();
 let isMeatIncluded = Object.entries(newPizza.ro.toppings).some(
   ([name, topping]) => topping.isIncluded && name in meats
 );
 if (!isMeatIncluded) {
   newPizza.rw.toppings.tags.push("vegetarian");
 }
-pizza.write();
+await pizza.write();
+```
+
+### Make a copy
+
+Here we create a new pizza in the same collection.  Alternatively, a document
+can be copied to elsewhere by specifying a document or collection reference.
+
+```javascript
+const sourceRef = doc(db, "pizza-menu", "margherita");
+const sourcePizza = await new FirestoreProxy(pizzaSchema, sourceRef).load();
+const newPizza = sourcePizza.copy("meaty margh");
+newPizza.name = "Meaty Margh";
+newPizza.toppings.sausage = {};
+newPizza.toppings.pepperoni = { included: false, surcharge: 1.25 };
+newPizza.toppings.chicken = { included: false, surcharge: 1.50 }
+delete newPizza.toppings["fresh basil"];
+delete newPizza.tags.vegetarian;
+newPizza.write();
 ```
 
 ## TODO
