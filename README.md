@@ -1,8 +1,13 @@
 # FirestoreProxy
 
 FirestoreProxy is a wrapper for Firestore documents to make reading and writing
-them simpler and safer.  Firestore docs look like any other Javascript object,
+them simpler and safer.  A Firestore doc looks like any other Typescript object,
 and they are validated upon reading and writing.
+
+Querying and concurrency are not yet supported.  I'm adding features as I need
+them, but contributions are most welcome.  See the list of [alternative
+packages](#alternatives) at the end of this README if you're looking for
+something more mature.
 
 ## Usage
 
@@ -38,7 +43,7 @@ const pizzaSchema = z.object({
 
 ### Add a document
 
-Let's add a document to the `pizza-menu` collection with an ID of `margarita`.
+Let's add a document to the `pizza-menu` collection with an ID of `margherita`.
 We use FirestoreProxy.create() to create a valid local object.  We then write it
 to Firestore by calling `.write()`.
 
@@ -103,3 +108,23 @@ newPizza.write();
 * Queries
 * Document deletion
 * Improved timestamp handling
+
+## Alternatives
+
+I wrote this as a "learning typescript" exercise as much as anything.  If you're
+looking for a more mature Firestore helper, check out:
+
+* [Vuefire](https://github.com/vuejs/vuefire) and
+  [Reactfire](https://github.com/FirebaseExtended/reactfire) for integration
+  with their respective frameworks.
+
+* [Fireschema](https://github.com/yarnaimo/fireschema): Another strongly typed
+  framework for building and using schemas in Firestore.
+  
+* [firestore-fp](https://github.com/mobily/firestore-fp): If you are a
+  functional programming aficionado.
+
+* [simplyfire](https://github.com/coturiv/simplyfire): A brilliantly named
+  simplified API that is focused more on querying.
+
+I'm sure there are many more, and apologies if I missed your favorite one.
