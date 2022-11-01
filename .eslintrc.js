@@ -29,10 +29,13 @@ module.exports = {
       "always",
       { exceptAfterSingleLine: true },
     ],
-    "no-empty-function": ["error", { allow: ["arrowFunctions"] }],
+    "no-empty-function": [
+      "error",
+      { allow: ["arrowFunctions", "constructors"] }
+    ],
     "@typescript-eslint/no-empty-function": [
       "error",
-      { allow: ["arrowFunctions"] },
+      { allow: ["arrowFunctions", "constructors"] },
     ],
     "prefer-destructuring": ["error", { object: false, array: false }],
     "no-unused-vars": "off",

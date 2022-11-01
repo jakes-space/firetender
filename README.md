@@ -1,8 +1,8 @@
 # FireTender
 
-FireTender is a wrapper for Firestore documents to make reading and writing
-them simpler and safer.  A Firestore doc looks like any other Typescript object,
-and they are validated upon reading and writing.
+FireTender is a wrapper for Firestore documents to make reading and writing them
+simpler and safer.  A Firestore doc looks like any other Typescript object, and
+they are validated upon reading and writing.
 
 Querying and concurrency are not yet supported.  I'm adding features as I need
 them, but contributions are most welcome.  See the list of [alternative
@@ -21,7 +21,14 @@ First, define the document schemas and their validation criteria with
 find Zod very similar.  Optional collections should use `.default({})` or
 `.default([])` to simplify later access.
 
+Then create a `DocWrapper` factory that makes objects to wrap Firestore
+documents and enforce the given schema.
+
 ```javascript
+import { doc } from "firebase/firestore";
+import { DocWrapper } from "firetender";
+import { z } from "zod";
+
 const pizzaSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
@@ -39,27 +46,28 @@ const pizzaSchema = z.object({
   ),
   tags: z.array(z.string()).default([]),
 });
+
+const pizzaWrapper = new DocWrapper(pizzaSchema);
 ```
 
 ### Add a document
 
-Let's add a document to the `pizza-menu` collection with an ID of `margherita`.
-We use FireTender.create() to create a valid local object.  We then write it
-to Firestore by calling `.write()`.
+Let's add a document to the `pizzas` collection with an ID of `margherita`.
+We use FireTender.create() to create a valid local object.  We then write it to
+Firestore by calling `.write()`.
 
 ```javascript
-import { doc } from "firebase/firestore";
-const docRef = doc(db, "pizza-menu", "margherita");
-const newPizza = FireTender.create(pizzaSchema, docRef, {
+const docRef = doc(db, "pizzas", "margherita");
+const pizza = pizzaWrapper.createNew(docRef, {
   name: "Margherita",
   toppings: { "fresh mozzarella": {}, "fresh basil": {} },
   tags: ["traditional"],
 });
-await newPizza.write();
+await pizza.write();
 ```
 
 If we don't care about the doc ID, we can pass in a collection reference (e.g.,
-`collection(db, "pizza-menu")`).  Firestore will assign a random ID.
+`collection(db, "pizzas")`).  Firestore will assign a random ID.
 
 ### Read and modify a document
 
@@ -71,7 +79,7 @@ like so:
 
 ```javascript
 const meats = ["pepperoni", "chicken", "sausage"];
-const pizza = await new FireTender(pizzaSchema, docRef).load();
+const pizza = await pizzaWrapper.wrapExisting(docRef).load();
 const isMeatIncluded = Object.entries(pizza.ro.toppings).some(
   ([name, topping]) => topping.isIncluded && name in meats
 );
@@ -87,8 +95,8 @@ Here we create a new pizza in the same collection.  Alternatively, a document
 can be copied to elsewhere by specifying a document or collection reference.
 
 ```javascript
-const sourceRef = doc(db, "pizza-menu", "margherita");
-const sourcePizza = await new FireTender(pizzaSchema, sourceRef).load();
+const sourceRef = doc(db, "pizza", "margherita");
+const sourcePizza = await pizzaWrapper.wrapExisting(sourceRef).load();
 const newPizza = sourcePizza.copy("meaty margh");
 newPizza.name = "Meaty Margh";
 newPizza.toppings.sausage = {};
@@ -111,8 +119,8 @@ newPizza.write();
 
 ## Alternatives
 
-I wrote this as a "learning typescript" exercise as much as anything.  If you're
-looking for a more mature Firestore helper, check out:
+This project is not at all stable yet.  If you're looking for a more mature
+Firestore helper, check out:
 
 * [Vuefire](https://github.com/vuejs/vuefire) and
   [Reactfire](https://github.com/FirebaseExtended/reactfire) for integration
@@ -127,4 +135,4 @@ looking for a more mature Firestore helper, check out:
 * [simplyfire](https://github.com/coturiv/simplyfire): A brilliantly named
   simplified API that is focused more on querying.
 
-I'm sure there are many more, and apologies if I missed your favorite one.
+I'm sure there are many more, and apologies if I missed your favorite.

@@ -27,7 +27,7 @@ function assertIsDefined<T>(value: T): asserts value is NonNullable<T> {
   }
 }
 
-type FireTenderOptions = {
+export type FireTenderDocOptions = {
   createDoc?: true;
   initialData?: any;
   // TODO: add readonly option.
@@ -36,7 +36,7 @@ type FireTenderOptions = {
 /**
  * Helper class for reading and writing Firestore data based on Zod schemas.
  */
-export default class FireTender<
+export class FireTenderDoc<
   SchemaType extends z.SomeZodObject,
   DataType extends { [x: string]: any } = z.infer<SchemaType>
 > {
@@ -54,7 +54,7 @@ export default class FireTender<
   constructor(
     schema: SchemaType,
     ref: DocumentReference<DocumentData> | CollectionReference<DocumentData>,
-    options: FireTenderOptions = {}
+    options: FireTenderDocOptions = {}
   ) {
     this.schema = schema;
     this.ref = ref;
@@ -76,23 +76,6 @@ export default class FireTender<
     }
   }
 
-  static createDoc<
-    SchemaType1 extends z.SomeZodObject,
-    DataType1 extends { [x: string]: any } = z.infer<SchemaType1>
-  >(
-    schema: SchemaType1,
-    ref: DocumentReference<DocumentData> | CollectionReference<DocumentData>,
-    initialData: DataType1,
-    options: FireTenderOptions = {}
-  ): FireTender<SchemaType1, z.TypeOf<SchemaType1>> {
-    const mergedOptions: FireTenderOptions = {
-      ...options,
-      createDoc: true,
-      initialData,
-    };
-    return new FireTender(schema, ref, mergedOptions);
-  }
-
   get id(): string | undefined {
     return this.docID;
   }
@@ -112,8 +95,8 @@ export default class FireTender<
       | CollectionReference<DocumentData>
       | string
       | undefined = undefined,
-    options: FireTenderOptions = {}
-  ): FireTender<SchemaType, DataType> {
+    options: FireTenderDocOptions = {}
+  ): FireTenderDoc<SchemaType, DataType> {
     if (!this.data) {
       throw Error("You must call load() before making a copy.");
     }
@@ -134,12 +117,12 @@ export default class FireTender<
         ref = collectionRef;
       }
     }
-    const mergedOptions: FireTenderOptions = {
+    const mergedOptions: FireTenderDocOptions = {
       ...options,
       createDoc: true,
       initialData: this.data,
     };
-    return new FireTender(this.schema, ref, mergedOptions);
+    return new FireTenderDoc(this.schema, ref, mergedOptions);
   }
 
   async load(force = false): Promise<this> {

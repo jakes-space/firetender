@@ -11,7 +11,6 @@
  * TODO: validation tests: forbid creating, reading, or writing invalid data
  */
 
-import FireTender from "../FireTender";
 import { timestampSchema } from "../Timestamps";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import {
@@ -24,6 +23,7 @@ import {
 } from "firebase/firestore";
 import { type DocumentData } from "@firebase/firestore";
 import { z } from "zod";
+import { DocWrapper } from "../DocWrapper";
 
 const testDataSchema = z.object({
   email: z.string().email(),
@@ -50,6 +50,8 @@ const testDataSchema = z.object({
     .default([]),
 });
 
+const testDataWrapper = new DocWrapper(testDataSchema);
+
 let testCollection: CollectionReference<DocumentData>;
 
 async function setupFirestoreEmulator(port = 8080) {
@@ -74,9 +76,9 @@ async function setupFirestoreEmulator(port = 8080) {
   );
 }
 
-async function createDocumentAndLoadedFireTender(data: Record<string, unknown>) {
+async function createAndLoadDoc(data: Record<string, unknown>) {
   const docRef = await addDoc(testCollection, data);
-  const fp = new FireTender(testDataSchema, docRef);
+  const fp = testDataWrapper.wrapExisting(docRef);
   await fp.load();
   return fp;
 }
@@ -86,8 +88,8 @@ beforeAll(async () => {
 });
 
 describe("load", () => {
-  it("must be called before referencing pad.", async () => {
-    const fp = new FireTender(testDataSchema, doc(testCollection, "foo"));
+  it("must be called before referencing the accessors.", async () => {
+    const fp = testDataWrapper.wrapExisting(doc(testCollection, "foo"));
     expect(() => fp.ro.email).toThrowError(
       "You must call load() before using the .ro accessor."
     );
@@ -97,12 +99,12 @@ describe("load", () => {
   });
 
   it("throws for a non-existent doc.", async () => {
-    const fp = new FireTender(testDataSchema, doc(testCollection, "foo"));
+    const fp = testDataWrapper.wrapExisting(doc(testCollection, "foo"));
     await expect(fp.load()).rejects.toThrowError("Document does not exist.");
   });
 
   it("throws for a created but not yet written doc.", async () => {
-    const fp = FireTender.createDoc(testDataSchema, testCollection, {
+    const fp = testDataWrapper.createNew(testCollection, {
       email: "bob@example.com",
     });
     await expect(fp.load()).rejects.toThrowError(
@@ -112,12 +114,12 @@ describe("load", () => {
 
   it("throws for an invalid doc.", async () => {
     const docRef = await addDoc(testCollection, {}); // Missing email.
-    const fp = new FireTender(testDataSchema, docRef);
+    const fp = testDataWrapper.wrapExisting(docRef);
     await expect(fp.load()).rejects.toThrowError('"message": "Required"');
   });
 
   it("always reads from Firestore if force is set.", async () => {
-    const fp = await createDocumentAndLoadedFireTender({
+    const fp = await createAndLoadDoc({
       email: "bob@example.com",
     });
     // After a change in Firestore, fp does not show it until a forced load.
@@ -131,21 +133,21 @@ describe("load", () => {
 
 describe("pad", () => {
   it("reads a primitive field.", async () => {
-    const fp = await createDocumentAndLoadedFireTender({
+    const fp = await createAndLoadDoc({
       email: "bob@example.com",
     });
     expect(fp.ro.email).toBe("bob@example.com");
   });
 
   it("does not contain a missing optional field.", async () => {
-    const fp = await createDocumentAndLoadedFireTender({
+    const fp = await createAndLoadDoc({
       email: "bob@example.com",
     });
     expect("ttl" in fp.ro).toBe(false);
   });
 
   it("enforces schema rules when a field is set.", async () => {
-    const fp = await createDocumentAndLoadedFireTender({
+    const fp = await createAndLoadDoc({
       email: "bob@example.com",
     });
     expect(() => {
@@ -156,7 +158,7 @@ describe("pad", () => {
 
 describe("write", () => {
   it("sets a primitive field and updates Firestore.", async () => {
-    const fp = await createDocumentAndLoadedFireTender({
+    const fp = await createAndLoadDoc({
       email: "bob@example.com",
     });
     await fp.write(); // Should be a no-op since we haven't changed anything.
@@ -168,7 +170,7 @@ describe("write", () => {
   });
 
   it("can update multiple fields.", async () => {
-    const fp = await createDocumentAndLoadedFireTender({
+    const fp = await createAndLoadDoc({
       email: "bob@example.com",
     });
     fp.rw.email = "alice@example.com";
@@ -192,12 +194,12 @@ describe("record of primitives", () => {
   };
 
   it("reads an entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     expect(fp.ro.recordOfPrimitives.foo).toBe("xyz");
   });
 
   it("modifies an existing entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     fp.rw.recordOfPrimitives.foo = "abc";
     await fp.write();
     const result = (await getDoc(fp.docRef)).data();
@@ -208,7 +210,7 @@ describe("record of primitives", () => {
   });
 
   it("adds an entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     fp.rw.recordOfPrimitives.bar = "abc";
     await fp.write();
     const result = (await getDoc(fp.docRef)).data();
@@ -219,7 +221,7 @@ describe("record of primitives", () => {
   });
 
   it("deletes an entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender({
+    const fp = await createAndLoadDoc({
       email: "bob@example.com",
       recordOfPrimitives: { foo: "xyz" },
     });
@@ -248,7 +250,7 @@ describe("record of objects", () => {
   };
 
   it("reads an entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     expect("ice cream" in fp.ro.recordOfObjects).toBe(true);
     expect(fp.ro.recordOfObjects["ice cream"].rating).toBe(10);
     expect(fp.ro.recordOfObjects["ice cream"].tags.length).toBe(0);
@@ -256,7 +258,7 @@ describe("record of objects", () => {
   });
 
   it("modifies an entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     fp.rw.recordOfObjects["ice cream"] = {
       rating: 8,
       tags: ["too much lactose"],
@@ -280,7 +282,7 @@ describe("record of objects", () => {
   });
 
   it("adds an entry", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     fp.rw.recordOfObjects.tacos = { rating: 9, tags: ["crunchy"] };
     await fp.write();
     const result = (await getDoc(fp.docRef)).data();
@@ -303,7 +305,7 @@ describe("record of objects", () => {
   });
 
   it("deletes an entry", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     delete fp.rw.recordOfObjects.spinach;
     await fp.write();
     const result = (await getDoc(fp.docRef)).data();
@@ -333,7 +335,7 @@ describe("nested records", () => {
   };
 
   it("reads an entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     expect("x" in fp.ro.nestedRecords).toBe(true);
     expect("a" in fp.ro.nestedRecords.x).toBe(true);
     expect(fp.ro.nestedRecords.x.a).toBe(111);
@@ -342,7 +344,7 @@ describe("nested records", () => {
   });
 
   it("modifies an entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     fp.rw.nestedRecords.x.b = 234;
     fp.rw.nestedRecords.y = { d: 444 };
     await fp.write();
@@ -363,7 +365,7 @@ describe("nested records", () => {
   });
 
   it("adds an entry", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     fp.rw.nestedRecords.y.d = 444;
     fp.rw.nestedRecords.z = { e: 555 };
     await fp.write();
@@ -387,7 +389,7 @@ describe("nested records", () => {
   });
 
   it("deletes an entry", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     delete fp.rw.nestedRecords.x.a;
     delete fp.rw.nestedRecords.y;
     await fp.write();
@@ -413,7 +415,7 @@ describe("array of objects", () => {
   };
 
   it("reads an entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     expect(fp.ro.arrayOfObjects.length).toBe(2);
     expect(fp.ro.arrayOfObjects[0].name).toBe("foo");
     expect(fp.ro.arrayOfObjects[1].name).toBe("bar");
@@ -422,7 +424,7 @@ describe("array of objects", () => {
   });
 
   it("modifies an entry.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     fp.rw.arrayOfObjects[0] = {
       name: "constants",
       entries: { pi: 3.14159, e: 2.71828 },
@@ -446,7 +448,7 @@ describe("array of objects", () => {
   });
 
   it("adds an entry", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     fp.rw.arrayOfObjects.push({ name: "baz", entries: { c: 333 } });
     await fp.write();
     const result = (await getDoc(fp.docRef)).data();
@@ -461,7 +463,7 @@ describe("array of objects", () => {
   });
 
   it("deletes an entry", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     delete fp.rw.arrayOfObjects[0];
     await fp.write();
     const result = (await getDoc(fp.docRef)).data();
@@ -472,7 +474,7 @@ describe("array of objects", () => {
   });
 
   it("fails to delete if index is out of bounds.", async () => {
-    const fp = await createDocumentAndLoadedFireTender(initialState);
+    const fp = await createAndLoadDoc(initialState);
     expect(() => {
       delete fp.rw.arrayOfObjects[99];
     }).toThrow(RangeError);
@@ -485,12 +487,12 @@ describe("createDoc", () => {
   };
 
   it("does not provide a doc ref until write is called.", async () => {
-    const fp = FireTender.createDoc(testDataSchema, testCollection, initialState);
+    const fp = testDataWrapper.createNew(testCollection, initialState);
     expect(() => fp.docRef).toThrowError("docRef can only be accessed after");
   });
 
   it("adds a document without a specified ID.", async () => {
-    const fp = FireTender.createDoc(testDataSchema, testCollection, initialState);
+    const fp = testDataWrapper.createNew(testCollection, initialState);
     await fp.write();
     expect(fp.id).toMatch(/^[A-Za-z0-9]{12,}$/);
     expect(fp.docRef).toBeDefined();
@@ -506,8 +508,7 @@ describe("createDoc", () => {
 
   it("adds a document with a given ID.", async () => {
     const docID = "abcdef123456";
-    const fp = FireTender.createDoc(
-      testDataSchema,
+    const fp = testDataWrapper.createNew(
       doc(testCollection, docID),
       initialState
     );
@@ -524,7 +525,7 @@ describe("createDoc", () => {
   });
 
   it("can change an added document, before and after writing.", async () => {
-    const fp = FireTender.createDoc(testDataSchema, testCollection, initialState);
+    const fp = testDataWrapper.createNew(testCollection, initialState);
     fp.rw.recordOfObjects.x = { rating: 5, tags: ["hi"] };
     await fp.write();
     const result1 = (await getDoc(fp.docRef)).data();
@@ -563,7 +564,7 @@ describe("copy", () => {
   };
 
   it("performs a deep copy of a document.", async () => {
-    const fp1 = FireTender.createDoc(testDataSchema, testCollection, initialState);
+    const fp1 = testDataWrapper.createNew(testCollection, initialState);
     const fp2 = fp1.copy();
     const iceCream = fp2.rw.recordOfObjects["ice cream"];
     iceCream.rating = 9;
@@ -606,7 +607,7 @@ describe("copy", () => {
   });
 
   it("can copy into a specified collection.", async () => {
-    const fp1 = FireTender.createDoc(testDataSchema, testCollection, initialState);
+    const fp1 = testDataWrapper.createNew(testCollection, initialState);
     const fp2 = fp1.copy(testCollection);
     await Promise.all([fp1.write(), fp2.write()]);
     const result2 = (await getDoc(fp2.docRef)).data();
@@ -629,7 +630,7 @@ describe("copy", () => {
   });
 
   it("can copy into a specified doc reference.", async () => {
-    const fp1 = FireTender.createDoc(testDataSchema, testCollection, initialState);
+    const fp1 = testDataWrapper.createNew(testCollection, initialState);
     const fp2 = fp1.copy(doc(testCollection, "copy-with-doc-ref"));
     await Promise.all([fp1.write(), fp2.write()]);
     expect(fp2.id).toBe("copy-with-doc-ref");
@@ -653,8 +654,7 @@ describe("copy", () => {
   });
 
   it("can copy into a specified ID.", async () => {
-    const fp1 = FireTender.createDoc(
-      testDataSchema,
+    const fp1 = testDataWrapper.createNew(
       doc(testCollection, "copy-original"),
       initialState
     );
