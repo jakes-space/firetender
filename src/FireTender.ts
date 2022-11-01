@@ -8,7 +8,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { type DocumentData } from "@firebase/firestore";
-import { watchFieldForChanges } from "src/proxies";
+import { watchFieldForChanges } from "./proxies";
 import { z } from "zod";
 
 export type DeepReadonly<T> = T extends Array<infer ArrKey>

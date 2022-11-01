@@ -89,10 +89,10 @@ describe("load", () => {
   it("must be called before referencing pad.", async () => {
     const fp = new FireTender(testDataSchema, doc(testCollection, "foo"));
     expect(() => fp.ro.email).toThrowError(
-      "You must call load() before using the .ro pad."
+      "You must call load() before using the .ro accessor."
     );
     expect(() => fp.rw.email).toThrowError(
-      "You must call load() before using the .rw pad."
+      "You must call load() before using the .rw accessor."
     );
   });
 
