@@ -7,7 +7,6 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { type DocumentData } from "@firebase/firestore";
 import { watchFieldForChanges } from "./proxies";
 import { z } from "zod";
 
@@ -41,19 +40,16 @@ export class FireTenderDoc<
   DataType extends { [x: string]: any } = z.infer<SchemaType>
 > {
   readonly schema: SchemaType;
+  private ref: DocumentReference | CollectionReference;
   private isNewDoc: boolean;
   private docID: string | undefined = undefined;
-  private ref:
-    | DocumentReference<DocumentData>
-    | CollectionReference<DocumentData>;
-
   private data: DataType | undefined = undefined;
   private dataProxy: ProxyHandler<DataType> | undefined = undefined;
   private updates = new Map<string, any>();
 
   constructor(
     schema: SchemaType,
-    ref: DocumentReference<DocumentData> | CollectionReference<DocumentData>,
+    ref: DocumentReference | CollectionReference,
     options: FireTenderDocOptions = {}
   ) {
     this.schema = schema;
@@ -67,7 +63,7 @@ export class FireTenderDoc<
       }
       this.data = schema.parse(options.initialData);
     }
-    if (this.ref instanceof DocumentReference) {
+    if (this.ref.type === "document") {
       this.docID = this.ref.path.split("/").pop();
     } else if (!this.isNewDoc) {
       throw TypeError(
@@ -80,8 +76,8 @@ export class FireTenderDoc<
     return this.docID;
   }
 
-  get docRef(): DocumentReference<DocumentData> {
-    if (this.ref instanceof DocumentReference) {
+  get docRef(): DocumentReference {
+    if (this.ref.type === "document") {
       return this.ref;
     }
     throw Error(
@@ -91,8 +87,8 @@ export class FireTenderDoc<
 
   copy(
     dest:
-      | DocumentReference<DocumentData>
-      | CollectionReference<DocumentData>
+      | DocumentReference
+      | CollectionReference
       | string
       | undefined = undefined,
     options: FireTenderDocOptions = {}
@@ -100,17 +96,12 @@ export class FireTenderDoc<
     if (!this.data) {
       throw Error("You must call load() before making a copy.");
     }
-    let ref:
-      | DocumentReference<DocumentData>
-      | CollectionReference<DocumentData>;
-    if (
-      dest instanceof DocumentReference ||
-      dest instanceof CollectionReference
-    ) {
+    let ref: DocumentReference | CollectionReference;
+    if (dest && typeof dest !== "string") {
       ref = dest;
     } else {
       const collectionRef =
-        this.ref instanceof DocumentReference ? this.ref.parent : this.ref;
+        this.ref.type === "document" ? this.ref.parent : this.ref;
       if (dest) {
         ref = doc(collectionRef, dest);
       } else {
@@ -126,7 +117,7 @@ export class FireTenderDoc<
   }
 
   async load(force = false): Promise<this> {
-    if (this.isNewDoc || !(this.ref instanceof DocumentReference)) {
+    if (this.isNewDoc || this.ref.type === "collection") {
       throw Error("load() should not be called for new documents.");
     }
     if (!this.data || force) {
@@ -170,7 +161,7 @@ export class FireTenderDoc<
   async write(): Promise<void> {
     if (this.isNewDoc) {
       assertIsDefined(this.data);
-      if (this.ref instanceof DocumentReference) {
+      if (this.ref.type === "document") {
         await setDoc(this.ref, this.data);
       } else {
         this.ref = await addDoc(this.ref, this.data);
@@ -178,7 +169,7 @@ export class FireTenderDoc<
       }
       this.isNewDoc = false;
     } else {
-      if (!(this.ref instanceof DocumentReference)) {
+      if (!(this.ref.type === "document")) {
         // We should never get here.
         throw Error(
           "Internal error.  FireTender object should always reference a document when updating an existing doc."

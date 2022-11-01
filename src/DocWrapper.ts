@@ -1,4 +1,3 @@
-import { type DocumentData } from "@firebase/firestore";
 import { CollectionReference, DocumentReference } from "firebase/firestore";
 import { z } from "zod";
 import { FireTenderDoc, FireTenderDocOptions } from "./FireTenderDoc";
@@ -11,7 +10,7 @@ export class DocWrapper<SchemaType extends z.SomeZodObject,
   constructor(private schema: SchemaType) {}
 
   createNew(
-    ref: DocumentReference<DocumentData> | CollectionReference<DocumentData>,
+    ref: DocumentReference | CollectionReference,
     initialData: any, // TODO: change to "DataType," after defaults are dropped.
     options: FireTenderDocOptions = {}
   ): FireTenderDoc<SchemaType, DataType> {
@@ -24,7 +23,7 @@ export class DocWrapper<SchemaType extends z.SomeZodObject,
   }
 
   wrapExisting(
-    ref: DocumentReference<DocumentData> | CollectionReference<DocumentData>,
+    ref: DocumentReference | CollectionReference,
     options: FireTenderDocOptions = {}
   ): FireTenderDoc<SchemaType, DataType> {
     return new FireTenderDoc(this.schema, ref, options);

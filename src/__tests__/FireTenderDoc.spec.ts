@@ -21,7 +21,6 @@ import {
   getDoc,
   updateDoc,
 } from "firebase/firestore";
-import { type DocumentData } from "@firebase/firestore";
 import { z } from "zod";
 import { DocWrapper } from "../DocWrapper";
 
@@ -52,7 +51,7 @@ const testDataSchema = z.object({
 
 const testDataWrapper = new DocWrapper(testDataSchema);
 
-let testCollection: CollectionReference<DocumentData>;
+let testCollection: CollectionReference;
 
 async function setupFirestoreEmulator(port = 8080) {
   const testEnv = await initializeTestEnvironment({
