@@ -27,10 +27,16 @@
     "/dist"
   ],
   "scripts": {
-    "lint": "eslint",
+    "lint:check": "eslint src --ext .ts",
+    "lint:fix": "eslint --fix src --ext .ts",
     "prettier:check": "prettier --check src/*.ts src/**/*.ts",
     "prettier:fix": "prettier --write src/*.ts src/**/*.ts",
-    "test": "jest --forceExit --detectOpenHandles"
+    "check": "npm run lint:check && npm run prettier:check",
+    "fix": "npm run lint:fix && npm run prettier:fix",
+    "test": "jest --forceExit --detectOpenHandles",
+    "clean": "rm -rf dist/*",
+    "build": "npm run clean && tsc && rm -rf dist/__tests__",
+    "prepublishOnly": "npm run check && npm run build"
   },
   "dependencies": {
     "firebase": "^9.13.0",
