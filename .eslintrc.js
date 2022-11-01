@@ -18,6 +18,10 @@ module.exports = {
     "plugin:import/recommended",
     "prettier",
   ],
+  plugins: [
+    "@typescript-eslint",
+    "prettier",
+  ],
   rules: {
     "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
     "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
@@ -44,6 +48,7 @@ module.exports = {
       { destructuredArrayIgnorePattern: "^_" },
     ],
     "@typescript-eslint/no-floating-promises": "error",
+    "prettier/prettier": "error",
   },
   overrides: [
     {

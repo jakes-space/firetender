@@ -4,7 +4,7 @@
 
 /**
  * Start before testing: firebase emulators:start --project=firetender
- * 
+ *
  * TODO: nullable tests
  * TODO: zod effects and preprocessing, but disallowing transforms
  * TODO: timestamp tests

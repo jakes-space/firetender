@@ -5,8 +5,10 @@ import { FireTenderDoc, FireTenderDocOptions } from "./FireTenderDoc";
 /**
  * Factory for FireTenderDoc objects based on the given schema.
  */
-export class DocWrapper<SchemaType extends z.SomeZodObject,
-  DataType extends { [x: string]: any } = z.infer<SchemaType>> {
+export class DocWrapper<
+  SchemaType extends z.SomeZodObject,
+  DataType extends { [x: string]: any } = z.infer<SchemaType>
+> {
   constructor(private schema: SchemaType) {}
 
   createNew(
