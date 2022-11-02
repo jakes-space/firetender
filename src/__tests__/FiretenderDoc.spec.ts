@@ -90,10 +90,10 @@ describe("load", () => {
   it("must be called before referencing the accessors.", async () => {
     const testDoc = testDocFactory.wrapExistingDoc(doc(testCollection, "foo"));
     expect(() => testDoc.r.email).toThrowError(
-      "You must call load() before using the .r accessor."
+      "load() must be called before reading the document."
     );
     expect(() => testDoc.w.email).toThrowError(
-      "You must call load() before using the .w accessor."
+      "load() must be called before updating the document."
     );
   });
 

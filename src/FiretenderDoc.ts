@@ -165,7 +165,7 @@ export class FiretenderDoc<
     }
     if (!this.dataProxy) {
       if (!this.data) {
-        throw Error("load() must be called before using the .w property.");
+        throw Error("load() must be called before updating the document.");
       }
       this.dataProxy = watchFieldForChanges(
         [],
