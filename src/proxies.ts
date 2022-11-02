@@ -1,11 +1,6 @@
+import { assertKeyIsString } from "./ts-helpers";
 import { arrayRemove, deleteField } from "firebase/firestore";
 import { z } from "zod";
-
-function assertKeyIsString(key: any): asserts key is string {
-  if (typeof key !== "string") {
-    throw TypeError("Property access using symbols is not supported.");
-  }
-}
 
 function unwrapSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
   if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {

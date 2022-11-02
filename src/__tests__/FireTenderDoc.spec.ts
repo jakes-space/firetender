@@ -22,7 +22,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { z } from "zod";
-import { DocWrapper } from "../DocWrapper";
+import { FireTenderDoc } from "../FireTenderDoc";
 
 const testDataSchema = z.object({
   email: z.string().email(),
@@ -49,7 +49,7 @@ const testDataSchema = z.object({
     .default([]),
 });
 
-const testDataWrapper = new DocWrapper(testDataSchema);
+const testDocFactory = FireTenderDoc.makeClassFactoryFor(testDataSchema);
 
 let testCollection: CollectionReference;
 
@@ -77,9 +77,9 @@ async function setupFirestoreEmulator(port = 8080) {
 
 async function createAndLoadDoc(data: Record<string, unknown>) {
   const docRef = await addDoc(testCollection, data);
-  const fp = testDataWrapper.wrapExisting(docRef);
-  await fp.load();
-  return fp;
+  const testDoc = testDocFactory.wrapExistingDoc(docRef);
+  await testDoc.load();
+  return testDoc;
 }
 
 beforeAll(async () => {
@@ -88,94 +88,94 @@ beforeAll(async () => {
 
 describe("load", () => {
   it("must be called before referencing the accessors.", async () => {
-    const fp = testDataWrapper.wrapExisting(doc(testCollection, "foo"));
-    expect(() => fp.ro.email).toThrowError(
+    const testDoc = testDocFactory.wrapExistingDoc(doc(testCollection, "foo"));
+    expect(() => testDoc.ro.email).toThrowError(
       "You must call load() before using the .ro accessor."
     );
-    expect(() => fp.rw.email).toThrowError(
+    expect(() => testDoc.rw.email).toThrowError(
       "You must call load() before using the .rw accessor."
     );
   });
 
   it("throws for a non-existent doc.", async () => {
-    const fp = testDataWrapper.wrapExisting(doc(testCollection, "foo"));
-    await expect(fp.load()).rejects.toThrowError("Document does not exist.");
+    const testDoc = testDocFactory.wrapExistingDoc(doc(testCollection, "foo"));
+    await expect(testDoc.load()).rejects.toThrowError("does not exist");
   });
 
   it("throws for a created but not yet written doc.", async () => {
-    const fp = testDataWrapper.createNew(testCollection, {
+    const testDoc = testDocFactory.createNewDoc(testCollection, {
       email: "bob@example.com",
     });
-    await expect(fp.load()).rejects.toThrowError(
+    await expect(testDoc.load()).rejects.toThrowError(
       "should not be called for new documents."
     );
   });
 
   it("throws for an invalid doc.", async () => {
     const docRef = await addDoc(testCollection, {}); // Missing email.
-    const fp = testDataWrapper.wrapExisting(docRef);
-    await expect(fp.load()).rejects.toThrowError('"message": "Required"');
+    const testDoc = testDocFactory.wrapExistingDoc(docRef);
+    await expect(testDoc.load()).rejects.toThrowError('"message": "Required"');
   });
 
   it("always reads from Firestore if force is set.", async () => {
-    const fp = await createAndLoadDoc({
+    const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
-    // After a change in Firestore, fp does not show it until a forced load.
-    await updateDoc(fp.docRef, { email: "alice@example.com" });
-    await fp.load(); // Does nothing.
-    expect(fp.ro.email).toBe("bob@example.com");
-    await fp.load(true); // Forces load.
-    expect(fp.ro.email).toBe("alice@example.com");
+    // testDoc does not show a change in Firestore until after a forced load.
+    await updateDoc(testDoc.docRef, { email: "alice@example.com" });
+    await testDoc.load(); // Does nothing.
+    expect(testDoc.ro.email).toBe("bob@example.com");
+    await testDoc.load(true); // Forces load.
+    expect(testDoc.ro.email).toBe("alice@example.com");
   });
 });
 
 describe("pad", () => {
   it("reads a primitive field.", async () => {
-    const fp = await createAndLoadDoc({
+    const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
-    expect(fp.ro.email).toBe("bob@example.com");
+    expect(testDoc.ro.email).toBe("bob@example.com");
   });
 
   it("does not contain a missing optional field.", async () => {
-    const fp = await createAndLoadDoc({
+    const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
-    expect("ttl" in fp.ro).toBe(false);
+    expect("ttl" in testDoc.ro).toBe(false);
   });
 
   it("enforces schema rules when a field is set.", async () => {
-    const fp = await createAndLoadDoc({
+    const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
     expect(() => {
-      fp.rw.email = "not a valid email";
+      testDoc.rw.email = "not a valid email";
     }).toThrowError("Invalid email");
   });
 });
 
 describe("write", () => {
   it("sets a primitive field and updates Firestore.", async () => {
-    const fp = await createAndLoadDoc({
+    const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
-    await fp.write(); // Should be a no-op since we haven't changed anything.
-    fp.rw.email = "alice@example.com";
-    expect(fp.ro.email).toBe("alice@example.com");
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    await testDoc.write(); // Should be a no-op since nothing has been changed.
+    testDoc.rw.email = "alice@example.com";
+    expect(testDoc.ro.email).toBe("alice@example.com");
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({ email: "alice@example.com" });
   });
 
   it("can update multiple fields.", async () => {
-    const fp = await createAndLoadDoc({
+    const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
-    fp.rw.email = "alice@example.com";
-    fp.rw.ttl = { seconds: 123, nanoseconds: 456 };
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    testDoc.rw.email = "alice@example.com";
+    testDoc.rw.ttl = { seconds: 123, nanoseconds: 456 };
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "alice@example.com",
       ttl: {
@@ -193,15 +193,15 @@ describe("record of primitives", () => {
   };
 
   it("reads an entry.", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    expect(fp.ro.recordOfPrimitives.foo).toBe("xyz");
+    const testDoc = await createAndLoadDoc(initialState);
+    expect(testDoc.ro.recordOfPrimitives.foo).toBe("xyz");
   });
 
   it("modifies an existing entry.", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    fp.rw.recordOfPrimitives.foo = "abc";
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.rw.recordOfPrimitives.foo = "abc";
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       recordOfPrimitives: { foo: "abc" },
@@ -209,10 +209,10 @@ describe("record of primitives", () => {
   });
 
   it("adds an entry.", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    fp.rw.recordOfPrimitives.bar = "abc";
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.rw.recordOfPrimitives.bar = "abc";
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       recordOfPrimitives: { foo: "xyz", bar: "abc" },
@@ -220,13 +220,13 @@ describe("record of primitives", () => {
   });
 
   it("deletes an entry.", async () => {
-    const fp = await createAndLoadDoc({
+    const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
       recordOfPrimitives: { foo: "xyz" },
     });
-    delete fp.rw.recordOfPrimitives.foo;
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    delete testDoc.rw.recordOfPrimitives.foo;
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       recordOfPrimitives: {},
@@ -249,22 +249,24 @@ describe("record of objects", () => {
   };
 
   it("reads an entry.", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    expect("ice cream" in fp.ro.recordOfObjects).toBe(true);
-    expect(fp.ro.recordOfObjects["ice cream"].rating).toBe(10);
-    expect(fp.ro.recordOfObjects["ice cream"].tags.length).toBe(0);
-    expect(fp.ro.recordOfObjects.spinach.tags.includes("green")).toBe(true);
+    const testDoc = await createAndLoadDoc(initialState);
+    expect("ice cream" in testDoc.ro.recordOfObjects).toBe(true);
+    expect(testDoc.ro.recordOfObjects["ice cream"].rating).toBe(10);
+    expect(testDoc.ro.recordOfObjects["ice cream"].tags.length).toBe(0);
+    expect(testDoc.ro.recordOfObjects.spinach.tags.includes("green")).toBe(
+      true
+    );
   });
 
   it("modifies an entry.", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    fp.rw.recordOfObjects["ice cream"] = {
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.rw.recordOfObjects["ice cream"] = {
       rating: 8,
       tags: ["too much lactose"],
     };
-    fp.rw.recordOfObjects.spinach.rating = 6;
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    testDoc.rw.recordOfObjects.spinach.rating = 6;
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       recordOfObjects: {
@@ -281,10 +283,10 @@ describe("record of objects", () => {
   });
 
   it("adds an entry", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    fp.rw.recordOfObjects.tacos = { rating: 9, tags: ["crunchy"] };
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.rw.recordOfObjects.tacos = { rating: 9, tags: ["crunchy"] };
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       recordOfObjects: {
@@ -304,10 +306,10 @@ describe("record of objects", () => {
   });
 
   it("deletes an entry", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    delete fp.rw.recordOfObjects.spinach;
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    const testDoc = await createAndLoadDoc(initialState);
+    delete testDoc.rw.recordOfObjects.spinach;
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       recordOfObjects: {
@@ -334,21 +336,21 @@ describe("nested records", () => {
   };
 
   it("reads an entry.", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    expect("x" in fp.ro.nestedRecords).toBe(true);
-    expect("a" in fp.ro.nestedRecords.x).toBe(true);
-    expect(fp.ro.nestedRecords.x.a).toBe(111);
-    expect(fp.ro.nestedRecords.x.b).toBe(222);
-    expect(fp.ro.nestedRecords.y.c).toBe(333);
+    const testDoc = await createAndLoadDoc(initialState);
+    expect("x" in testDoc.ro.nestedRecords).toBe(true);
+    expect("a" in testDoc.ro.nestedRecords.x).toBe(true);
+    expect(testDoc.ro.nestedRecords.x.a).toBe(111);
+    expect(testDoc.ro.nestedRecords.x.b).toBe(222);
+    expect(testDoc.ro.nestedRecords.y.c).toBe(333);
   });
 
   it("modifies an entry.", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    fp.rw.nestedRecords.x.b = 234;
-    fp.rw.nestedRecords.y = { d: 444 };
-    await fp.write();
-    expect(fp.ro.nestedRecords.x.b).toBe(234);
-    const result = (await getDoc(fp.docRef)).data();
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.rw.nestedRecords.x.b = 234;
+    testDoc.rw.nestedRecords.y = { d: 444 };
+    await testDoc.write();
+    expect(testDoc.ro.nestedRecords.x.b).toBe(234);
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       nestedRecords: {
@@ -364,11 +366,11 @@ describe("nested records", () => {
   });
 
   it("adds an entry", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    fp.rw.nestedRecords.y.d = 444;
-    fp.rw.nestedRecords.z = { e: 555 };
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.rw.nestedRecords.y.d = 444;
+    testDoc.rw.nestedRecords.z = { e: 555 };
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       nestedRecords: {
@@ -388,11 +390,11 @@ describe("nested records", () => {
   });
 
   it("deletes an entry", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    delete fp.rw.nestedRecords.x.a;
-    delete fp.rw.nestedRecords.y;
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    const testDoc = await createAndLoadDoc(initialState);
+    delete testDoc.rw.nestedRecords.x.a;
+    delete testDoc.rw.nestedRecords.y;
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       nestedRecords: {
@@ -414,29 +416,29 @@ describe("array of objects", () => {
   };
 
   it("reads an entry.", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    expect(fp.ro.arrayOfObjects.length).toBe(2);
-    expect(fp.ro.arrayOfObjects[0].name).toBe("foo");
-    expect(fp.ro.arrayOfObjects[1].name).toBe("bar");
-    expect("a" in fp.ro.arrayOfObjects[1].entries).toBe(true);
-    expect(fp.ro.arrayOfObjects[1].entries.b).toBe(222);
+    const testDoc = await createAndLoadDoc(initialState);
+    expect(testDoc.ro.arrayOfObjects.length).toBe(2);
+    expect(testDoc.ro.arrayOfObjects[0].name).toBe("foo");
+    expect(testDoc.ro.arrayOfObjects[1].name).toBe("bar");
+    expect("a" in testDoc.ro.arrayOfObjects[1].entries).toBe(true);
+    expect(testDoc.ro.arrayOfObjects[1].entries.b).toBe(222);
   });
 
   it("modifies an entry.", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    fp.rw.arrayOfObjects[0] = {
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.rw.arrayOfObjects[0] = {
       name: "constants",
       entries: { pi: 3.14159, e: 2.71828 },
     };
-    fp.rw.arrayOfObjects[1].name += "bell";
-    fp.rw.arrayOfObjects[1].entries.a = 123;
+    testDoc.rw.arrayOfObjects[1].name += "bell";
+    testDoc.rw.arrayOfObjects[1].entries.a = 123;
     // // in another test:
-    // fp.rw.arrayOfObjects = [
+    // testDoc.rw.arrayOfObjects = [
     //   { name: "baz", entries: {} },
     //   { name: "qux", entries: { a: 111, b: 222 } },
     // ];
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       arrayOfObjects: [
@@ -447,10 +449,10 @@ describe("array of objects", () => {
   });
 
   it("adds an entry", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    fp.rw.arrayOfObjects.push({ name: "baz", entries: { c: 333 } });
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.rw.arrayOfObjects.push({ name: "baz", entries: { c: 333 } });
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       arrayOfObjects: [
@@ -462,10 +464,10 @@ describe("array of objects", () => {
   });
 
   it("deletes an entry", async () => {
-    const fp = await createAndLoadDoc(initialState);
-    delete fp.rw.arrayOfObjects[0];
-    await fp.write();
-    const result = (await getDoc(fp.docRef)).data();
+    const testDoc = await createAndLoadDoc(initialState);
+    delete testDoc.rw.arrayOfObjects[0];
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       arrayOfObjects: [{ name: "bar", entries: { a: 111, b: 222 } }],
@@ -473,9 +475,9 @@ describe("array of objects", () => {
   });
 
   it("fails to delete if index is out of bounds.", async () => {
-    const fp = await createAndLoadDoc(initialState);
+    const testDoc = await createAndLoadDoc(initialState);
     expect(() => {
-      delete fp.rw.arrayOfObjects[99];
+      delete testDoc.rw.arrayOfObjects[99];
     }).toThrow(RangeError);
   });
 });
@@ -486,16 +488,20 @@ describe("createDoc", () => {
   };
 
   it("does not provide a doc ref until write is called.", async () => {
-    const fp = testDataWrapper.createNew(testCollection, initialState);
-    expect(() => fp.docRef).toThrowError("docRef can only be accessed after");
+    const testDoc = testDocFactory.createNewDoc(testCollection, initialState);
+    expect(() => testDoc.docRef).toThrowError(
+      "docRef can only be accessed after"
+    );
   });
 
   it("adds a document without a specified ID.", async () => {
-    const fp = testDataWrapper.createNew(testCollection, initialState);
-    await fp.write();
-    expect(fp.id).toMatch(/^[A-Za-z0-9]{12,}$/);
-    expect(fp.docRef).toBeDefined();
-    const result = fp.docRef ? (await getDoc(fp.docRef)).data() : undefined;
+    const testDoc = testDocFactory.createNewDoc(testCollection, initialState);
+    await testDoc.write();
+    expect(testDoc.id).toMatch(/^[A-Za-z0-9]{12,}$/);
+    expect(testDoc.docRef).toBeDefined();
+    const result = testDoc.docRef
+      ? (await getDoc(testDoc.docRef)).data()
+      : undefined;
     expect(result).toEqual({
       email: "bob@example.com",
       recordOfPrimitives: {},
@@ -507,13 +513,13 @@ describe("createDoc", () => {
 
   it("adds a document with a given ID.", async () => {
     const docID = "abcdef123456";
-    const fp = testDataWrapper.createNew(
+    const testDoc = testDocFactory.createNewDoc(
       doc(testCollection, docID),
       initialState
     );
-    await fp.write();
-    expect(fp.id).toEqual(docID);
-    const result = (await getDoc(fp.docRef)).data();
+    await testDoc.write();
+    expect(testDoc.id).toEqual(docID);
+    const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
       recordOfPrimitives: {},
@@ -524,10 +530,10 @@ describe("createDoc", () => {
   });
 
   it("can change an added document, before and after writing.", async () => {
-    const fp = testDataWrapper.createNew(testCollection, initialState);
-    fp.rw.recordOfObjects.x = { rating: 5, tags: ["hi"] };
-    await fp.write();
-    const result1 = (await getDoc(fp.docRef)).data();
+    const testDoc = testDocFactory.createNewDoc(testCollection, initialState);
+    testDoc.rw.recordOfObjects.x = { rating: 5, tags: ["hi"] };
+    await testDoc.write();
+    const result1 = (await getDoc(testDoc.docRef)).data();
     expect(result1).toEqual({
       email: "bob@example.com",
       recordOfPrimitives: {},
@@ -535,9 +541,9 @@ describe("createDoc", () => {
       recordOfObjects: { x: { rating: 5, tags: ["hi"] } },
       arrayOfObjects: [],
     });
-    fp.rw.recordOfPrimitives.a = "bye";
-    await fp.write();
-    const result2 = (await getDoc(fp.docRef)).data();
+    testDoc.rw.recordOfPrimitives.a = "bye";
+    await testDoc.write();
+    const result2 = (await getDoc(testDoc.docRef)).data();
     expect(result2).toEqual({
       email: "bob@example.com",
       recordOfPrimitives: { a: "bye" },
@@ -563,13 +569,13 @@ describe("copy", () => {
   };
 
   it("performs a deep copy of a document.", async () => {
-    const fp1 = testDataWrapper.createNew(testCollection, initialState);
-    const fp2 = fp1.copy();
-    const iceCream = fp2.rw.recordOfObjects["ice cream"];
+    const testDoc1 = testDocFactory.createNewDoc(testCollection, initialState);
+    const testDoc2 = testDoc1.copy();
+    const iceCream = testDoc2.rw.recordOfObjects["ice cream"];
     iceCream.rating = 9;
     iceCream.tags.push("melting");
-    await Promise.all([fp1.write(), fp2.write()]);
-    const result1 = (await getDoc(fp1.docRef)).data();
+    await Promise.all([testDoc1.write(), testDoc2.write()]);
+    const result1 = (await getDoc(testDoc1.docRef)).data();
     expect(result1).toEqual({
       email: "bob@example.com",
       recordOfObjects: {
@@ -586,7 +592,7 @@ describe("copy", () => {
       nestedRecords: {},
       arrayOfObjects: [],
     });
-    const result2 = (await getDoc(fp2.docRef)).data();
+    const result2 = (await getDoc(testDoc2.docRef)).data();
     expect(result2).toEqual({
       email: "bob@example.com",
       recordOfObjects: {
@@ -606,10 +612,10 @@ describe("copy", () => {
   });
 
   it("can copy into a specified collection.", async () => {
-    const fp1 = testDataWrapper.createNew(testCollection, initialState);
-    const fp2 = fp1.copy(testCollection);
-    await Promise.all([fp1.write(), fp2.write()]);
-    const result2 = (await getDoc(fp2.docRef)).data();
+    const testDoc1 = testDocFactory.createNewDoc(testCollection, initialState);
+    const testDoc2 = testDoc1.copy(testCollection);
+    await Promise.all([testDoc1.write(), testDoc2.write()]);
+    const result2 = (await getDoc(testDoc2.docRef)).data();
     expect(result2).toEqual({
       email: "bob@example.com",
       recordOfObjects: {
@@ -629,11 +635,11 @@ describe("copy", () => {
   });
 
   it("can copy into a specified doc reference.", async () => {
-    const fp1 = testDataWrapper.createNew(testCollection, initialState);
-    const fp2 = fp1.copy(doc(testCollection, "copy-with-doc-ref"));
-    await Promise.all([fp1.write(), fp2.write()]);
-    expect(fp2.id).toBe("copy-with-doc-ref");
-    const result2 = (await getDoc(fp2.docRef)).data();
+    const testDoc1 = testDocFactory.createNewDoc(testCollection, initialState);
+    const testDoc2 = testDoc1.copy(doc(testCollection, "copy-with-doc-ref"));
+    await Promise.all([testDoc1.write(), testDoc2.write()]);
+    expect(testDoc2.id).toBe("copy-with-doc-ref");
+    const result2 = (await getDoc(testDoc2.docRef)).data();
     expect(result2).toEqual({
       email: "bob@example.com",
       recordOfObjects: {
@@ -653,14 +659,14 @@ describe("copy", () => {
   });
 
   it("can copy into a specified ID.", async () => {
-    const fp1 = testDataWrapper.createNew(
+    const testDoc1 = testDocFactory.createNewDoc(
       doc(testCollection, "copy-original"),
       initialState
     );
-    const fp2 = fp1.copy("copy-with-id-string");
-    await Promise.all([fp1.write(), fp2.write()]);
-    expect(fp2.id).toBe("copy-with-id-string");
-    const result2 = (await getDoc(fp2.docRef)).data();
+    const testDoc2 = testDoc1.copy("copy-with-id-string");
+    await Promise.all([testDoc1.write(), testDoc2.write()]);
+    expect(testDoc2.id).toBe("copy-with-id-string");
+    const result2 = (await getDoc(testDoc2.docRef)).data();
     expect(result2).toEqual({
       email: "bob@example.com",
       recordOfObjects: {

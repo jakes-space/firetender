@@ -7,24 +7,9 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { watchFieldForChanges } from "./proxies";
 import { z } from "zod";
-
-export type DeepReadonly<T> = T extends Array<infer ArrKey>
-  ? ReadonlyArray<DeepReadonly<ArrKey>>
-  : T extends Map<infer MapKey, infer MapVal>
-  ? ReadonlyMap<DeepReadonly<MapKey>, DeepReadonly<MapVal>>
-  : T extends Set<infer SetKey>
-  ? ReadonlySet<DeepReadonly<SetKey>>
-  : T extends Record<any, unknown>
-  ? { readonly [ObjKey in keyof T]: DeepReadonly<T[ObjKey]> }
-  : T;
-
-function assertIsDefined<T>(value: T): asserts value is NonNullable<T> {
-  if (value === undefined || value === null) {
-    throw new TypeError(`${value} is not defined`);
-  }
-}
+import { watchFieldForChanges } from "./proxies";
+import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 
 export type FireTenderDocOptions = {
   createDoc?: true;
@@ -70,6 +55,40 @@ export class FireTenderDoc<
         "FireTender can only take a collection reference when creating a new document.  Use FireTender.createDoc() if this is your intent."
       );
     }
+  }
+
+  static createNewDoc<
+    SchemaType1 extends z.SomeZodObject,
+    InputType extends { [x: string]: any } = z.input<SchemaType1>
+  >(
+    schema: SchemaType1,
+    ref: DocumentReference | CollectionReference,
+    initialData: InputType,
+    options: FireTenderDocOptions = {}
+  ): FireTenderDoc<SchemaType1, z.TypeOf<SchemaType1>> {
+    const mergedOptions: FireTenderDocOptions = {
+      ...options,
+      createDoc: true,
+      initialData,
+    };
+    return new FireTenderDoc(schema, ref, mergedOptions);
+  }
+
+  static makeClassFactoryFor<
+    SchemaType1 extends z.SomeZodObject,
+    InputType extends { [x: string]: any } = z.input<SchemaType1>
+  >(schema: SchemaType1) {
+    return {
+      createNewDoc: (
+        ref: DocumentReference | CollectionReference,
+        initialData: InputType,
+        options: FireTenderDocOptions = {}
+      ) => FireTenderDoc.createNewDoc(schema, ref, initialData, options),
+      wrapExistingDoc: (
+        ref: DocumentReference | CollectionReference,
+        options: FireTenderDocOptions = {}
+      ) => new FireTenderDoc(schema, ref, options),
+    };
   }
 
   get id(): string | undefined {
