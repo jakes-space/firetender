@@ -1,8 +1,8 @@
-# FireTender
+# Firetender
 
-FireTender is a wrapper for Firestore documents to make reading and writing them
-simpler and safer.  A Firestore doc looks like any other Typescript object, and
-it is validated upon reading and writing.
+The goal of Firetender is to make Firestore documents look (almost) like any
+other Typescript object, saving you some boilerplate and conceptual overhead
+and providing type safety and data validation.
 
 Querying and concurrency are not yet supported.  I'm adding features as I need
 them, but contributions are most welcome.  See the list of [alternative
@@ -11,19 +11,18 @@ something more mature.
 
 ## Usage
 
-To illustrate, let's run through the basics of defining, creating, reading,
-modifying, and copying a Firestore document.
+To illustrate, let's run through the basics of defining, creating, modifying,
+and copying a Firestore document.
 
-### Define your schemas
+### Define the schema
 
-First, we define the document schemas and their validation criteria with
-[Zod](https://github.com/colinhacks/zod).  If you've used Joi or Yup, you will
-find Zod very similar.  Optional collections should use `.default({})` or
-`.default([])` to simplify access.  Here we define a schema for types of
-pizza, because I was hungry when I wrote this.
+First, define the document schema and its validation criteria.  Firetender uses
+[Zod](https://github.com/colinhacks/zod) for this; if you've used Joi or Yup,
+you will find it very similar.  In the example below, I've defined a schema for
+types of pizza, because I was hungry when I wrote this.
 
-We use the `FireTenderDoc.makeClassFactory()` convenience method to avoid having
-to pass in the schema every time we instantiate a doc object.
+The static `FiretenderDoc.makeClassFactory()` method slightly simplifies
+document creation and wrapping by capturing the schema.
 
 ```javascript
 import { doc } from "firebase/firestore";
@@ -48,15 +47,21 @@ const pizzaSchema = z.object({
   tags: z.array(z.string()).default([]),
 });
 
-const pizzaFactory = FireTenderDoc.makeClassFactoryFor(pizzaSchema);
+const pizzaFactory = FiretenderDoc.makeClassFactoryFor(pizzaSchema);
 ```
+
+Optional records and arrays should typically Zod's `.default()` to provide an
+empty collection when missing.  That isn't required, but it makes accessing
+these fields less annoying.  The downside is that empty collection fields are
+not pruned and will appear in Firestore.
 
 ### Add a document
 
-Let's add a document to the `pizzas` collection with an ID of `margherita`.  We
-use the factory's `.createNewDoc()` method to create a validated local object
-representing a new document in the collection.  We then add the doc to Firestore
-by calling its `.write()` method.
+Let's add a document to the `pizzas` collection, with an ID of `margherita`.  We
+use the factory's `.createNewDoc()` to produce a `FiretenderDoc` representing a
+new document, initialized with validated data.  This object is purely local
+until it is written to Firestore by calling `.write()`.  Don't forget to do
+that.
 
 ```javascript
 const docRef = doc(db, "pizzas", "margherita");
@@ -68,35 +73,38 @@ const pizza = pizzaFactory.createNewDoc(docRef, {
 await pizza.write();
 ```
 
-If we don't care about the doc ID, we can also pass a collection reference
-(e.g., `collection(db, "pizzas")`) to `.createNewDoc()`.  Firestore will assign
-a random ID.
+If you don't care about the doc ID, pass a collection reference to
+`.createNewDoc()` and Firestore will assign it randomly.  The resulting ID can
+be read from `.id` or `.docRef`.
 
 ### Read and modify a document
 
-To read or modify an existing document, we instantiate a doc wrapper using the
-`.wrapExistingDoc()` factory method and passing in the doc's Firestore
-reference.  To read from it, we call `.load()` and access the data with `.ro`
-(read only); to write, we modify the `.rw` accessor and then call `.write()`.
-They can be used in combination:
+To access an existing document, pass its reference to the `.wrapExistingDoc()`
+factory method.  To read it, call `.load()` and access its data with the `.r`
+property; see the example below.  To make changes, use `.w` then call
+`.write()`.  They can be used in combination:
 
 ```javascript
 const meats = ["pepperoni", "chicken", "sausage"];
 const pizza = await pizzaFactory.wrapExistingDoc(docRef).load();
-const isMeatIncluded = Object.entries(pizza.ro.toppings).some(
+const isMeatIncluded = Object.entries(pizza.r.toppings).some(
   ([name, topping]) => topping.isIncluded && name in meats
 );
 if (!isMeatIncluded) {
-  pizza.rw.toppings.tags.push("vegetarian");
+  pizza.w.toppings.tags.push("vegetarian");
 }
 await pizza.write();
 ```
 
+The `.r` and `.w` properties point to the same data, with the read-only accessor
+typing it accordingly.  Reading from `.r` is more efficient, as `.w` builds a
+chain of proxies to track updates.
+
 ### Make a copy
 
-Here we create a new pizza in the same collection.  Alternatively, a document
-can be copied to elsewhere by specifying a document or collection reference
-for the destination.
+Finally, use `.copy()` to get a deep-copy of the document.  If an ID is not
+specified, it will be assigned randomly by Firestore.  The copy is solely local.
+After any changes are made, call `.write()` to add the new doc to Firestore.
 
 ```javascript
 const sourceRef = doc(db, "pizza", "margherita");
@@ -110,6 +118,9 @@ delete newPizza.toppings["fresh basil"];
 delete newPizza.tags.vegetarian;
 newPizza.write();
 ```
+
+Note the use of the `delete` operator to remove record and array items.  It also
+will clear optional fields.
 
 ## TODO
 

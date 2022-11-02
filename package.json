@@ -1,6 +1,6 @@
 {
   "name": "firetender",
-  "displayName": "FireTender",
+  "displayName": "Firetender",
   "description": "Typescript wrapper for Firestore documents",
   "version": "0.2.0",
   "author": "Jake Hartman",
@@ -33,6 +33,7 @@
     "prettier:fix": "prettier --write src/*.ts src/**/*.ts",
     "check": "npm run lint:check && npm run prettier:check",
     "fix": "npm run lint:fix && npm run prettier:fix",
+    "start-test-db": "firebase emulators:start --project=firestore-proxy",
     "test": "jest --forceExit --detectOpenHandles",
     "clean": "rm -rf dist/*",
     "build": "npm run clean && tsc && rm -rf dist/__tests__",

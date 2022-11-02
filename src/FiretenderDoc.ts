@@ -11,7 +11,7 @@ import { z } from "zod";
 import { watchFieldForChanges } from "./proxies";
 import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 
-export type FireTenderDocOptions = {
+export type FiretenderDocOptions = {
   createDoc?: true;
   initialData?: any;
   // TODO: add readonly option.
@@ -20,7 +20,7 @@ export type FireTenderDocOptions = {
 /**
  * Helper class for reading and writing Firestore data based on Zod schemas.
  */
-export class FireTenderDoc<
+export class FiretenderDoc<
   SchemaType extends z.SomeZodObject,
   DataType extends { [x: string]: any } = z.infer<SchemaType>
 > {
@@ -35,7 +35,7 @@ export class FireTenderDoc<
   constructor(
     schema: SchemaType,
     ref: DocumentReference | CollectionReference,
-    options: FireTenderDocOptions = {}
+    options: FiretenderDocOptions = {}
   ) {
     this.schema = schema;
     this.ref = ref;
@@ -52,7 +52,7 @@ export class FireTenderDoc<
       this.docID = this.ref.path.split("/").pop();
     } else if (!this.isNewDoc) {
       throw TypeError(
-        "FireTender can only take a collection reference when creating a new document.  Use FireTender.createDoc() if this is your intent."
+        "Firetender can only take a collection reference when creating a new document.  Use Firetender.createDoc() if this is your intent."
       );
     }
   }
@@ -64,14 +64,14 @@ export class FireTenderDoc<
     schema: SchemaType1,
     ref: DocumentReference | CollectionReference,
     initialData: InputType,
-    options: FireTenderDocOptions = {}
-  ): FireTenderDoc<SchemaType1, z.TypeOf<SchemaType1>> {
-    const mergedOptions: FireTenderDocOptions = {
+    options: FiretenderDocOptions = {}
+  ): FiretenderDoc<SchemaType1, z.TypeOf<SchemaType1>> {
+    const mergedOptions: FiretenderDocOptions = {
       ...options,
       createDoc: true,
       initialData,
     };
-    return new FireTenderDoc(schema, ref, mergedOptions);
+    return new FiretenderDoc(schema, ref, mergedOptions);
   }
 
   static makeClassFactoryFor<
@@ -82,12 +82,12 @@ export class FireTenderDoc<
       createNewDoc: (
         ref: DocumentReference | CollectionReference,
         initialData: InputType,
-        options: FireTenderDocOptions = {}
-      ) => FireTenderDoc.createNewDoc(schema, ref, initialData, options),
+        options: FiretenderDocOptions = {}
+      ) => FiretenderDoc.createNewDoc(schema, ref, initialData, options),
       wrapExistingDoc: (
         ref: DocumentReference | CollectionReference,
-        options: FireTenderDocOptions = {}
-      ) => new FireTenderDoc(schema, ref, options),
+        options: FiretenderDocOptions = {}
+      ) => new FiretenderDoc(schema, ref, options),
     };
   }
 
@@ -110,8 +110,8 @@ export class FireTenderDoc<
       | CollectionReference
       | string
       | undefined = undefined,
-    options: FireTenderDocOptions = {}
-  ): FireTenderDoc<SchemaType, DataType> {
+    options: FiretenderDocOptions = {}
+  ): FiretenderDoc<SchemaType, DataType> {
     if (!this.data) {
       throw Error("You must call load() before making a copy.");
     }
@@ -127,12 +127,12 @@ export class FireTenderDoc<
         ref = collectionRef;
       }
     }
-    const mergedOptions: FireTenderDocOptions = {
+    const mergedOptions: FiretenderDocOptions = {
       ...options,
       createDoc: true,
       initialData: this.data,
     };
-    return new FireTenderDoc(this.schema, ref, mergedOptions);
+    return new FiretenderDoc(this.schema, ref, mergedOptions);
   }
 
   async load(force = false): Promise<this> {
@@ -151,21 +151,21 @@ export class FireTenderDoc<
     return this;
   }
 
-  get ro(): DeepReadonly<DataType> {
+  get r(): DeepReadonly<DataType> {
     if (!this.data) {
-      throw Error("You must call load() before using the .ro accessor.");
+      throw Error("load() must be called before reading the document.");
     }
     return this.data as DeepReadonly<DataType>;
   }
 
-  get rw(): DataType {
+  get w(): DataType {
     if (this.isNewDoc) {
       // No need to monitor changes if we're creating rather than updating.
       return this.data as DataType;
     }
     if (!this.dataProxy) {
       if (!this.data) {
-        throw Error("You must call load() before using the .rw accessor.");
+        throw Error("load() must be called before using the .w property.");
       }
       this.dataProxy = watchFieldForChanges(
         [],
@@ -191,7 +191,7 @@ export class FireTenderDoc<
       if (!(this.ref.type === "document")) {
         // We should never get here.
         throw Error(
-          "Internal error.  FireTender object should always reference a document when updating an existing doc."
+          "Internal error.  Firetender object should always reference a document when updating an existing doc."
         );
       }
       if (this.updates.size === 0) {

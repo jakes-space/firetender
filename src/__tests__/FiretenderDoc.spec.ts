@@ -22,7 +22,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { z } from "zod";
-import { FireTenderDoc } from "../FireTenderDoc";
+import { FiretenderDoc } from "../FiretenderDoc";
 
 const testDataSchema = z.object({
   email: z.string().email(),
@@ -49,7 +49,7 @@ const testDataSchema = z.object({
     .default([]),
 });
 
-const testDocFactory = FireTenderDoc.makeClassFactoryFor(testDataSchema);
+const testDocFactory = FiretenderDoc.makeClassFactoryFor(testDataSchema);
 
 let testCollection: CollectionReference;
 
@@ -89,11 +89,11 @@ beforeAll(async () => {
 describe("load", () => {
   it("must be called before referencing the accessors.", async () => {
     const testDoc = testDocFactory.wrapExistingDoc(doc(testCollection, "foo"));
-    expect(() => testDoc.ro.email).toThrowError(
-      "You must call load() before using the .ro accessor."
+    expect(() => testDoc.r.email).toThrowError(
+      "You must call load() before using the .r accessor."
     );
-    expect(() => testDoc.rw.email).toThrowError(
-      "You must call load() before using the .rw accessor."
+    expect(() => testDoc.w.email).toThrowError(
+      "You must call load() before using the .w accessor."
     );
   });
 
@@ -124,9 +124,9 @@ describe("load", () => {
     // testDoc does not show a change in Firestore until after a forced load.
     await updateDoc(testDoc.docRef, { email: "alice@example.com" });
     await testDoc.load(); // Does nothing.
-    expect(testDoc.ro.email).toBe("bob@example.com");
+    expect(testDoc.r.email).toBe("bob@example.com");
     await testDoc.load(true); // Forces load.
-    expect(testDoc.ro.email).toBe("alice@example.com");
+    expect(testDoc.r.email).toBe("alice@example.com");
   });
 });
 
@@ -135,14 +135,14 @@ describe("pad", () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
-    expect(testDoc.ro.email).toBe("bob@example.com");
+    expect(testDoc.r.email).toBe("bob@example.com");
   });
 
   it("does not contain a missing optional field.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
-    expect("ttl" in testDoc.ro).toBe(false);
+    expect("ttl" in testDoc.r).toBe(false);
   });
 
   it("enforces schema rules when a field is set.", async () => {
@@ -150,7 +150,7 @@ describe("pad", () => {
       email: "bob@example.com",
     });
     expect(() => {
-      testDoc.rw.email = "not a valid email";
+      testDoc.w.email = "not a valid email";
     }).toThrowError("Invalid email");
   });
 });
@@ -161,8 +161,8 @@ describe("write", () => {
       email: "bob@example.com",
     });
     await testDoc.write(); // Should be a no-op since nothing has been changed.
-    testDoc.rw.email = "alice@example.com";
-    expect(testDoc.ro.email).toBe("alice@example.com");
+    testDoc.w.email = "alice@example.com";
+    expect(testDoc.r.email).toBe("alice@example.com");
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({ email: "alice@example.com" });
@@ -172,8 +172,8 @@ describe("write", () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
-    testDoc.rw.email = "alice@example.com";
-    testDoc.rw.ttl = { seconds: 123, nanoseconds: 456 };
+    testDoc.w.email = "alice@example.com";
+    testDoc.w.ttl = { seconds: 123, nanoseconds: 456 };
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -194,12 +194,12 @@ describe("record of primitives", () => {
 
   it("reads an entry.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    expect(testDoc.ro.recordOfPrimitives.foo).toBe("xyz");
+    expect(testDoc.r.recordOfPrimitives.foo).toBe("xyz");
   });
 
   it("modifies an existing entry.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    testDoc.rw.recordOfPrimitives.foo = "abc";
+    testDoc.w.recordOfPrimitives.foo = "abc";
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -210,7 +210,7 @@ describe("record of primitives", () => {
 
   it("adds an entry.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    testDoc.rw.recordOfPrimitives.bar = "abc";
+    testDoc.w.recordOfPrimitives.bar = "abc";
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -224,7 +224,7 @@ describe("record of primitives", () => {
       email: "bob@example.com",
       recordOfPrimitives: { foo: "xyz" },
     });
-    delete testDoc.rw.recordOfPrimitives.foo;
+    delete testDoc.w.recordOfPrimitives.foo;
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -250,21 +250,19 @@ describe("record of objects", () => {
 
   it("reads an entry.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    expect("ice cream" in testDoc.ro.recordOfObjects).toBe(true);
-    expect(testDoc.ro.recordOfObjects["ice cream"].rating).toBe(10);
-    expect(testDoc.ro.recordOfObjects["ice cream"].tags.length).toBe(0);
-    expect(testDoc.ro.recordOfObjects.spinach.tags.includes("green")).toBe(
-      true
-    );
+    expect("ice cream" in testDoc.r.recordOfObjects).toBe(true);
+    expect(testDoc.r.recordOfObjects["ice cream"].rating).toBe(10);
+    expect(testDoc.r.recordOfObjects["ice cream"].tags.length).toBe(0);
+    expect(testDoc.r.recordOfObjects.spinach.tags.includes("green")).toBe(true);
   });
 
   it("modifies an entry.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    testDoc.rw.recordOfObjects["ice cream"] = {
+    testDoc.w.recordOfObjects["ice cream"] = {
       rating: 8,
       tags: ["too much lactose"],
     };
-    testDoc.rw.recordOfObjects.spinach.rating = 6;
+    testDoc.w.recordOfObjects.spinach.rating = 6;
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -284,7 +282,7 @@ describe("record of objects", () => {
 
   it("adds an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    testDoc.rw.recordOfObjects.tacos = { rating: 9, tags: ["crunchy"] };
+    testDoc.w.recordOfObjects.tacos = { rating: 9, tags: ["crunchy"] };
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -307,7 +305,7 @@ describe("record of objects", () => {
 
   it("deletes an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    delete testDoc.rw.recordOfObjects.spinach;
+    delete testDoc.w.recordOfObjects.spinach;
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -337,19 +335,19 @@ describe("nested records", () => {
 
   it("reads an entry.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    expect("x" in testDoc.ro.nestedRecords).toBe(true);
-    expect("a" in testDoc.ro.nestedRecords.x).toBe(true);
-    expect(testDoc.ro.nestedRecords.x.a).toBe(111);
-    expect(testDoc.ro.nestedRecords.x.b).toBe(222);
-    expect(testDoc.ro.nestedRecords.y.c).toBe(333);
+    expect("x" in testDoc.r.nestedRecords).toBe(true);
+    expect("a" in testDoc.r.nestedRecords.x).toBe(true);
+    expect(testDoc.r.nestedRecords.x.a).toBe(111);
+    expect(testDoc.r.nestedRecords.x.b).toBe(222);
+    expect(testDoc.r.nestedRecords.y.c).toBe(333);
   });
 
   it("modifies an entry.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    testDoc.rw.nestedRecords.x.b = 234;
-    testDoc.rw.nestedRecords.y = { d: 444 };
+    testDoc.w.nestedRecords.x.b = 234;
+    testDoc.w.nestedRecords.y = { d: 444 };
     await testDoc.write();
-    expect(testDoc.ro.nestedRecords.x.b).toBe(234);
+    expect(testDoc.r.nestedRecords.x.b).toBe(234);
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
@@ -367,8 +365,8 @@ describe("nested records", () => {
 
   it("adds an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    testDoc.rw.nestedRecords.y.d = 444;
-    testDoc.rw.nestedRecords.z = { e: 555 };
+    testDoc.w.nestedRecords.y.d = 444;
+    testDoc.w.nestedRecords.z = { e: 555 };
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -391,8 +389,8 @@ describe("nested records", () => {
 
   it("deletes an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    delete testDoc.rw.nestedRecords.x.a;
-    delete testDoc.rw.nestedRecords.y;
+    delete testDoc.w.nestedRecords.x.a;
+    delete testDoc.w.nestedRecords.y;
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -417,23 +415,23 @@ describe("array of objects", () => {
 
   it("reads an entry.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    expect(testDoc.ro.arrayOfObjects.length).toBe(2);
-    expect(testDoc.ro.arrayOfObjects[0].name).toBe("foo");
-    expect(testDoc.ro.arrayOfObjects[1].name).toBe("bar");
-    expect("a" in testDoc.ro.arrayOfObjects[1].entries).toBe(true);
-    expect(testDoc.ro.arrayOfObjects[1].entries.b).toBe(222);
+    expect(testDoc.r.arrayOfObjects.length).toBe(2);
+    expect(testDoc.r.arrayOfObjects[0].name).toBe("foo");
+    expect(testDoc.r.arrayOfObjects[1].name).toBe("bar");
+    expect("a" in testDoc.r.arrayOfObjects[1].entries).toBe(true);
+    expect(testDoc.r.arrayOfObjects[1].entries.b).toBe(222);
   });
 
   it("modifies an entry.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    testDoc.rw.arrayOfObjects[0] = {
+    testDoc.w.arrayOfObjects[0] = {
       name: "constants",
       entries: { pi: 3.14159, e: 2.71828 },
     };
-    testDoc.rw.arrayOfObjects[1].name += "bell";
-    testDoc.rw.arrayOfObjects[1].entries.a = 123;
+    testDoc.w.arrayOfObjects[1].name += "bell";
+    testDoc.w.arrayOfObjects[1].entries.a = 123;
     // // in another test:
-    // testDoc.rw.arrayOfObjects = [
+    // testDoc.w.arrayOfObjects = [
     //   { name: "baz", entries: {} },
     //   { name: "qux", entries: { a: 111, b: 222 } },
     // ];
@@ -450,7 +448,7 @@ describe("array of objects", () => {
 
   it("adds an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    testDoc.rw.arrayOfObjects.push({ name: "baz", entries: { c: 333 } });
+    testDoc.w.arrayOfObjects.push({ name: "baz", entries: { c: 333 } });
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -465,7 +463,7 @@ describe("array of objects", () => {
 
   it("deletes an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
-    delete testDoc.rw.arrayOfObjects[0];
+    delete testDoc.w.arrayOfObjects[0];
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -477,7 +475,7 @@ describe("array of objects", () => {
   it("fails to delete if index is out of bounds.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect(() => {
-      delete testDoc.rw.arrayOfObjects[99];
+      delete testDoc.w.arrayOfObjects[99];
     }).toThrow(RangeError);
   });
 });
@@ -531,7 +529,7 @@ describe("createDoc", () => {
 
   it("can change an added document, before and after writing.", async () => {
     const testDoc = testDocFactory.createNewDoc(testCollection, initialState);
-    testDoc.rw.recordOfObjects.x = { rating: 5, tags: ["hi"] };
+    testDoc.w.recordOfObjects.x = { rating: 5, tags: ["hi"] };
     await testDoc.write();
     const result1 = (await getDoc(testDoc.docRef)).data();
     expect(result1).toEqual({
@@ -541,7 +539,7 @@ describe("createDoc", () => {
       recordOfObjects: { x: { rating: 5, tags: ["hi"] } },
       arrayOfObjects: [],
     });
-    testDoc.rw.recordOfPrimitives.a = "bye";
+    testDoc.w.recordOfPrimitives.a = "bye";
     await testDoc.write();
     const result2 = (await getDoc(testDoc.docRef)).data();
     expect(result2).toEqual({
@@ -571,7 +569,7 @@ describe("copy", () => {
   it("performs a deep copy of a document.", async () => {
     const testDoc1 = testDocFactory.createNewDoc(testCollection, initialState);
     const testDoc2 = testDoc1.copy();
-    const iceCream = testDoc2.rw.recordOfObjects["ice cream"];
+    const iceCream = testDoc2.w.recordOfObjects["ice cream"];
     iceCream.rating = 9;
     iceCream.tags.push("melting");
     await Promise.all([testDoc1.write(), testDoc2.write()]);

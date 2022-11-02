@@ -1,2 +1,2 @@
-export { FireTenderDoc } from "./FireTenderDoc";
+export { FiretenderDoc } from "./FiretenderDoc";
 export * from "./Timestamps";
