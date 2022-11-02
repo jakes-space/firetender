@@ -10,9 +10,6 @@ export const timestampSchema = z.object({
 });
 export type TimestampData = z.infer<typeof timestampSchema>;
 
-// TODO: probably want to move these timestamp functions into their own helper
-// module
-
 export function dateFromTimestamp(timestamp: TimestampData): Date {
   return new Date(timestamp.seconds * 1e3 + timestamp.nanoseconds / 1e6);
 }

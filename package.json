@@ -33,7 +33,7 @@
     "prettier:fix": "prettier --write src/*.ts src/**/*.ts",
     "check": "npm run lint:check && npm run prettier:check",
     "fix": "npm run lint:fix && npm run prettier:fix",
-    "start-test-db": "firebase emulators:start --project=firestore-proxy",
+    "emulate-db": "firebase emulators:start --project=firetender",
     "test": "jest --forceExit --detectOpenHandles",
     "clean": "rm -rf dist/*",
     "build": "npm run clean && tsc && rm -rf dist/__tests__",
