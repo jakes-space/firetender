@@ -156,6 +156,14 @@ array items.
 * Improved timestamp handling, tests
 * Releases
   * Minify code (esbuild?)
+  * Automate github & npm releases, either using semantic versioning
+    ([video](https://egghead.io/lessons/javascript-automating-releases-with-semantic-release),
+    [package](https://github.com/semantic-release/semantic-release)) or github
+    workflows
+    ([tutorial](https://writeabout.net/2021/10/15/releasing-github-npm-packages/),
+    [Zod's
+    yaml](https://github.com/colinhacks/zod/blob/master/.github/workflows/release.yml))
+    or some combination.
 
 ## Alternatives
 
