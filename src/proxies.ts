@@ -1,6 +1,7 @@
-import { assertKeyIsString } from "./ts-helpers";
 import { arrayRemove, deleteField } from "firebase/firestore";
 import { z } from "zod";
+
+import { assertKeyIsString } from "./ts-helpers";
 
 function unwrapSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
   if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {

@@ -21,6 +21,7 @@ module.exports = {
   plugins: [
     "@typescript-eslint",
     "prettier",
+    "simple-import-sort",
   ],
   rules: {
     "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
@@ -49,6 +50,8 @@ module.exports = {
     ],
     "@typescript-eslint/no-floating-promises": "error",
     "prettier/prettier": "error",
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
   },
   overrides: [
     {

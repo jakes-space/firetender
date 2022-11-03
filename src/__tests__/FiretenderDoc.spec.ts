@@ -11,7 +11,6 @@
  * TODO: validation tests: forbid creating, reading, or writing invalid data
  */
 
-import { timestampSchema } from "../Timestamps";
 import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import {
   addDoc,
@@ -22,7 +21,9 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { z } from "zod";
+
 import { FiretenderDoc } from "../FiretenderDoc";
+import { timestampSchema } from "../Timestamps";
 
 const testDataSchema = z.object({
   email: z.string().email(),
