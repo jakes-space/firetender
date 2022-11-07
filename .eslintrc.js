@@ -63,7 +63,7 @@ module.exports = {
       },
     },
   ],
-  ignorePatterns: [".eslintrc.js", "rollup.config.js"],
+  ignorePatterns: [".eslintrc.js", "jest.config.js"],
   settings: {
     "import/resolver": {
       "node": {

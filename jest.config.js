@@ -2,8 +2,15 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  rootDir: ".",
+  testRegex: "(\\.|/)(test|spec)\\.[jt]sx?$",
   collectCoverage: true,
   coverageDirectory: "coverage",
   coverageProvider: "v8",
-  rootDir: ".",
+  collectCoverageFrom: ["./src/**"],
+  coveragePathIgnorePatterns: [
+    "/node_modules/",
+    "/__tests__/",
+    "/src/index.ts",
+  ],
 };
