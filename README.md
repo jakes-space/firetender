@@ -34,20 +34,25 @@ const app = initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
 ```
 
-### Define the schema
+### Define a collection and its schema
 
-Firetender uses [Zod](https://github.com/colinhacks/zod) to define the
-document's schema and validation rules; if you've used Joi or Yup, you will find
-Zod very similar.  In the example below, I've defined a schema for types of
-pizza.  I was a little hungry when I wrote this.
+Firetender uses [Zod](https://github.com/colinhacks/zod) to define the schema
+and validation rules for a collection's documents; if you've used Joi or Yup,
+you will find Zod very similar.  In the example below, I've defined a schema for
+types of pizza.  I was a little hungry when I wrote this.
 
 ```javascript
-import { FiretenderDoc } from "firetender";
+import {
+  FiretenderCollection,
+  nowTimestamp,
+  timestampSchema
+} from "firetender";
 import { z } from "zod";
 
 const pizzaSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
+  creationTime: timestampSchema,
   toppings: z.record(
     z.string(),
     z.object({
@@ -63,22 +68,23 @@ const pizzaSchema = z.object({
   tags: z.array(z.string()).default([]),
 });
 
-const pizzaFactory = FiretenderDoc.makeClassFactoryFor(pizzaSchema);
+const pizzaCollection = new FiretenderCollection(
+  pizzaSchema,
+  [firestore, "pizzas"],
+  { creationTime: nowTimestamp() }
+);
 ```
 
-The static `FiretenderDoc.makeClassFactory()` method simplifies document
-creation by capturing the schema.
-
 Optional records and arrays should typically use `.default()` to provide an
-empty collection when missing.  That isn't required, but it makes accessing
-these fields simpler because they will always be defined.  The downside is that
-empty collection fields are not pruned and will appear in Firestore.
+empty instances when missing.  That isn't required, but it makes accessing these
+fields simpler because they will always be defined.  The downside is that empty
+fields are not pruned and will appear in Firestore.
 
 ### Add a document
 
 Let's add a document to the `pizzas` collection, with an ID of `margherita`.  We
-use the factory's `.createNewDoc()` to produce a `FiretenderDoc` representing a
-new document, initialized with validated data.  This object is purely local
+use the collection's `.createNewDoc()` to produce a `FiretenderDoc` representing
+a new document, initialized with validated data.  This object is purely local
 until it is written to Firestore by calling `.write()`.  Don't forget to do
 that.
 
@@ -99,14 +105,14 @@ from `.id` or `.docRef`.
 
 ### Read and modify a document
 
-To access an existing document, pass its reference to the `.wrapExistingDoc()`
-factory method.  To read it, call `.load()` and access its data with the `.r`
-property; see the example below.  To make changes, use `.w` then call
+To access an existing document, pass its reference to the collection's
+`.getExistingDoc()` method.  To read it, call `.load()` and access its data with
+ the `.r` property; see the example below.  To make changes, use `.w` then call
 `.write()`.  Reading and updating can be done in combination:
 
 ```javascript
 const meats = ["pepperoni", "chicken", "sausage"];
-const pizza = await pizzaFactory.wrapExistingDoc(docRef).load();
+const pizza = await pizzaCollection.getExistingDoc(docRef).load();
 const isMeatIncluded = Object.entries(pizza.r.toppings).some(
   ([name, topping]) => topping.isIncluded && name in meats
 );
@@ -128,7 +134,7 @@ The copy is solely local until `.write()` is called.
 
 ```javascript
 const sourceRef = doc(db, "pizza", "margherita");
-const sourcePizza = await pizzaFactory.wrapExistingDoc(sourceRef).load();
+const sourcePizza = await pizzaCollection.getExistingDoc(sourceRef).load();
 const newPizza = sourcePizza.copy("meaty margh");
 newPizza.name = "Meaty Margh";
 newPizza.toppings.sausage = {};
