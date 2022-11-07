@@ -161,7 +161,7 @@ export class FiretenderDoc<
     return this.dataProxy as DataType;
   }
 
-  async write(): Promise<void> {
+  async write(): Promise<this> {
     if (this.isNewDoc) {
       assertIsDefined(this.data);
       if (this.ref.type === "document") {
@@ -171,24 +171,26 @@ export class FiretenderDoc<
         this.docID = this.ref.path.split("/").pop();
       }
       this.isNewDoc = false;
-    } else {
+    }
+    // If existing doc:
+    else {
       if (!(this.ref.type === "document")) {
         // We should never get here.
         throw Error(
           "Internal error.  Firetender object should always reference a document when updating an existing doc."
         );
       }
-      if (this.updates.size === 0) {
-        return;
+      if (this.updates.size > 0) {
+        const flatUpdateList = Array.from(this.updates.entries()).flat();
+        await updateDoc(
+          this.ref,
+          flatUpdateList[0],
+          flatUpdateList[1],
+          ...flatUpdateList.slice(2)
+        );
       }
-      const flatUpdateList = Array.from(this.updates.entries()).flat();
-      await updateDoc(
-        this.ref,
-        flatUpdateList[0],
-        flatUpdateList[1],
-        ...flatUpdateList.slice(2)
-      );
     }
+    return this;
   }
 
   private onChange<FieldSchemaType extends z.ZodTypeAny>(

@@ -477,12 +477,11 @@ describe("createNewDoc", () => {
   });
 
   it("adds a document without a specified ID.", async () => {
-    const testDoc = FiretenderDoc.createNewDoc(
+    const testDoc = await FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
       initialState
-    );
-    await testDoc.write();
+    ).write();
     expect(testDoc.id).toMatch(/^[A-Za-z0-9]{12,}$/);
     expect(testDoc.docRef).toBeDefined();
     const result = testDoc.docRef
@@ -499,12 +498,11 @@ describe("createNewDoc", () => {
 
   it("adds a document with a given ID.", async () => {
     const docID = "abcdef123456";
-    const testDoc = FiretenderDoc.createNewDoc(
+    const testDoc = await FiretenderDoc.createNewDoc(
       testDataSchema,
       doc(testCollection, docID),
       initialState
-    );
-    await testDoc.write();
+    ).write();
     expect(testDoc.id).toEqual(docID);
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
