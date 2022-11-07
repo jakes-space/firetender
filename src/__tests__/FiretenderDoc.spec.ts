@@ -50,8 +50,6 @@ const testDataSchema = z.object({
     .default([]),
 });
 
-const testDocFactory = FiretenderDoc.makeClassFactoryFor(testDataSchema);
-
 let testCollection: CollectionReference;
 
 async function setupFirestoreEmulator(port = 8080) {
@@ -78,9 +76,7 @@ async function setupFirestoreEmulator(port = 8080) {
 
 async function createAndLoadDoc(data: Record<string, unknown>) {
   const docRef = await addDoc(testCollection, data);
-  const testDoc = testDocFactory.wrapExistingDoc(docRef);
-  await testDoc.load();
-  return testDoc;
+  return new FiretenderDoc(testDataSchema, docRef).load();
 }
 
 beforeAll(async () => {
@@ -89,7 +85,10 @@ beforeAll(async () => {
 
 describe("load", () => {
   it("must be called before referencing the accessors.", async () => {
-    const testDoc = testDocFactory.wrapExistingDoc(doc(testCollection, "foo"));
+    const testDoc = new FiretenderDoc(
+      testDataSchema,
+      doc(testCollection, "foo")
+    );
     expect(() => testDoc.r.email).toThrowError(
       "load() must be called before reading the document."
     );
@@ -99,12 +98,15 @@ describe("load", () => {
   });
 
   it("throws for a non-existent doc.", async () => {
-    const testDoc = testDocFactory.wrapExistingDoc(doc(testCollection, "foo"));
+    const testDoc = new FiretenderDoc(
+      testDataSchema,
+      doc(testCollection, "foo")
+    );
     await expect(testDoc.load()).rejects.toThrowError("does not exist");
   });
 
   it("throws for a created but not yet written doc.", async () => {
-    const testDoc = testDocFactory.createNewDoc(testCollection, {
+    const testDoc = FiretenderDoc.createNewDoc(testDataSchema, testCollection, {
       email: "bob@example.com",
     });
     await expect(testDoc.load()).rejects.toThrowError(
@@ -114,7 +116,7 @@ describe("load", () => {
 
   it("throws for an invalid doc.", async () => {
     const docRef = await addDoc(testCollection, {}); // Missing email.
-    const testDoc = testDocFactory.wrapExistingDoc(docRef);
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
     await expect(testDoc.load()).rejects.toThrowError('"message": "Required"');
   });
 
@@ -481,20 +483,28 @@ describe("array of objects", () => {
   });
 });
 
-describe("createDoc", () => {
+describe("createNewDoc", () => {
   const initialState = {
     email: "bob@example.com",
   };
 
   it("does not provide a doc ref until write is called.", async () => {
-    const testDoc = testDocFactory.createNewDoc(testCollection, initialState);
+    const testDoc = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      initialState
+    );
     expect(() => testDoc.docRef).toThrowError(
       "docRef can only be accessed after"
     );
   });
 
   it("adds a document without a specified ID.", async () => {
-    const testDoc = testDocFactory.createNewDoc(testCollection, initialState);
+    const testDoc = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      initialState
+    );
     await testDoc.write();
     expect(testDoc.id).toMatch(/^[A-Za-z0-9]{12,}$/);
     expect(testDoc.docRef).toBeDefined();
@@ -512,7 +522,8 @@ describe("createDoc", () => {
 
   it("adds a document with a given ID.", async () => {
     const docID = "abcdef123456";
-    const testDoc = testDocFactory.createNewDoc(
+    const testDoc = FiretenderDoc.createNewDoc(
+      testDataSchema,
       doc(testCollection, docID),
       initialState
     );
@@ -529,7 +540,11 @@ describe("createDoc", () => {
   });
 
   it("can change an added document, before and after writing.", async () => {
-    const testDoc = testDocFactory.createNewDoc(testCollection, initialState);
+    const testDoc = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      initialState
+    );
     testDoc.w.recordOfObjects.x = { rating: 5, tags: ["hi"] };
     await testDoc.write();
     const result1 = (await getDoc(testDoc.docRef)).data();
@@ -568,7 +583,11 @@ describe("copy", () => {
   };
 
   it("performs a deep copy of a document.", async () => {
-    const testDoc1 = testDocFactory.createNewDoc(testCollection, initialState);
+    const testDoc1 = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      initialState
+    );
     const testDoc2 = testDoc1.copy();
     const iceCream = testDoc2.w.recordOfObjects["ice cream"];
     iceCream.rating = 9;
@@ -611,7 +630,11 @@ describe("copy", () => {
   });
 
   it("can copy into a specified collection.", async () => {
-    const testDoc1 = testDocFactory.createNewDoc(testCollection, initialState);
+    const testDoc1 = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      initialState
+    );
     const testDoc2 = testDoc1.copy(testCollection);
     await Promise.all([testDoc1.write(), testDoc2.write()]);
     const result2 = (await getDoc(testDoc2.docRef)).data();
@@ -634,7 +657,11 @@ describe("copy", () => {
   });
 
   it("can copy into a specified doc reference.", async () => {
-    const testDoc1 = testDocFactory.createNewDoc(testCollection, initialState);
+    const testDoc1 = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      initialState
+    );
     const testDoc2 = testDoc1.copy(doc(testCollection, "copy-with-doc-ref"));
     await Promise.all([testDoc1.write(), testDoc2.write()]);
     expect(testDoc2.id).toBe("copy-with-doc-ref");
@@ -658,7 +685,8 @@ describe("copy", () => {
   });
 
   it("can copy into a specified ID.", async () => {
-    const testDoc1 = testDocFactory.createNewDoc(
+    const testDoc1 = FiretenderDoc.createNewDoc(
+      testDataSchema,
       doc(testCollection, "copy-original"),
       initialState
     );

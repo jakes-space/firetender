@@ -75,23 +75,6 @@ export class FiretenderDoc<
     return new FiretenderDoc(schema, ref, mergedOptions);
   }
 
-  static makeClassFactoryFor<
-    SchemaType1 extends z.SomeZodObject,
-    InputType extends { [x: string]: any } = z.input<SchemaType1>
-  >(schema: SchemaType1) {
-    return {
-      createNewDoc: (
-        ref: DocumentReference | CollectionReference,
-        initialData: InputType,
-        options: FiretenderDocOptions = {}
-      ) => FiretenderDoc.createNewDoc(schema, ref, initialData, options),
-      wrapExistingDoc: (
-        ref: DocumentReference | CollectionReference,
-        options: FiretenderDocOptions = {}
-      ) => new FiretenderDoc(schema, ref, options),
-    };
-  }
-
   get id(): string | undefined {
     return this.docID;
   }
