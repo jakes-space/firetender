@@ -15,7 +15,7 @@ export function dateFromTimestamp(timestamp: TimestampData): Date {
 }
 
 export function makeTTL(daysFromNow = 30) {
-  // TODO: is there a way to use the server time rather than Date.now()?
+  // TODO: #10 is there a way to use the server time rather than Date.now()?
   return timestampFromUnixMillis(
     Date.now() + daysFromNow * 24 * 60 * 60 * 1000
   );
@@ -33,6 +33,6 @@ export function timestampFromUnixMillis(msSinceEpoch: number): TimestampData {
 }
 
 export function nowTimestamp() {
-  // TODO: is there a way to use the server time rather than Date.now()?
+  // TODO: #9 is there a way to use the server time rather than Date.now()?
   return timestampFromUnixMillis(Date.now());
 }

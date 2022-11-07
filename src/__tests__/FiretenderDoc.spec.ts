@@ -1,11 +1,11 @@
 /**
  * Start before testing: firebase emulators:start --project=firetender
  *
- * TODO: nullable tests
- * TODO: zod effects and preprocessing, but disallowing transforms
- * TODO: timestamp tests
- * TODO: enum tests
- * TODO: validation tests: forbid creating, reading, or writing invalid data
+ * TODO: #4 nullable tests
+ * TODO: #5 zod effects and preprocessing, but disallowing transforms
+ * TODO: #6 timestamp tests
+ * TODO: #7 enum tests
+ * TODO: #8 validation tests: forbid creating, reading, or writing invalid data
  */
 
 import {

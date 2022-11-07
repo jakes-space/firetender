@@ -51,9 +51,7 @@ export function watchArrayForChanges<
       const property = target[propertyKey];
       if (property instanceof Function) {
         const result = (...args: any[]) => property.apply(field, args);
-        // TODO (easy): have a list of functions that don't trigger onChange.
-        // TODO (harder): also handle at, foreach, etc. methods to chain proxies
-        // down from them.  But life's too short for that.
+        // TODO: #11 Only mark the change for mutating function calls.
         onChange(arrayPath, array);
         return result;
       }

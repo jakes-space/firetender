@@ -1,6 +1,6 @@
 /**
- * TODO: This emulator setup should run before ALL test files, not before each.
- * TODO: Emulator should be started before tests, if it is not already running.
+ * TODO: #2 emulator setup should run before ALL test files, not before each.
+ * TODO: #3 Emulator should be started before tests.
  */
 
 import {

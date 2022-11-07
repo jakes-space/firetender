@@ -151,25 +151,26 @@ array items.
 
 ## TODO
 
+The [full list of issues](https://github.com/jakes-space/firetender/issues) is
+tracked on Github.  Here are some features on the roadmap:
+
 * Javadoc
+  * Document the code!
+    ([#12](https://github.com/jakes-space/firetender/issues/12))
   * Compile them to an API reference page in markdown.
+    ([#13](https://github.com/jakes-space/firetender/issues/13))
 * Concurrency
   * Listen for changes and update the object if it has not been locally
     modified.  Provide an onChange() callback option.
+    ([#14](https://github.com/jakes-space/firetender/issues/14))
   * Support the Firestore transaction API.
+    ([#15](https://github.com/jakes-space/firetender/issues/15))
 * Queries
+  ([#16](https://github.com/jakes-space/firetender/issues/16))
 * Document deletion
-* Improved timestamp handling, tests
-* Releases
-  * Minify code (esbuild?)
-  * Automate github & npm releases, either using semantic versioning
-    ([video](https://egghead.io/lessons/javascript-automating-releases-with-semantic-release),
-    [package](https://github.com/semantic-release/semantic-release)) or github
-    workflows
-    ([tutorial](https://writeabout.net/2021/10/15/releasing-github-npm-packages/),
-    [Zod's
-    yaml](https://github.com/colinhacks/zod/blob/master/.github/workflows/release.yml))
-    or some combination.
+  ([#17](https://github.com/jakes-space/firetender/issues/17))
+* Improved timestamp handling, tests ([multiple
+  issues](https://github.com/jakes-space/firetender/issues?q=timestamp))
 
 ## Alternatives
 

@@ -15,7 +15,7 @@ import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 export type FiretenderDocOptions = {
   createDoc?: true;
   initialData?: Record<string, any>;
-  // TODO: add readonly option.
+  // TODO: #1 add readonly option.
 };
 
 /**
