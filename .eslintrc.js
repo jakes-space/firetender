@@ -49,7 +49,7 @@ module.exports = {
       { destructuredArrayIgnorePattern: "^_" },
     ],
     "@typescript-eslint/no-floating-promises": "error",
-    "prettier/prettier": "error",
+    "prettier/prettier": "warn",
     "simple-import-sort/imports": "error",
     "simple-import-sort/exports": "error",
   },
