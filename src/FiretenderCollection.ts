@@ -8,20 +8,18 @@ import {
 import { z } from "zod";
 
 import { FiretenderDoc, FiretenderDocOptions } from "./FiretenderDoc";
+import { DeepPartial } from "./ts-helpers";
 
-export class FiretenderCollection<
-  SchemaType extends z.SomeZodObject,
-  InputType extends { [x: string]: any } = z.input<SchemaType>
-> {
+export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   readonly schema: SchemaType;
   readonly firestore: Firestore;
   readonly collectionNames: string[];
-  readonly baseInitialData: InputType;
+  readonly baseInitialData: DeepPartial<z.infer<SchemaType>>;
 
   constructor(
     schema: SchemaType,
     collectionPath: [Firestore, ...string[]],
-    baseInitialData: InputType
+    baseInitialData: DeepPartial<z.infer<SchemaType>>
   ) {
     this.schema = schema;
     this.firestore = collectionPath[0];
@@ -31,7 +29,7 @@ export class FiretenderCollection<
 
   createNewDoc(
     id: string[] | string | undefined = undefined,
-    initialData: InputType | undefined = undefined,
+    initialData: DeepPartial<z.infer<SchemaType>> | undefined = undefined,
     options: FiretenderDocOptions = {}
   ) {
     const ids = id instanceof Array ? id : id ? [id] : [];
@@ -41,7 +39,9 @@ export class FiretenderCollection<
       ref = this.makeCollectionRef(ids);
     }
     if (!ref) {
-      throw Error("wrong number of ID entries"); // TODO
+      throw Error(
+        "createNewDoc() requires an ID for all collections and subcollections except the last."
+      );
     }
     const data = this.baseInitialData;
     if (initialData) {
@@ -50,10 +50,12 @@ export class FiretenderCollection<
     return FiretenderDoc.createNewDoc(this.schema, ref, data, options);
   }
 
-  wrapExistingDoc(id: string[] | string, options: FiretenderDocOptions = {}) {
+  getExistingDoc(id: string[] | string, options: FiretenderDocOptions = {}) {
     const ref = this.makeDocRef([id].flat());
     if (!ref) {
-      throw Error("wrong number of ID entries"); // TODO
+      throw Error(
+        "getExistingDoc() requires an ID for the collection and IDs for each of its subcollections (if any)."
+      );
     }
     return new FiretenderDoc(this.schema, ref, options);
   }

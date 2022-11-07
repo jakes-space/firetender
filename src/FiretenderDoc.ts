@@ -14,7 +14,7 @@ import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 
 export type FiretenderDocOptions = {
   createDoc?: true;
-  initialData?: any;
+  initialData?: Record<string, any>;
   // TODO: add readonly option.
 };
 
@@ -53,7 +53,7 @@ export class FiretenderDoc<
       this.docID = this.ref.path.split("/").pop();
     } else if (!this.isNewDoc) {
       throw TypeError(
-        "Firetender can only take a collection reference when creating a new document.  Use Firetender.createDoc() if this is your intent."
+        "Firetender can only take a collection reference when creating a new document.  Use Firetender.createNewDoc() if this is your intent."
       );
     }
   }

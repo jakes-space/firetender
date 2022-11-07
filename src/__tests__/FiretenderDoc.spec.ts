@@ -1,17 +1,13 @@
 /**
- * @jest-environment node
- */
-
-/**
  * Start before testing: firebase emulators:start --project=firetender
  *
  * TODO: nullable tests
  * TODO: zod effects and preprocessing, but disallowing transforms
  * TODO: timestamp tests
+ * TODO: enum tests
  * TODO: validation tests: forbid creating, reading, or writing invalid data
  */
 
-import { initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import {
   addDoc,
   collection,
@@ -24,6 +20,10 @@ import { z } from "zod";
 
 import { FiretenderDoc } from "../FiretenderDoc";
 import { timestampSchema } from "../Timestamps";
+import {
+  cleanupFirestoreEmulator,
+  setupFirestoreEmulator,
+} from "./firestore-emulator";
 
 const testDataSchema = z.object({
   email: z.string().email(),
@@ -51,37 +51,14 @@ const testDataSchema = z.object({
 });
 
 let testCollection: CollectionReference;
-
-async function setupFirestoreEmulator(port = 8080) {
-  const testEnv = await initializeTestEnvironment({
-    firestore: {
-      host: "localhost",
-      port,
-      rules: `
-        rules_version = '2';
-        service cloud.firestore {
-          match /databases/{database}/documents/tests/{testid} {
-            allow read, write: if true;
-          }
-        }
-        `,
-    },
-    projectId: "firetender",
-  });
-  testCollection = collection(
-    testEnv.unauthenticatedContext().firestore(),
-    "tests"
-  );
-}
+beforeAll(async () => {
+  testCollection = collection(await setupFirestoreEmulator(), "doctests");
+});
 
 async function createAndLoadDoc(data: Record<string, unknown>) {
   const docRef = await addDoc(testCollection, data);
   return new FiretenderDoc(testDataSchema, docRef).load();
 }
-
-beforeAll(async () => {
-  await setupFirestoreEmulator();
-});
 
 describe("load", () => {
   it("must be called before referencing the accessors.", async () => {
@@ -711,4 +688,8 @@ describe("copy", () => {
       arrayOfObjects: [],
     });
   });
+});
+
+afterAll(async () => {
+  await cleanupFirestoreEmulator();
 });

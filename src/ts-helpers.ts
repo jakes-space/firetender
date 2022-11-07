@@ -2,6 +2,10 @@
  * Typescript-related helper functions and types.
  */
 
+export type DeepPartial<T> = T extends object
+  ? { [K in keyof T]?: DeepPartial<T[K]> }
+  : T;
+
 export type DeepReadonly<T> = T extends Array<infer ArrKey>
   ? ReadonlyArray<DeepReadonly<ArrKey>>
   : T extends Map<infer MapKey, infer MapVal>
