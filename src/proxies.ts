@@ -3,36 +3,43 @@ import { z } from "zod";
 
 import { assertKeyIsString } from "./ts-helpers";
 
-function unwrapSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
-  if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {
-    return unwrapSchema(schema.unwrap());
-  }
-  if (schema instanceof z.ZodDefault) {
-    return unwrapSchema(schema.removeDefault());
-  }
-  if (schema instanceof z.ZodEffects) {
-    return unwrapSchema(schema.innerType());
-  }
-  return schema;
-}
-
+/**
+ * Given a schema for a collection type, return the sub-schema of a specified
+ * property.
+ */
 function getPropertySchema(
   parentSchema: z.ZodTypeAny,
   propertyKey: string
 ): z.ZodTypeAny {
-  const schema = unwrapSchema(parentSchema);
-  if (schema instanceof z.ZodRecord) {
-    return schema.valueSchema;
+  let schema: any = parentSchema;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    switch (schema._def.typeName) {
+      // If the schema object is wrapped (e.g., by being optional or having a
+      // default), unwrap it until we get to the underlying collection type.
+      case z.ZodFirstPartyTypeKind.ZodOptional:
+      case z.ZodFirstPartyTypeKind.ZodNullable:
+        schema = schema.unwrap();
+        continue;
+      case z.ZodFirstPartyTypeKind.ZodDefault:
+        schema = schema.removeDefault();
+        continue;
+      case z.ZodFirstPartyTypeKind.ZodEffects:
+        schema = schema.innerType();
+        continue;
+      // Return the sub-schemas of supported collection types.
+      case z.ZodFirstPartyTypeKind.ZodRecord:
+        return schema.valueSchema;
+      case z.ZodFirstPartyTypeKind.ZodArray:
+        return schema.element;
+      case z.ZodFirstPartyTypeKind.ZodObject:
+        return schema.shape[propertyKey];
+      default:
+        throw TypeError(
+          `Unsupported schema type for property "${propertyKey}": ${schema._def.typeName}`
+        );
+    }
   }
-  if (schema instanceof z.ZodArray) {
-    return schema.element;
-  }
-  if (schema instanceof z.ZodObject) {
-    return schema.shape[propertyKey];
-  }
-  throw TypeError(
-    `Unsupported schema type for property "${propertyKey}": ${schema.constructor.name}`
-  );
 }
 
 export function watchArrayForChanges<
