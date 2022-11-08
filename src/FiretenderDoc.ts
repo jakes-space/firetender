@@ -197,6 +197,24 @@ export class FiretenderDoc<
     fieldPath: string[],
     newValue: z.infer<FieldSchemaType>
   ) {
-    this.updates.set(fieldPath.join("."), newValue);
+    let pathString = "";
+    if (this.updates.size > 0) {
+      fieldPath.forEach((field, i) => {
+        pathString = pathString ? `${pathString}.${field}` : field;
+        if (i < fieldPath.length && pathString in this.updates) {
+          // A parent field of this update is already in the list of mutations
+          // to send to Firestore.  Non-primitive fields in the update list are
+          // references into this.data, so the parent field in this.update will
+          // reflect this change.  No additional Firestore mutation is needed.
+          return;
+        }
+      });
+    } else {
+      // Shortcut for the common case of a single update being made.
+      pathString = fieldPath.join(".");
+    }
+    // TODO: #20 When a parent is set after one of its children has been
+    // changed, the this.updates entry for the child should be discarded.
+    this.updates.set(pathString, newValue);
   }
 }
