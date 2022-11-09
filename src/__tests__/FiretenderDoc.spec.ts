@@ -260,6 +260,66 @@ describe("record of objects", () => {
     });
   });
 
+  it("correctly updates a parent field followed by a child.", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.w.recordOfObjects["ice cream"] = { rating: 4, tags: ["abc"] };
+    testDoc.w.recordOfObjects["ice cream"].rating = 5;
+    testDoc.w.recordOfObjects["ice cream"].tags.push("xyz");
+    // .updates is private, so we coerce testDoc into "any".
+    const updates: Map<string, any> = (testDoc as any).updates;
+    expect(updates.size).toBe(1);
+    expect(updates.keys().next().value).toBe("recordOfObjects.ice cream");
+    expect(updates.values().next().value).toEqual({
+      rating: 5,
+      tags: ["abc", "xyz"],
+    });
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      recordOfObjects: {
+        "ice cream": {
+          rating: 5,
+          tags: ["abc", "xyz"],
+        },
+        spinach: {
+          rating: 5,
+          tags: ["green", "healthy"],
+        },
+      },
+    });
+  });
+
+  it("correctly updates a child field followed by a parent.", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.w.recordOfObjects["ice cream"].rating = 5;
+    testDoc.w.recordOfObjects["ice cream"].tags.push("xyz");
+    testDoc.w.recordOfObjects["ice cream"] = { rating: 4, tags: ["abc"] };
+    // .updates is private, so we coerce testDoc into "any".
+    const updates: Map<string, any> = (testDoc as any).updates;
+    expect(updates.size).toBe(1);
+    expect(updates.keys().next().value).toBe("recordOfObjects.ice cream");
+    expect(updates.values().next().value).toEqual({
+      rating: 4,
+      tags: ["abc"],
+    });
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      recordOfObjects: {
+        "ice cream": {
+          rating: 4,
+          tags: ["abc"],
+        },
+        spinach: {
+          rating: 5,
+          tags: ["green", "healthy"],
+        },
+      },
+    });
+  });
+
   it("adds an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.recordOfObjects.tacos = { rating: 9, tags: ["crunchy"] };

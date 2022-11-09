@@ -199,22 +199,28 @@ export class FiretenderDoc<
   ) {
     let pathString = "";
     if (this.updates.size > 0) {
-      fieldPath.forEach((field, i) => {
-        pathString = pathString ? `${pathString}.${field}` : field;
-        if (i < fieldPath.length && pathString in this.updates) {
-          // A parent field of this update is already in the list of mutations
-          // to send to Firestore.  Non-primitive fields in the update list are
-          // references into this.data, so the parent field in this.update will
-          // reflect this change.  No additional Firestore mutation is needed.
-          return;
+      // Check if some parent of this update is already in the list of mutations
+      // to send to Firestore.  Objects in the update list are references into
+      // this.data, so the parent field will automatically reflect this change;
+      // no additional Firestore mutation is needed.
+      if (
+        fieldPath.some((field, i) => {
+          pathString = pathString ? `${pathString}.${field}` : field;
+          return i < fieldPath.length - 1 && this.updates.has(pathString);
+        })
+      ) {
+        return;
+      }
+      // Remove any previous updates that this one overwrites.
+      this.updates.forEach((value, key) => {
+        if (key.startsWith(pathString)) {
+          this.updates.delete(key);
         }
       });
     } else {
       // Shortcut for the common case of a single update being made.
       pathString = fieldPath.join(".");
     }
-    // TODO: #20 When a parent is set after one of its children has been
-    // changed, the this.updates entry for the child should be discarded.
     this.updates.set(pathString, newValue);
   }
 }
