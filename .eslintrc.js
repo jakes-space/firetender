@@ -18,11 +18,7 @@ module.exports = {
     ecmaVersion: 2020,
     project: "./tsconfig.json",
   },
-  plugins: [
-    "@typescript-eslint",
-    "prettier",
-    "simple-import-sort",
-  ],
+  plugins: ["@typescript-eslint", "prettier", "simple-import-sort"],
   rules: {
     "import/extensions": ["error", "never"],
     "import/prefer-default-export": "off",
@@ -35,7 +31,7 @@ module.exports = {
     "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
     "no-empty-function": [
       "error",
-      { allow: ["arrowFunctions", "constructors"] }
+      { allow: ["arrowFunctions", "constructors"] },
     ],
     "no-param-reassign": ["error", { props: false }],
     "no-unused-vars": "off",
@@ -57,9 +53,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: [
-        "**/__tests__/*.{j,t}s?(x)",
-      ],
+      files: ["**/__tests__/*.ts"],
       env: {
         jest: true,
       },
@@ -76,8 +70,8 @@ module.exports = {
   ],
   settings: {
     "import/resolver": {
-      "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      node: {
+        extensions: [".js", ".jsx", ".ts", ".tsx"],
       },
       typescript: {},
     },
