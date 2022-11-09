@@ -3,55 +3,57 @@ require("@rushstack/eslint-patch/modern-module-resolution");
 module.exports = {
   root: true,
   env: {
-    es2020: true,
     browser: true,
+    es2020: true,
     node: true,
   },
+  extends: [
+    "eslint:recommended",
+    "plugin:import/recommended",
+    "plugin:@typescript-eslint/recommended",
+    "prettier",
+  ],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: 2020,
     project: "./tsconfig.json",
   },
-  extends: [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:import/recommended",
-    "prettier",
-  ],
   plugins: [
     "@typescript-eslint",
     "prettier",
     "simple-import-sort",
   ],
   rules: {
-    "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
-    "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
-    "@typescript-eslint/no-explicit-any": "off",
     "import/extensions": ["error", "never"],
-    "no-use-before-define": ["error", { functions: false }],
+    "import/prefer-default-export": "off",
     "lines-between-class-members": [
       "error",
       "always",
       { exceptAfterSingleLine: true },
     ],
+    "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
+    "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
     "no-empty-function": [
       "error",
       { allow: ["arrowFunctions", "constructors"] }
     ],
+    "no-param-reassign": ["error", { props: false }],
+    "no-unused-vars": "off",
+    "no-use-before-define": ["error", { functions: false }],
+    "prefer-destructuring": ["error", { object: false, array: false }],
+    "prettier/prettier": "warn",
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
     "@typescript-eslint/no-empty-function": [
       "error",
       { allow: ["arrowFunctions", "constructors"] },
     ],
-    "prefer-destructuring": ["error", { object: false, array: false }],
-    "no-unused-vars": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-floating-promises": ["error", { ignoreIIFE: true }],
     "@typescript-eslint/no-unused-vars": [
       "error",
       { destructuredArrayIgnorePattern: "^_" },
     ],
-    "@typescript-eslint/no-floating-promises": "error",
-    "prettier/prettier": "warn",
-    "simple-import-sort/imports": "error",
-    "simple-import-sort/exports": "error",
   },
   overrides: [
     {
@@ -62,8 +64,16 @@ module.exports = {
         jest: true,
       },
     },
+    {
+      files: ["*.js"],
+      parserOptions: {
+        project: null,
+      },
+      rules: {
+        "@typescript-eslint/no-floating-promises": "off",
+      },
+    },
   ],
-  ignorePatterns: [".eslintrc.js", "jest.config.js"],
   settings: {
     "import/resolver": {
       "node": {
