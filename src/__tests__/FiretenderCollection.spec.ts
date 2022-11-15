@@ -311,6 +311,29 @@ describe("query functions", () => {
   });
 });
 
+describe("delete", () => {
+  it("deletes a document in a collection.", async () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      [firestore, collectionName],
+      { foo: "delete-doc-in-collection" }
+    );
+    const testDoc = await testCollection.createNewDoc().write();
+    const docsBeforeDelete = await testCollection.query(
+      where("foo", "==", "delete-doc-in-collection")
+    );
+    expect(docsBeforeDelete.map((d) => d.r.foo).sort()).toEqual([
+      "delete-doc-in-collection",
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    await testCollection.delete(testDoc.id!);
+    const docsAfterDelete = await testCollection.query(
+      where("foo", "==", "delete-doc-in-collection")
+    );
+    expect(docsAfterDelete.map((d) => d.r.foo).sort()).toEqual([]);
+  });
+});
+
 afterAll(async () => {
   await cleanupFirestoreEmulator();
 });

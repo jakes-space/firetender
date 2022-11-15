@@ -187,7 +187,7 @@ const cityLandmarkSchema = z.object({
   name: z.string(),
   type: z.string(),
 });
-cityLandmarkCollection = new FiretenderCollection(
+const cityLandmarkCollection = new FiretenderCollection(
   cityLandmarkSchema,
   [firestore, "cities", "landmarks"],
   {}
@@ -202,6 +202,24 @@ const beijingParks = cityLandmarkCollection.query(
 const allParks = cityLandmarkCollection.query(where("type", "==", "park"));
 // Resulting array has docs for Griffith Park, Ueno Park, and Jingshan Park.
 ```
+
+### Delete a document
+
+To delete a document from the cities example:
+
+```javascript
+const citySchema = z.object({ /* ... */ });
+const cityCollection = new FiretenderCollection(
+  citySchema, [firestore, "cities"], {}
+);
+cityCollection.delete("LA");
+```
+
+Subcollections are not deleted; in this example, the LA landmark docs would
+remain.  To also delete a document's subcollections, use `query()` to get lists
+of its subcollections' docs, then call `delete()` on each doc.  The Firestore
+guide recommends only performing such unbounded batched deletions from a trusted
+server environment.
 
 ## TODO
 
@@ -219,8 +237,6 @@ tracked on Github.  Here are some features on the roadmap:
     ([#14](https://github.com/jakes-space/firetender/issues/14))
   * Support the Firestore transaction API.
     ([#15](https://github.com/jakes-space/firetender/issues/15))
-* Document deletion
-  ([#17](https://github.com/jakes-space/firetender/issues/17))
 * Improved timestamp handling, tests ([multiple
   issues](https://github.com/jakes-space/firetender/issues?q=timestamp))
 

@@ -2,6 +2,7 @@ import {
   collection,
   collectionGroup,
   CollectionReference,
+  deleteDoc,
   doc,
   DocumentReference,
   Firestore,
@@ -101,6 +102,25 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
       );
     }
     return this.getAndWrapDocs(query(ref, ...whereClauses));
+  }
+
+  /**
+   * Deletes the given document from this collection.
+   *
+   * Subcollections (if any) are not deleted.  To also delete a document's
+   * subcollections, use query() to get lists of the subcollections' docs, then
+   * call delete() on each one.  Please note that the Firestore guide recommends
+   * only performing such unbounded batched deletions from a trusted server
+   * environment.
+   *
+   * @param id full path ID of the target document.
+   */
+  async delete(id: string[] | string) {
+    const ref = this.makeDocRef([id].flat());
+    if (!ref) {
+      throw Error("delete() requires the full ID path of the target document.");
+    }
+    await deleteDoc(ref);
   }
 
   private makeDocRef(ids: string[]): DocumentReference | undefined {
