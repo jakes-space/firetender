@@ -4,11 +4,6 @@ The goal of Firetender is to make Firestore documents look (almost) like any
 other Typescript objects, reducing boilerplate and conceptual overhead and
 providing type safety and data validation.
 
-Querying and concurrency are not yet supported.  I'm adding features as I need
-them, but contributions are most welcome.  See the list of [alternative
-packages](#alternatives) at the end of this README if you're looking for
-something more mature.
-
 ## Usage
 
 To illustrate, let's run through the basics of defining, creating, modifying,
@@ -159,8 +154,8 @@ const docs = await pizzaCollection().getAllDocs();
 ```
 
 `docs` will contain an array of `FiretenderDoc` objects for all entries in the
-pizzas collection.  To query a subcollection, provide the ID(s) of its parent
-collection (and subcollections) to `getAllDocs()`.
+pizzas collection.  To get the contents of a subcollection, provide the ID(s) of
+its parent collection (and subcollections) to `getAllDocs()`.
 
 ### Query a collection or subcollection
 
@@ -231,8 +226,8 @@ tracked on Github.  Here are some features on the roadmap:
 
 ## Alternatives
 
-This project is not at all stable yet.  If you're looking for a more mature
-Firestore helper, check out:
+This project is not stable yet.  If you're looking for a more mature Firestore
+helper, check out:
 
 * [Vuefire](https://github.com/vuejs/vuefire) and
   [Reactfire](https://github.com/FirebaseExtended/reactfire) for integration
