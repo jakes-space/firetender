@@ -41,13 +41,12 @@ export class FiretenderDoc<
     this.schema = schema;
     this.ref = ref;
     this.isNewDoc = options.createDoc ?? false;
-    if (this.isNewDoc) {
-      if (!options.initialData) {
-        throw ReferenceError(
-          "Initial data must be given when creating a new doc."
-        );
-      }
+    if (options.initialData) {
       this.data = schema.parse(options.initialData);
+    } else if (this.isNewDoc) {
+      throw ReferenceError(
+        "Initial data must be given when creating a new doc."
+      );
     }
     if (this.ref.type === "document") {
       this.docID = this.ref.path.split("/").pop();

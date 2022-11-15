@@ -19,17 +19,14 @@ export async function setupFirestoreEmulator(port = 8080) {
       rules: `
         rules_version = '2';
         service cloud.firestore {
-          match /databases/{database}/documents/coltests/{testid} {
+          match /{document=**} {
             allow read, write: if true;
           }
-          match /databases/{database}/documents/doctests/{testid} {
-            allow read, write: if true;
-          }
-        }
-        `,
+        }`,
     },
     projectId: "firetender",
   });
+  await testEnv.clearFirestore();
   // Creating a dummy collection is needed because the Firestore object returned
   // by testenv.unauthenticatedContext().firestore() is missing some properties.
   // Getting it from a collection fixes that, probably due to some type coersion
