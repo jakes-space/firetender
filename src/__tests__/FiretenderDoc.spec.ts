@@ -110,22 +110,22 @@ describe("load", () => {
   });
 });
 
-describe("pad", () => {
-  it("reads a primitive field.", async () => {
+describe("rw accessors", () => {
+  it("read a primitive field.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
     expect(testDoc.r.email).toBe("bob@example.com");
   });
 
-  it("does not contain a missing optional field.", async () => {
+  it("do not contain a missing optional field.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
     expect("ttl" in testDoc.r).toBe(false);
   });
 
-  it("enforces schema rules when a field is set.", async () => {
+  it("enforce schema rules when a field is set.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
