@@ -65,6 +65,7 @@ const pizzaSchema = z.object({
         path: ["surcharge"],
       })
   ),
+  basePrice: z.number().optional(),
   tags: z.array(z.string()).default([]),
 });
 
@@ -149,6 +150,64 @@ newPizza.write();
 Note the use of the `delete` operator to remove optional fields and record and
 array items.
 
+### Get all docs in a collection
+
+You can retrieve all the documents in a collection or subcollection:
+
+```javascript
+const docs = await pizzaCollection().getAllDocs();
+```
+
+`docs` will contain an array of `FiretenderDoc` objects for all entries in the
+pizzas collection.  To query a subcollection, provide the ID(s) of its parent
+collection (and subcollections) to `getAllDocs()`.
+
+### Query a collection or subcollection
+
+To query a collection, call `query()` and pass in `where` clauses.  The
+[Firestore how-to
+guide](https://firebase.google.com/docs/firestore/query-data/queries) provides
+many examples of simple and compound queries.
+
+```javascript
+const veggieOptions = await pizzaCollection.query(
+  where("tags", "array-contains", "vegetarian")
+);
+const cheapClassics = await pizzaCollection.query(
+  where("baseprice", "<=", 10),
+  where("tags", "array-contains", "traditional")
+);
+```
+
+To query a specific subcollection, provide the ID(s) of its parent collection
+(and subcollections) as the first argument of `query()`.
+
+To perform a collection group query across all instances of a particular
+subcollection, leave out the IDs.  From the [Firestore how-to
+example](https://firebase.google.com/docs/firestore/query-data/queries#collection-group-query),
+you could retrieve all parks from all cities with this query:
+
+```javascript
+const cityLandmarkSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+});
+cityLandmarkCollection = new FiretenderCollection(
+  cityLandmarkSchema,
+  [firestore, "cities", "landmarks"],
+  {}
+);
+
+const beijingParks = cityLandmarkCollection.query(
+  "BJ",
+  where("type", "==", "park"))
+);
+// Resulting array contains the document for Jingshan Park.
+
+const allParks = cityLandmarkCollection.query(where("type", "==", "park"));
+// Resulting array has docs for Griffith Park, Ueno Park, and Jingshan Park.
+```
+
 ## TODO
 
 The [full list of issues](https://github.com/jakes-space/firetender/issues) is
@@ -165,8 +224,6 @@ tracked on Github.  Here are some features on the roadmap:
     ([#14](https://github.com/jakes-space/firetender/issues/14))
   * Support the Firestore transaction API.
     ([#15](https://github.com/jakes-space/firetender/issues/15))
-* Queries
-  ([#16](https://github.com/jakes-space/firetender/issues/16))
 * Document deletion
   ([#17](https://github.com/jakes-space/firetender/issues/17))
 * Improved timestamp handling, tests ([multiple
