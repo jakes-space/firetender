@@ -141,11 +141,11 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
 
   private async getAndWrapDocs(query: CollectionReference | Query) {
     const querySnapshot = await getDocs(query);
-    return querySnapshot.docs.map((queryDoc) => {
-      console.log(queryDoc.id, "=>", queryDoc.data());
-      return new FiretenderDoc(this.schema, queryDoc.ref, {
-        initialData: queryDoc.data(),
-      });
-    });
+    return querySnapshot.docs.map(
+      (queryDoc) =>
+        new FiretenderDoc(this.schema, queryDoc.ref, {
+          initialData: queryDoc.data(),
+        })
+    );
   }
 }
