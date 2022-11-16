@@ -228,10 +228,8 @@ server environment.
 The [full list of issues](https://github.com/jakes-space/firetender/issues) is
 tracked on Github.  Here are some features on the roadmap:
 
-* Javadoc
-  * Document the code!
-    ([#12](https://github.com/jakes-space/firetender/issues/12))
-  * Compile them to an API reference page in markdown.
+* Dcoumentation
+  * Compile JSDoc to an API reference page in markdown.
     ([#13](https://github.com/jakes-space/firetender/issues/13))
 * Concurrency
   * Listen for changes and update the object if it has not been locally
