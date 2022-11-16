@@ -12,19 +12,35 @@ import { z } from "zod";
 import { watchFieldForChanges } from "./proxies";
 import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 
+/**
+ * Options when initializing a FiretenderDoc object.
+ */
 export type FiretenderDocOptions = {
+  /**
+   * Does this FiretenderDoc represent a new document in Firestore?
+   */
   createDoc?: true;
+
+  /**
+   * The document's initial data, which must define a valid instance of the
+   * document according to its schema.
+   */
   initialData?: Record<string, any>;
+
   // TODO: #1 add readonly option.
 };
 
+/**
+ * Options when initializing a FiretenderDoc object, omitting options that are
+ * intended principally for internal use.
+ */
 export type PublicFiretenderDocOptions = Omit<
   FiretenderDocOptions,
   "createDoc" | "initialData"
 >;
 
 /**
- * Helper class for reading and writing Firestore data based on Zod schemas.
+ * A representation of a Firestore document.
  */
 export class FiretenderDoc<
   SchemaType extends z.SomeZodObject,
@@ -38,6 +54,14 @@ export class FiretenderDoc<
   private dataProxy: ProxyHandler<DataType> | undefined = undefined;
   private updates = new Map<string, any>();
 
+  /**
+   * @param schema the Zod object schema describing this document's data.
+   * @param ref either a document reference specifying the full path of the
+   *   document, or a collection reference specifying where a new document will
+   *   be created.
+   * @param options optional parameters for the resulting FiretenderDoc; see
+   *   FiretenderDocOptions for detail.
+   */
   constructor(
     schema: SchemaType,
     ref: DocumentReference | CollectionReference,
@@ -62,6 +86,21 @@ export class FiretenderDoc<
     }
   }
 
+  /**
+   * Returns a FiretenderDoc representing a new Firestore document.
+   *
+   * This method does not create the document in Firestore.  To do so, call the
+   * write() method.
+   *
+   * @param schema the Zod object schema describing this document's data.
+   * @param ref either a document reference specifying the full path of the
+   *   document, or a collection reference specifying where a new document will
+   *   be created.
+   * @param initialData the document's initial data, which must define a valid
+   *   instance of this document according to its schema.
+   * @param options optional parameters for the resulting FiretenderDoc; see
+   *   FiretenderDocOptions for detail.
+   */
   static createNewDoc<
     SchemaType1 extends z.SomeZodObject,
     InputType extends z.input<SchemaType1> = z.input<SchemaType1>
@@ -79,24 +118,20 @@ export class FiretenderDoc<
     return new FiretenderDoc(schema, ref, mergedOptions);
   }
 
-  get id(): string {
-    if (!this.docID) {
-      throw Error(
-        "id can only be accessed after the new doc has been written."
-      );
-    }
-    return this.docID;
-  }
-
-  get docRef(): DocumentReference {
-    if (this.ref.type !== "document") {
-      throw Error(
-        "docRef can only be accessed after the new doc has been written."
-      );
-    }
-    return this.ref;
-  }
-
+  /**
+   * Create a copy of this document.  Returns a deep copy of its data with a new
+   * Firestore ID and reference.
+   *
+   * This method does not create the document in Firestore.  To do so, call the
+   * write() method.
+   *
+   * @param dest the destination can be a string or undefined to create a copy
+   *   in the same collection, or a document or collection reference to create
+   *   it elsewhere.  Firestore will assign a random doc ID if dest is undefined
+   *   or a collection reference.
+   * @param options optional parameters for the resulting FiretenderDoc; see
+   *   FiretenderDocOptions for detail.
+   */
   copy(
     dest:
       | DocumentReference
@@ -128,6 +163,40 @@ export class FiretenderDoc<
     return new FiretenderDoc(this.schema, ref, mergedOptions);
   }
 
+  /**
+   * The document's ID string.
+   *
+   * @throws Throws an error if the document does not yet have an ID.
+   */
+  get id(): string {
+    if (!this.docID) {
+      throw Error(
+        "id can only be accessed after the new doc has been written."
+      );
+    }
+    return this.docID;
+  }
+
+  /**
+   * The document's Firestore reference.
+   *
+   * @throws Throws an error if the document does not yet have a reference.
+   */
+  get docRef(): DocumentReference {
+    if (this.ref.type !== "document") {
+      throw Error(
+        "docRef can only be accessed after the new doc has been written."
+      );
+    }
+    return this.ref;
+  }
+
+  /**
+   * Load this document's data from Firestore.
+   *
+   * @param force force a read from Firestore.  Normally load() does nothing if
+   *   the document already contains data.
+   */
   async load(force = false): Promise<this> {
     if (this.isNewDoc || this.ref.type === "collection") {
       throw Error("load() should not be called for new documents.");
@@ -144,6 +213,9 @@ export class FiretenderDoc<
     return this;
   }
 
+  /**
+   * Read-only accessor to the contents of this document.
+   */
   get r(): DeepReadonly<DataType> {
     if (!this.data) {
       throw Error("load() must be called before reading the document.");
@@ -151,6 +223,12 @@ export class FiretenderDoc<
     return this.data as DeepReadonly<DataType>;
   }
 
+  /**
+   * Writable accessor to the contents of this document.
+   *
+   * Only use this accessor when making changes to the doc.  The .r accessor is
+   * considerably more efficient when reading.
+   */
   get w(): DataType {
     if (this.isNewDoc) {
       // No need to monitor changes if we're creating rather than updating.
@@ -170,6 +248,9 @@ export class FiretenderDoc<
     return this.dataProxy as DataType;
   }
 
+  /**
+   * Write the document or any updates to Firestore.
+   */
   async write(): Promise<this> {
     if (this.isNewDoc) {
       assertIsDefined(this.data);
@@ -197,14 +278,23 @@ export class FiretenderDoc<
           flatUpdateList[1],
           ...flatUpdateList.slice(2)
         );
+        this.updates.clear();
       }
     }
     return this;
   }
 
+  /**
+   * Does this document contain data that has not yet been written to Firestore?
+   */
+  isPendingWrite(): boolean {
+    return this.isNewDoc || this.updates.size > 0;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Private functions
 
+  /** Add the field and its new value to the list of updates. */
   private onChange<FieldSchemaType extends z.ZodTypeAny>(
     fieldPath: string[],
     newValue: z.infer<FieldSchemaType>

@@ -582,7 +582,9 @@ describe("createNewDoc", () => {
       initialState
     );
     testDoc.w.recordOfObjects.x = { rating: 5, tags: ["hi"] };
+    expect(testDoc.isPendingWrite()).toBe(true);
     await testDoc.write();
+    expect(testDoc.isPendingWrite()).toBe(false);
     const result1 = (await getDoc(testDoc.docRef)).data();
     expect(result1).toEqual({
       email: "bob@example.com",
@@ -592,7 +594,9 @@ describe("createNewDoc", () => {
       arrayOfObjects: [],
     });
     testDoc.w.recordOfPrimitives.a = "bye";
+    expect(testDoc.isPendingWrite()).toBe(true);
     await testDoc.write();
+    expect(testDoc.isPendingWrite()).toBe(false);
     const result2 = (await getDoc(testDoc.docRef)).data();
     expect(result2).toEqual({
       email: "bob@example.com",
