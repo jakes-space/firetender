@@ -44,7 +44,7 @@ describe("createNewDoc", () => {
       { foo: "hello" }
     );
     const testDoc = testCollection.createNewDoc();
-    expect(testDoc.id).toBeUndefined();
+    expect(() => testDoc.id).toThrowError();
     expect(testDoc.r).toEqual({ foo: "hello" });
   });
 
@@ -76,7 +76,6 @@ describe("createNewDoc", () => {
       { foo: "hello" }
     );
     const testDoc = testCollection.createNewDoc(undefined, { bar: 123 });
-    expect(testDoc.id).toBeUndefined();
     expect(testDoc.r).toEqual({ foo: "hello", bar: 123 });
   });
 });
@@ -326,7 +325,7 @@ describe("delete", () => {
       "delete-doc-in-collection",
     ]);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await testCollection.delete(testDoc.id!);
+    await testCollection.delete(testDoc.id);
     const docsAfterDelete = await testCollection.query(
       where("foo", "==", "delete-doc-in-collection")
     );

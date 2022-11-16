@@ -70,7 +70,7 @@ export class FiretenderDoc<
     ref: DocumentReference | CollectionReference,
     initialData: InputType,
     options: PublicFiretenderDocOptions = {}
-  ): FiretenderDoc<SchemaType1, z.TypeOf<SchemaType1>> {
+  ): FiretenderDoc<SchemaType1, z.infer<SchemaType1>> {
     const mergedOptions: FiretenderDocOptions = {
       ...options,
       createDoc: true,
@@ -79,17 +79,22 @@ export class FiretenderDoc<
     return new FiretenderDoc(schema, ref, mergedOptions);
   }
 
-  get id(): string | undefined {
+  get id(): string {
+    if (!this.docID) {
+      throw Error(
+        "id can only be accessed after the new doc has been written."
+      );
+    }
     return this.docID;
   }
 
   get docRef(): DocumentReference {
-    if (this.ref.type === "document") {
-      return this.ref;
+    if (this.ref.type !== "document") {
+      throw Error(
+        "docRef can only be accessed after the new doc has been written."
+      );
     }
-    throw Error(
-      "docRef can only be accessed after the new doc has been written."
-    );
+    return this.ref;
   }
 
   copy(
@@ -197,10 +202,13 @@ export class FiretenderDoc<
     return this;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Private functions
+
   private onChange<FieldSchemaType extends z.ZodTypeAny>(
     fieldPath: string[],
     newValue: z.infer<FieldSchemaType>
-  ) {
+  ): void {
     let pathString = "";
     if (this.updates.size > 0) {
       // Check if some parent of this update is already in the list of mutations

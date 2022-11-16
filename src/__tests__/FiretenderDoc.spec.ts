@@ -525,12 +525,13 @@ describe("createNewDoc", () => {
     email: "bob@example.com",
   };
 
-  it("does not provide a doc ref until write is called.", async () => {
+  it("does not provide an ID or doc ref until write is called.", async () => {
     const testDoc = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
       initialState
     );
+    expect(() => testDoc.id).toThrowError("id can only be accessed after");
     expect(() => testDoc.docRef).toThrowError(
       "docRef can only be accessed after"
     );
@@ -563,7 +564,7 @@ describe("createNewDoc", () => {
       doc(testCollection, docID),
       initialState
     ).write();
-    expect(testDoc.id).toEqual(docID);
+    expect(testDoc.id).toBe(docID);
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
