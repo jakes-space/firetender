@@ -18,12 +18,17 @@ export type FiretenderDocOptions = {
   // TODO: #1 add readonly option.
 };
 
+export type PublicFiretenderDocOptions = Omit<
+  FiretenderDocOptions,
+  "createDoc" | "initialData"
+>;
+
 /**
  * Helper class for reading and writing Firestore data based on Zod schemas.
  */
 export class FiretenderDoc<
   SchemaType extends z.SomeZodObject,
-  DataType extends { [x: string]: any } = z.infer<SchemaType>
+  DataType extends z.infer<SchemaType> = z.infer<SchemaType>
 > {
   readonly schema: SchemaType;
   private ref: DocumentReference | CollectionReference;
@@ -59,12 +64,12 @@ export class FiretenderDoc<
 
   static createNewDoc<
     SchemaType1 extends z.SomeZodObject,
-    InputType extends { [x: string]: any } = z.input<SchemaType1>
+    InputType extends z.input<SchemaType1> = z.input<SchemaType1>
   >(
     schema: SchemaType1,
     ref: DocumentReference | CollectionReference,
     initialData: InputType,
-    options: FiretenderDocOptions = {}
+    options: PublicFiretenderDocOptions = {}
   ): FiretenderDoc<SchemaType1, z.TypeOf<SchemaType1>> {
     const mergedOptions: FiretenderDocOptions = {
       ...options,

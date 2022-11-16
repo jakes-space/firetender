@@ -110,7 +110,7 @@ describe("getExistingDoc", () => {
       { foo: "hello" }
     );
     expect(() => testCollection.getExistingDoc("abc")).toThrowError(
-      "requires an ID"
+      "requires a full ID path"
     );
   });
 });
@@ -255,7 +255,7 @@ describe("query functions", () => {
 
     it("fails when called on a subcollection without parent ID.", async () => {
       await expect(cityLandmarkCollection.getAllDocs()).rejects.toThrowError(
-        "requires an ID for all collections and subcollections except the last."
+        "requires the IDs of all parent collections"
       );
     });
   });
