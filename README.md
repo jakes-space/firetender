@@ -193,13 +193,15 @@ const cityLandmarkCollection = new FiretenderCollection(
   {}
 );
 
-const beijingParks = cityLandmarkCollection.query(
+const beijingParks = await cityLandmarkCollection.query(
   "BJ",
   where("type", "==", "park"))
 );
 // Resulting array contains the document for Jingshan Park.
 
-const allParks = cityLandmarkCollection.query(where("type", "==", "park"));
+const allParks = await cityLandmarkCollection.query(
+  where("type", "==", "park")
+);
 // Resulting array has docs for Griffith Park, Ueno Park, and Jingshan Park.
 ```
 
@@ -212,7 +214,7 @@ const citySchema = z.object({ /* ... */ });
 const cityCollection = new FiretenderCollection(
   citySchema, [firestore, "cities"], {}
 );
-cityCollection.delete("LA");
+await cityCollection.delete("LA");
 ```
 
 Subcollections are not deleted; in this example, the LA landmark docs would
