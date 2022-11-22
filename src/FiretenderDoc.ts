@@ -192,6 +192,20 @@ export class FiretenderDoc<
   }
 
   /**
+   * Is this a new doc that has not yet been written to Firestore?
+   */
+  isNew(): boolean {
+    return this.isNewDoc;
+  }
+
+  /**
+   * Does this document contain data that has not yet been written to Firestore?
+   */
+  isPendingWrite(): boolean {
+    return this.isNewDoc || this.updates.size > 0;
+  }
+
+  /**
    * Load this document's data from Firestore.
    *
    * @param force force a read from Firestore.  Normally load() does nothing if
@@ -282,13 +296,6 @@ export class FiretenderDoc<
       }
     }
     return this;
-  }
-
-  /**
-   * Does this document contain data that has not yet been written to Firestore?
-   */
-  isPendingWrite(): boolean {
-    return this.isNewDoc || this.updates.size > 0;
   }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -582,6 +582,7 @@ describe("createNewDoc", () => {
       initialState
     );
     testDoc.w.recordOfObjects.x = { rating: 5, tags: ["hi"] };
+    expect(testDoc.isNew()).toBe(true);
     expect(testDoc.isPendingWrite()).toBe(true);
     await testDoc.write();
     expect(testDoc.isPendingWrite()).toBe(false);
