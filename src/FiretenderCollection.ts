@@ -64,7 +64,7 @@ export class FiretenderCollection<
    * @param options optional parameters for the resulting FiretenderDoc; see
    *   FiretenderDocOptions for detail.
    */
-  createNewDoc(
+  newDoc(
     id: string[] | string | undefined = undefined,
     initialData: DeepPartial<InputType> | undefined = undefined,
     options: PublicFiretenderDocOptions = {}
@@ -77,7 +77,7 @@ export class FiretenderCollection<
     }
     if (!ref) {
       throw Error(
-        "createNewDoc() requires an ID path for all collections and subcollections, except optionally the last."
+        "newDoc() requires an ID path for all collections and subcollections, except optionally the last."
       );
     }
     const data = {};
@@ -101,14 +101,14 @@ export class FiretenderCollection<
    * @param options optional parameters for the resulting FiretenderDoc; see
    *   FiretenderDocOptions for detail.
    */
-  getExistingDoc(
+  existingDoc(
     id: string[] | string,
     options: PublicFiretenderDocOptions = {}
   ): FiretenderDoc<SchemaType, DataType> {
     const ref = this.makeDocRef([id].flat());
     if (!ref) {
       throw Error(
-        "getExistingDoc() requires a full ID path for this collection and its parent collections, if any."
+        "existingDoc() requires a full ID path for this collection and its parent collections, if any."
       );
     }
     return new FiretenderDoc(this.schema, ref, options);

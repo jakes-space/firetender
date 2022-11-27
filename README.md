@@ -79,14 +79,13 @@ fields are not pruned and will appear in Firestore.
 ### Add a document
 
 Let's add a document to the `pizzas` collection, with an ID of `margherita`.  We
-use the collection's `.createNewDoc()` to produce a `FiretenderDoc` representing
-a new document, initialized with validated data.  This object is purely local
-until it is written to Firestore by calling `.write()`.  Don't forget to do
-that.
+use the collection's `.newDoc()` to produce a `FiretenderDoc` representing a new
+document, initialized with validated data.  This object is purely local until it
+is written to Firestore by calling `.write()`.  Don't forget to do that.
 
 ```javascript
 const docRef = doc(db, "pizzas", "margherita");
-const pizza = pizzaFactory.createNewDoc(docRef, {
+const pizza = pizzaFactory.newDoc(docRef, {
   name: "Margherita",
   description: "Neapolitan style pizza"
   toppings: { "fresh mozzarella": {}, "fresh basil": {} },
@@ -95,20 +94,20 @@ const pizza = pizzaFactory.createNewDoc(docRef, {
 await pizza.write();
 ```
 
-If you don't care about the doc ID, pass a collection reference to
-`.createNewDoc()` and Firestore will assign an ID at random.  It can be read
-from `.id` or `.docRef`.
+If you don't care about the doc ID, pass a collection reference to `.newDoc()`
+and Firestore will assign an ID at random.  This ID can be read from `.id` or
+`.docRef` after the document has been written.
 
 ### Read and modify a document
 
 To access an existing document, pass its reference to the collection's
-`.getExistingDoc()` method.  To read it, call `.load()` and access its data with
+`.existingDoc()` method.  To read it, call `.load()` and access its data with
  the `.r` property; see the example below.  To make changes, use `.w` then call
 `.write()`.  Reading and updating can be done in combination:
 
 ```javascript
 const meats = ["pepperoni", "chicken", "sausage"];
-const pizza = await pizzaCollection.getExistingDoc(docRef).load();
+const pizza = await pizzaCollection.existingDoc(docRef).load();
 const isMeatIncluded = Object.entries(pizza.r.toppings).some(
   ([name, topping]) => topping.isIncluded && name in meats
 );
@@ -130,7 +129,7 @@ you from forgetting to call `.write()`!
 
 ```javascript
 const meats = ["pepperoni", "chicken", "sausage"];
-await pizzaCollection.getExistingDoc(docRef).update((pizza) => {
+await pizzaCollection.existingDoc(docRef).update((pizza) => {
   const isMeatIncluded = Object.entries(pizza.r.toppings).some(
     ([name, topping]) => topping.isIncluded && name in meats
   );
@@ -148,7 +147,7 @@ The copy is solely local until `.write()` is called.
 
 ```javascript
 const sourceRef = doc(db, "pizza", "margherita");
-const sourcePizza = await pizzaCollection.getExistingDoc(sourceRef).load();
+const sourcePizza = await pizzaCollection.existingDoc(sourceRef).load();
 const newPizza = sourcePizza.copy("meaty margh");
 newPizza.name = "Meaty Margh";
 newPizza.toppings.sausage = {};

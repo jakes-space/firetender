@@ -81,7 +81,7 @@ export class FiretenderDoc<
       this.docID = this.ref.path.split("/").pop();
     } else if (!this.isNewDoc) {
       throw TypeError(
-        "Firetender can only take a collection reference when creating a new document.  Use Firetender.createNewDoc() if this is your intent."
+        "FiretenderDoc can only take a collection reference when creating a new document.  Use .createNewDoc() if this is your intent."
       );
     }
   }

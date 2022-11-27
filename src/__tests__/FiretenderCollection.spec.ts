@@ -25,14 +25,14 @@ beforeAll(async () => {
   firestore = await setupFirestoreEmulator();
 });
 
-describe("createNewDoc", () => {
+describe("newDoc", () => {
   it("creates a doc with the given ID.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       [firestore, collectionName],
       { foo: "hello" }
     );
-    const testDoc = testCollection.createNewDoc("111");
+    const testDoc = testCollection.newDoc("111");
     expect(testDoc.id).toBe("111");
     expect(testDoc.r).toEqual({ foo: "hello" });
   });
@@ -43,7 +43,7 @@ describe("createNewDoc", () => {
       [firestore, collectionName],
       { foo: "hello" }
     );
-    const testDoc = testCollection.createNewDoc();
+    const testDoc = testCollection.newDoc();
     expect(() => testDoc.id).toThrowError();
     expect(testDoc.r).toEqual({ foo: "hello" });
   });
@@ -55,7 +55,7 @@ describe("createNewDoc", () => {
       { foo: "hello" }
     );
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const testDoc = testCollection.createNewDoc(["abc", "xyz"]);
+    const testDoc = testCollection.newDoc(["abc", "xyz"]);
     expect(testDoc.id).toBe("xyz");
     expect(testDoc.docRef.path).toBe(`${collectionName}/abc/subcollection/xyz`);
   });
@@ -66,7 +66,7 @@ describe("createNewDoc", () => {
       [firestore, collectionName, "subcollection"],
       { foo: "hello" }
     );
-    expect(() => testCollection.createNewDoc()).toThrowError("requires an ID");
+    expect(() => testCollection.newDoc()).toThrowError("requires an ID");
   });
 
   it("merges given initial field values into the defaults.", () => {
@@ -75,19 +75,19 @@ describe("createNewDoc", () => {
       [firestore, collectionName],
       { foo: "hello" }
     );
-    const testDoc = testCollection.createNewDoc(undefined, { bar: 123 });
+    const testDoc = testCollection.newDoc(undefined, { bar: 123 });
     expect(testDoc.r).toEqual({ foo: "hello", bar: 123 });
   });
 });
 
-describe("getExistingDoc", () => {
+describe("existingDoc", () => {
   it("wraps a doc in a collection.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       [firestore, collectionName],
       { foo: "hello" }
     );
-    const testDoc = testCollection.getExistingDoc("xyz");
+    const testDoc = testCollection.existingDoc("xyz");
     expect(testDoc.id).toBe("xyz");
   });
 
@@ -97,7 +97,7 @@ describe("getExistingDoc", () => {
       [firestore, collectionName, "subcollection"],
       { foo: "hello" }
     );
-    const testDoc = testCollection.getExistingDoc(["abc", "xyz"]);
+    const testDoc = testCollection.existingDoc(["abc", "xyz"]);
     expect(testDoc.id).toBe("xyz");
     expect(testDoc.docRef.path).toBe(`${collectionName}/abc/subcollection/xyz`);
   });
@@ -108,7 +108,7 @@ describe("getExistingDoc", () => {
       [firestore, collectionName, "subcollection"],
       { foo: "hello" }
     );
-    expect(() => testCollection.getExistingDoc("abc")).toThrowError(
+    expect(() => testCollection.existingDoc("abc")).toThrowError(
       "requires a full ID path"
     );
   });
@@ -317,7 +317,7 @@ describe("delete", () => {
       [firestore, collectionName],
       { foo: "delete-doc-in-collection" }
     );
-    const testDoc = await testCollection.createNewDoc().write();
+    const testDoc = await testCollection.newDoc().write();
     const docsBeforeDelete = await testCollection.query(
       where("foo", "==", "delete-doc-in-collection")
     );
