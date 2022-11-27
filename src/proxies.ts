@@ -54,13 +54,15 @@ export function watchArrayForChanges<
 ): z.infer<FieldSchemaType> {
   return new Proxy(field, {
     get(target, propertyKey) {
-      assertKeyIsString(propertyKey);
       const property = target[propertyKey];
       if (property instanceof Function) {
         const result = (...args: any[]) => property.apply(field, args);
         // TODO: #11 Only mark the change for mutating function calls.
         onChange(arrayPath, array);
         return result;
+      }
+      if (typeof propertyKey === "symbol") {
+        return property; // Allow symbols to pass through.
       }
       if (property instanceof Object) {
         return watchArrayForChanges(
@@ -74,7 +76,9 @@ export function watchArrayForChanges<
       return property;
     },
     set(target, propertyKey, value) {
-      assertKeyIsString(propertyKey);
+      if (typeof propertyKey === "symbol") {
+        return Reflect.set(target, propertyKey, value);
+      }
       const propertySchema = getPropertySchema(fieldSchema, propertyKey);
       const parsedValue = propertySchema.parse(value);
       const result = Reflect.set(target, propertyKey, parsedValue);
@@ -110,10 +114,12 @@ export function watchFieldForChanges<FieldSchemaType extends z.ZodTypeAny>(
 ): z.infer<FieldSchemaType> {
   return new Proxy(field, {
     get(target, propertyKey) {
-      assertKeyIsString(propertyKey);
       const property = target[propertyKey];
       if (property instanceof Function) {
         return (...args: any[]) => property.apply(field, args);
+      }
+      if (typeof propertyKey === "symbol") {
+        return property; // Allow symbols to pass through.
       }
       if (property instanceof Array) {
         return watchArrayForChanges(
@@ -135,7 +141,9 @@ export function watchFieldForChanges<FieldSchemaType extends z.ZodTypeAny>(
       return property;
     },
     set(target, propertyKey, value) {
-      assertKeyIsString(propertyKey);
+      if (typeof propertyKey === "symbol") {
+        return Reflect.set(target, propertyKey, value);
+      }
       const propertySchema = getPropertySchema(fieldSchema, propertyKey);
       const parsedValue = propertySchema.parse(value);
       onChange([...fieldPath, propertyKey], parsedValue);

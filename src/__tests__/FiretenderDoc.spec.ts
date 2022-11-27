@@ -133,6 +133,33 @@ describe("rw accessors", () => {
       testDoc.w.email = "not a valid email";
     }).toThrowError("Invalid email");
   });
+
+  it("allow symbol properties to pass through objects.", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      recordOfObjects: {
+        "ice cream": {
+          rating: 10,
+        },
+      },
+    });
+    // Converting an Object to a string gets its Symbol.toStringTag property.
+    expect(String(testDoc.w.recordOfObjects)).toBe("[object Object]");
+  });
+
+  it("allow symbol properties to pass through arrays.", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      arrayOfObjects: [
+        { name: "foo", entries: {} },
+        { name: "bar", entries: { a: 111, b: 222 } },
+      ],
+    });
+    // Converting an Array to a string gets its Symbol.toStringTag property.
+    expect(String(testDoc.w.arrayOfObjects)).toBe(
+      "[object Object],[object Object]"
+    );
+  });
 });
 
 describe("write", () => {
