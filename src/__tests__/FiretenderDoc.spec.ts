@@ -193,6 +193,26 @@ describe("write", () => {
   });
 });
 
+describe("update", () => {
+  it("loads, updates, and writes a document", async () => {
+    const docRef = await addDoc(testCollection, { email: "bob@example.com" });
+    await new FiretenderDoc(testDataSchema, docRef).update((data) => {
+      data.email = "alice@example.com";
+      data.arrayOfObjects.push({ name: "foo", entries: {} });
+    });
+    const result = (await getDoc(docRef)).data();
+    expect(result).toEqual({
+      email: "alice@example.com",
+      arrayOfObjects: [
+        {
+          name: "foo",
+          entries: {},
+        },
+      ],
+    });
+  });
+});
+
 describe("record of primitives", () => {
   const initialState = {
     email: "bob@example.com",

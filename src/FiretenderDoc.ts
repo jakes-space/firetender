@@ -298,6 +298,23 @@ export class FiretenderDoc<
     return this;
   }
 
+  /**
+   * Update the document's data with a single call.
+   *
+   * This function loads the document's data, if necessary; calls the given
+   * function to make changes to the data; then write the changes to Firestore.
+   * If nothing else, it helps you avoid forgetting to call .write()!
+   *
+   * @param mutator function that accepts a writable data object and makes
+   *   changes to it.
+   */
+  async update(mutator: (data: DataType) => void): Promise<this> {
+    await this.load();
+    mutator(this.w);
+    await this.write();
+    return this;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Private functions
 

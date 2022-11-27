@@ -122,6 +122,24 @@ The `.r` and `.w` properties point to the same data, with the read-only accessor
 typed accordingly.  Reading from `.r` is more efficient, as `.w` builds a chain
 of proxies to track updates.
 
+### Update a document in a single call
+
+The `.update()` method is a convenience method to load and update a document.
+It allows a slightly cleaner implementation of the above example --- and saves
+you from forgetting to call `.write()`!
+
+```javascript
+const meats = ["pepperoni", "chicken", "sausage"];
+await pizzaCollection.getExistingDoc(docRef).update((pizza) => {
+  const isMeatIncluded = Object.entries(pizza.r.toppings).some(
+    ([name, topping]) => topping.isIncluded && name in meats
+  );
+  if (!isMeatIncluded) {
+    pizza.w.toppings.tags.push("vegetarian");
+  }
+});
+```
+
 ### Make a copy
 
 Finally, use `.copy()` to get a deep copy of the document.  If an ID is not
