@@ -22,11 +22,7 @@ module.exports = {
   rules: {
     "import/extensions": ["error", "never"],
     "import/prefer-default-export": "off",
-    "lines-between-class-members": [
-      "error",
-      "always",
-      { exceptAfterSingleLine: true },
-    ],
+    "lines-between-class-members": ["error", "always"],
     "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
     "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
     "no-empty-function": [
