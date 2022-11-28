@@ -30,10 +30,13 @@ export class FiretenderCollection<
 > {
   /** Zod schema used to parse and validate the document's data */
   readonly schema: SchemaType;
+
   /** Firestore object: the thing you get from getFirestore() */
   readonly firestore: Firestore;
+
   /** The collection path of this object: a series of collection names */
   readonly collectionPath: string[];
+
   /** Initial values to be filled in when creating a new document  */
   readonly baseInitialData: DeepPartial<InputType> | undefined;
 
