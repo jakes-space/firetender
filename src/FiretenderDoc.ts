@@ -45,20 +45,30 @@ export type AllFiretenderDocOptions = FiretenderDocOptions & {
  */
 export class FiretenderDoc<
   SchemaType extends z.SomeZodObject,
-  DataType extends z.infer<SchemaType> = z.infer<SchemaType>
+  DataType extends z.infer<SchemaType> = z.infer<SchemaType>,
+  InputType extends z.input<SchemaType> = z.input<SchemaType>
 > {
   /** Zod schema used to parse and validate the document's data */
   readonly schema: SchemaType;
+
   /** Firestore reference to this doc, or collection in which to create it */
   private ref: DocumentReference | CollectionReference;
-  /** Is this a doc we presume does not yet exist in Firestore? */
-  private isNewDoc: boolean;
+
   /** Firestore document ID; undefined for new docs not yet on Firestore */
   private docID: string | undefined = undefined;
+
+  /** Is this a doc we presume does not yet exist in Firestore? */
+  private isNewDoc: boolean;
+
+  /** Use addDoc or setDoc to write all the data?  If not, use updateDoc. */
+  private isSettingNewContents: boolean;
+
   /** Local copy of the document data, parsed into the Zod type */
   private data: DataType | undefined = undefined;
+
   /** Proxy to intercept write (.w) access to the data and track the changes */
   private dataProxy: ProxyHandler<DataType> | undefined = undefined;
+
   /** Map from the dot-delimited field path (per updateDoc()) to new value */
   private updates = new Map<string, any>();
 
@@ -78,6 +88,7 @@ export class FiretenderDoc<
     this.schema = schema;
     this.ref = ref;
     this.isNewDoc = options.createDoc ?? false;
+    this.isSettingNewContents = this.isNewDoc;
     if (options.initialData) {
       this.data = schema.parse(options.initialData);
     } else if (this.isNewDoc) {
@@ -211,7 +222,7 @@ export class FiretenderDoc<
    * Does this document contain data that has not yet been written to Firestore?
    */
   isPendingWrite(): boolean {
-    return this.isNewDoc || this.updates.size > 0;
+    return this.isSettingNewContents || this.updates.size > 0;
   }
 
   /**
@@ -247,14 +258,14 @@ export class FiretenderDoc<
   }
 
   /**
-   * Writable accessor to the contents of this document.
+   * Writable accessor to update the contents of this document.
    *
    * Only use this accessor when making changes to the doc.  The .r accessor is
    * considerably more efficient when reading.
    */
   get w(): DataType {
-    if (this.isNewDoc) {
-      // No need to monitor changes if we're creating rather than updating.
+    if (this.isSettingNewContents) {
+      // No need to monitor changes if we're setting rather than updating.
       return this.data as DataType;
     }
     if (!this.dataProxy) {
@@ -273,11 +284,20 @@ export class FiretenderDoc<
   }
 
   /**
+   * Writable accessor to overwrite all the document data.
+   */
+  set w(newData: InputType) {
+    this.data = this.schema.parse(newData);
+    this.isSettingNewContents = true;
+    this.dataProxy = undefined;
+  }
+
+  /**
    * Writes the document or any updates to Firestore.
    */
   async write(): Promise<this> {
     // For new docs, this.data should contain its initial state.
-    if (this.isNewDoc) {
+    if (this.isSettingNewContents) {
       assertIsDefined(this.data);
       if (this.ref.type === "document") {
         await setDoc(this.ref, this.data);
@@ -285,6 +305,7 @@ export class FiretenderDoc<
         this.ref = await addDoc(this.ref, this.data);
         this.docID = this.ref.path.split("/").pop(); // ID is last part of path.
       }
+      this.isSettingNewContents = false;
       this.isNewDoc = false;
     }
     // For existing docs, this.updates should contain a list of changes.

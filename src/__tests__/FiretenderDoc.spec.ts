@@ -145,11 +145,6 @@ describe("rw accessors", () => {
     });
     // Converting an Object to a string gets its Symbol.toStringTag property.
     expect(String(testDoc.w.recordOfObjects)).toBe("[object Object]");
-
-    // TODO: test that testDoc.w = { ... } works.
-
-    // TODO: test that deleting a field clears it if the field is optional and
-    // throws if the field is required.
   });
 
   it("allow symbol properties to pass through arrays.", async () => {
@@ -165,6 +160,30 @@ describe("rw accessors", () => {
       "[object Object],[object Object]"
     );
   });
+
+  it("can replace all document data by setting .w", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      recordOfObjects: {
+        "ice cream": {
+          rating: 10,
+        },
+      },
+    });
+    testDoc.w = { email: "alice@example.com" };
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "alice@example.com",
+      recordOfPrimitives: {},
+      recordOfObjects: {},
+      nestedRecords: {},
+      arrayOfObjects: [],
+    });
+  });
+
+  // TODO: test that deleting a field clears it if the field is optional and
+  // throws if the field is required.
 });
 
 describe("write", () => {
