@@ -13,38 +13,47 @@ import {
 } from "firebase/firestore";
 import { z } from "zod";
 
-import { FiretenderDoc, PublicFiretenderDocOptions } from "./FiretenderDoc";
+import { FiretenderDoc, FiretenderDocOptions } from "./FiretenderDoc";
 import { DeepPartial } from "./ts-helpers";
 
 /**
  * A representation of a Firestore collection or subcollection.
+ *
+ * It represents a given "collection path": the collection names from a document
+ * reference, sans IDs.  All docs at /databases/{db}/documents/foo/{*}/bar/{*}
+ * are covered by a FiretenderCollection for the path ["foo", "bar"].
  */
 export class FiretenderCollection<
   SchemaType extends z.SomeZodObject,
   DataType extends z.infer<SchemaType> = z.infer<SchemaType>,
   InputType extends z.input<SchemaType> = z.input<SchemaType>
 > {
+  /** Zod schema used to parse and validate the document's data */
   readonly schema: SchemaType;
+  /** Firestore object: the thing you get from getFirestore() */
   readonly firestore: Firestore;
-  readonly collectionNames: string[];
+  /** The collection path of this object: a series of collection names */
+  readonly collectionPath: string[];
+  /** Initial values to be filled in when creating a new document  */
   readonly baseInitialData: DeepPartial<InputType> | undefined;
 
   /**
    * @param schema the Zod object schema describing the documents in this
    *   collection.
-   * @param collectionPath the path of this collection in Firestore.  The first
-   *   entry must be a Firestore object, followed by the names of any parent
-   *   collections and of this collection.
+   * @param firestore the thing you get from getFirestore().
+   * @param collectionPath the path of this collection in Firestore: the names
+   *   of any parent collections and of this collection.
    * @param baseInitialData (optional) default field values for this collection.
    */
   constructor(
     schema: SchemaType,
-    collectionPath: [Firestore, ...string[]],
+    firestore: Firestore,
+    collectionPath: [string, ...string[]] | string,
     baseInitialData: DeepPartial<z.input<SchemaType>> | undefined = undefined
   ) {
     this.schema = schema;
-    this.firestore = collectionPath[0];
-    this.collectionNames = collectionPath.slice(1) as string[];
+    this.firestore = firestore;
+    this.collectionPath = [collectionPath].flat();
     if (baseInitialData) {
       this.baseInitialData = baseInitialData;
     }
@@ -67,7 +76,7 @@ export class FiretenderCollection<
   newDoc(
     id: string[] | string | undefined = undefined,
     initialData: DeepPartial<InputType> | undefined = undefined,
-    options: PublicFiretenderDocOptions = {}
+    options: FiretenderDocOptions = {}
   ): FiretenderDoc<SchemaType, DataType> {
     const ids = id instanceof Array ? id : id ? [id] : [];
     let ref: DocumentReference | CollectionReference | undefined =
@@ -103,7 +112,7 @@ export class FiretenderCollection<
    */
   existingDoc(
     id: string[] | string,
-    options: PublicFiretenderDocOptions = {}
+    options: FiretenderDocOptions = {}
   ): FiretenderDoc<SchemaType, DataType> {
     const ref = this.makeDocRef([id].flat());
     if (!ref) {
@@ -118,7 +127,7 @@ export class FiretenderCollection<
    * Returns an array of all the documents in this collection.
    *
    * If the collection may contain a large number of documents, use query() with
-   * the limit() and startAfter() contraints to paginate the results.
+   * the limit() and startAfter() constraints to paginate the results.
    *
    * @param id (optional) when querying a subcollection, the ID(s) of its parent
    *   collection(s).
@@ -166,7 +175,7 @@ export class FiretenderCollection<
     if (!ref) {
       ref = collectionGroup(
         this.firestore,
-        this.collectionNames[this.collectionNames.length - 1]
+        this.collectionPath[this.collectionPath.length - 1]
       );
     }
     return this.getAndWrapDocs(query(ref, ...whereClauses));
@@ -198,10 +207,10 @@ export class FiretenderCollection<
    * not correctly specify a doc path.
    */
   private makeDocRef(ids: string[]): DocumentReference | undefined {
-    if (ids.length !== this.collectionNames.length) {
+    if (ids.length !== this.collectionPath.length) {
       return undefined;
     }
-    const path = ids.flatMap((id, i) => [this.collectionNames[i], id]);
+    const path = ids.flatMap((id, i) => [this.collectionPath[i], id]);
     return doc(this.firestore, path[0], ...path.slice(1));
   }
 
@@ -210,11 +219,11 @@ export class FiretenderCollection<
    * IDs do not correctly specify a collection path.
    */
   private makeCollectionRef(ids: string[]): CollectionReference | undefined {
-    if (ids.length !== this.collectionNames.length - 1) {
+    if (ids.length !== this.collectionPath.length - 1) {
       return undefined;
     }
-    const subPath = ids.flatMap((id, i) => [id, this.collectionNames[i + 1]]);
-    return collection(this.firestore, this.collectionNames[0], ...subPath);
+    const subPath = ids.flatMap((id, i) => [id, this.collectionPath[i + 1]]);
+    return collection(this.firestore, this.collectionPath[0], ...subPath);
   }
 
   /**

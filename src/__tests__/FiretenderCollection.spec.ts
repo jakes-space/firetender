@@ -29,7 +29,8 @@ describe("newDoc", () => {
   it("creates a doc with the given ID.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
-      [firestore, collectionName],
+      firestore,
+      collectionName,
       { foo: "hello" }
     );
     const testDoc = testCollection.newDoc("111");
@@ -40,7 +41,8 @@ describe("newDoc", () => {
   it("creates a doc without an ID.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
-      [firestore, collectionName],
+      firestore,
+      collectionName,
       { foo: "hello" }
     );
     const testDoc = testCollection.newDoc();
@@ -51,7 +53,8 @@ describe("newDoc", () => {
   it("creates a doc in a subcollection.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
-      [firestore, collectionName, "subcollection"],
+      firestore,
+      [collectionName, "subcollection"],
       { foo: "hello" }
     );
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -63,7 +66,8 @@ describe("newDoc", () => {
   it("fails if an ID for a parent collection is missing.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
-      [firestore, collectionName, "subcollection"],
+      firestore,
+      [collectionName, "subcollection"],
       { foo: "hello" }
     );
     expect(() => testCollection.newDoc()).toThrowError("requires an ID");
@@ -72,7 +76,8 @@ describe("newDoc", () => {
   it("merges given initial field values into the defaults.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
-      [firestore, collectionName],
+      firestore,
+      collectionName,
       { foo: "hello" }
     );
     const testDoc = testCollection.newDoc(undefined, { bar: 123 });
@@ -84,7 +89,8 @@ describe("existingDoc", () => {
   it("wraps a doc in a collection.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
-      [firestore, collectionName],
+      firestore,
+      collectionName,
       { foo: "hello" }
     );
     const testDoc = testCollection.existingDoc("xyz");
@@ -94,7 +100,8 @@ describe("existingDoc", () => {
   it("wraps a doc in a subcollection.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
-      [firestore, collectionName, "subcollection"],
+      firestore,
+      [collectionName, "subcollection"],
       { foo: "hello" }
     );
     const testDoc = testCollection.existingDoc(["abc", "xyz"]);
@@ -105,7 +112,8 @@ describe("existingDoc", () => {
   it("fails if an ID for a parent collection is missing.", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
-      [firestore, collectionName, "subcollection"],
+      firestore,
+      [collectionName, "subcollection"],
       { foo: "hello" }
     );
     expect(() => testCollection.existingDoc("abc")).toThrowError(
@@ -220,12 +228,14 @@ describe("query functions", () => {
     ]);
     cityCollection = new FiretenderCollection(
       citySchema,
-      [firestore, "cities"],
+      firestore,
+      "cities",
       {}
     );
     cityLandmarkCollection = new FiretenderCollection(
       cityLandmarkSchema,
-      [firestore, "cities", "landmarks"],
+      firestore,
+      ["cities", "landmarks"],
       {}
     );
   });
@@ -314,7 +324,8 @@ describe("delete", () => {
   it("deletes a document in a collection.", async () => {
     const testCollection = new FiretenderCollection(
       testSchema,
-      [firestore, collectionName],
+      firestore,
+      collectionName,
       { foo: "delete-doc-in-collection" }
     );
     const testDoc = await testCollection.newDoc().write();

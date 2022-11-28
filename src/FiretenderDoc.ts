@@ -13,9 +13,21 @@ import { watchFieldForChanges } from "./proxies";
 import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 
 /**
- * Options when initializing a FiretenderDoc object.
+ * Public options for initializing a FiretenderDoc object.
+ *
+ * These will be added as needed (e.g., "readonly" for issue #1, possibly
+ * "queryPageLength" for issue #21).
  */
-export type FiretenderDocOptions = {
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type FiretenderDocOptions = {};
+
+/**
+ * All options when initializing a FiretenderDoc object.
+ *
+ * This type includes options meant for internal use (createDoc, initialData)
+ * as well as the options in FiretenderDocOptions.
+ */
+export type AllFiretenderDocOptions = FiretenderDocOptions & {
   /**
    * Does this FiretenderDoc represent a new document in Firestore?
    */
@@ -26,32 +38,28 @@ export type FiretenderDocOptions = {
    * document according to its schema.
    */
   initialData?: Record<string, any>;
-
-  // TODO: #1 add readonly option.
 };
 
 /**
- * Options when initializing a FiretenderDoc object, omitting options that are
- * intended principally for internal use.
- */
-export type PublicFiretenderDocOptions = Omit<
-  FiretenderDocOptions,
-  "createDoc" | "initialData"
->;
-
-/**
- * A representation of a Firestore document.
+ * A local representation of a Firestore document.
  */
 export class FiretenderDoc<
   SchemaType extends z.SomeZodObject,
   DataType extends z.infer<SchemaType> = z.infer<SchemaType>
 > {
+  /** Zod schema used to parse and validate the document's data */
   readonly schema: SchemaType;
+  /** Firestore reference to this doc, or collection in which to create it */
   private ref: DocumentReference | CollectionReference;
+  /** Is this a doc we presume does not yet exist in Firestore? */
   private isNewDoc: boolean;
+  /** Firestore document ID; undefined for new docs not yet on Firestore */
   private docID: string | undefined = undefined;
+  /** Local copy of the document data, parsed into the Zod type */
   private data: DataType | undefined = undefined;
+  /** Proxy to intercept write (.w) access to the data and track the changes */
   private dataProxy: ProxyHandler<DataType> | undefined = undefined;
+  /** Map from the dot-delimited field path (per updateDoc()) to new value */
   private updates = new Map<string, any>();
 
   /**
@@ -65,7 +73,7 @@ export class FiretenderDoc<
   constructor(
     schema: SchemaType,
     ref: DocumentReference | CollectionReference,
-    options: FiretenderDocOptions = {}
+    options: AllFiretenderDocOptions = {}
   ) {
     this.schema = schema;
     this.ref = ref;
@@ -103,14 +111,14 @@ export class FiretenderDoc<
    */
   static createNewDoc<
     SchemaType1 extends z.SomeZodObject,
-    InputType extends z.input<SchemaType1> = z.input<SchemaType1>
+    InputType1 extends z.input<SchemaType1> = z.input<SchemaType1>
   >(
     schema: SchemaType1,
     ref: DocumentReference | CollectionReference,
-    initialData: InputType,
-    options: PublicFiretenderDocOptions = {}
+    initialData: InputType1,
+    options: FiretenderDocOptions = {}
   ): FiretenderDoc<SchemaType1, z.infer<SchemaType1>> {
-    const mergedOptions: FiretenderDocOptions = {
+    const mergedOptions: AllFiretenderDocOptions = {
       ...options,
       createDoc: true,
       initialData,
@@ -119,11 +127,12 @@ export class FiretenderDoc<
   }
 
   /**
-   * Create a copy of this document.  Returns a deep copy of its data with a new
-   * Firestore ID and reference.
+   * Creates a copy of this document.  Returns a deep copy of its data with a
+   * new Firestore ID and reference.
    *
    * This method does not create the document in Firestore.  To do so, call the
-   * write() method.
+   * write() method.  If an ID or doc ref is not provided, those will be unset
+   * until the write.
    *
    * @param dest the destination can be a string or undefined to create a copy
    *   in the same collection, or a document or collection reference to create
@@ -138,7 +147,7 @@ export class FiretenderDoc<
       | CollectionReference
       | string
       | undefined = undefined,
-    options: FiretenderDocOptions = {}
+    options: AllFiretenderDocOptions = {}
   ): FiretenderDoc<SchemaType, DataType> {
     if (!this.data) {
       throw Error("You must call load() before making a copy.");
@@ -155,7 +164,7 @@ export class FiretenderDoc<
         ref = collectionRef;
       }
     }
-    const mergedOptions: FiretenderDocOptions = {
+    const mergedOptions: AllFiretenderDocOptions = {
       ...options,
       createDoc: true,
       initialData: this.data,
@@ -206,7 +215,7 @@ export class FiretenderDoc<
   }
 
   /**
-   * Load this document's data from Firestore.
+   * Loads this document's data from Firestore.
    *
    * @param force force a read from Firestore.  Normally load() does nothing if
    *   the document already contains data.
@@ -250,33 +259,35 @@ export class FiretenderDoc<
     }
     if (!this.dataProxy) {
       if (!this.data) {
+        // TODO #23: Consider being able to update a doc without loading it.
         throw Error("load() must be called before updating the document.");
       }
       this.dataProxy = watchFieldForChanges(
         [],
         this.schema,
         this.data,
-        this.onChange.bind(this)
+        this.addToUpdateList.bind(this)
       );
     }
     return this.dataProxy as DataType;
   }
 
   /**
-   * Write the document or any updates to Firestore.
+   * Writes the document or any updates to Firestore.
    */
   async write(): Promise<this> {
+    // For new docs, this.data should contain its initial state.
     if (this.isNewDoc) {
       assertIsDefined(this.data);
       if (this.ref.type === "document") {
         await setDoc(this.ref, this.data);
       } else {
         this.ref = await addDoc(this.ref, this.data);
-        this.docID = this.ref.path.split("/").pop();
+        this.docID = this.ref.path.split("/").pop(); // ID is last part of path.
       }
       this.isNewDoc = false;
     }
-    // If existing doc:
+    // For existing docs, this.updates should contain a list of changes.
     else {
       if (!(this.ref.type === "document")) {
         // We should never get here.
@@ -285,6 +296,7 @@ export class FiretenderDoc<
         );
       }
       if (this.updates.size > 0) {
+        // updateDoc() takes alternating field path and field value parameters.
         const flatUpdateList = Array.from(this.updates.entries()).flat();
         await updateDoc(
           this.ref,
@@ -299,7 +311,7 @@ export class FiretenderDoc<
   }
 
   /**
-   * Update the document's data with a single call.
+   * Updates the document's data with a single call.
    *
    * This function loads the document's data, if necessary; calls the given
    * function to make changes to the data; then write the changes to Firestore.
@@ -318,17 +330,21 @@ export class FiretenderDoc<
   //////////////////////////////////////////////////////////////////////////////
   // Private functions
 
-  /** Add the field and its new value to the list of updates. */
-  private onChange<FieldSchemaType extends z.ZodTypeAny>(
+  /**
+   * Adds a field and its new value to the list of updates to be passed to
+   * Firestore's updateDoc().  Called when the proxies detect changes to the
+   * document data.
+   */
+  private addToUpdateList<FieldSchemaType extends z.ZodTypeAny>(
     fieldPath: string[],
     newValue: z.infer<FieldSchemaType>
   ): void {
     let pathString = "";
     if (this.updates.size > 0) {
-      // Check if some parent of this update is already in the list of mutations
-      // to send to Firestore.  Objects in the update list are references into
-      // this.data, so the parent field will automatically reflect this change;
-      // no additional Firestore mutation is needed.
+      // If there is already a list of mutations to send to Firestore, check if
+      // a parent of this update is in it.  Objects in the update list are
+      // references into this.data, so the parent field will automatically
+      // reflect this change; no additional Firestore mutation is needed.
       if (
         fieldPath.some((field, i) => {
           pathString = pathString ? `${pathString}.${field}` : field;

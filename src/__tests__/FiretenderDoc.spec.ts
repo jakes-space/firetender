@@ -145,6 +145,11 @@ describe("rw accessors", () => {
     });
     // Converting an Object to a string gets its Symbol.toStringTag property.
     expect(String(testDoc.w.recordOfObjects)).toBe("[object Object]");
+
+    // TODO: test that testDoc.w = { ... } works.
+
+    // TODO: test that deleting a field clears it if the field is optional and
+    // throws if the field is required.
   });
 
   it("allow symbol properties to pass through arrays.", async () => {
@@ -259,6 +264,8 @@ describe("record of primitives", () => {
       recordOfPrimitives: {},
     });
   });
+
+  // TODO: test setting the whole record: testDoc.w.recordOfPrimitives = { ... }
 });
 
 describe("record of objects", () => {
@@ -404,6 +411,8 @@ describe("record of objects", () => {
       },
     });
   });
+
+  // TODO: test setting the whole record: testDoc.w.recordOfObjects = { ... }
 });
 
 describe("nested records", () => {
@@ -565,6 +574,10 @@ describe("array of objects", () => {
       delete testDoc.w.arrayOfObjects[99];
     }).toThrow(RangeError);
   });
+
+  // TODO: test the case of deleting one of two identical array elements.
+
+  // TODO: test setting the entire array: testDoc.w.arrayOfObjects = [ ... ]
 });
 
 describe("createNewDoc", () => {

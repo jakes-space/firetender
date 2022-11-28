@@ -66,7 +66,8 @@ const pizzaSchema = z.object({
 
 const pizzaCollection = new FiretenderCollection(
   pizzaSchema,
-  [firestore, "pizzas"],
+  firestore,
+  "pizzas",
   { creationTime: nowTimestamp() }
 );
 ```
@@ -272,7 +273,7 @@ await Promise.all(
 The [full list of issues](https://github.com/jakes-space/firetender/issues) is
 tracked on Github.  Here are some features on the roadmap:
 
-* Dcoumentation
+* Documentation
   * Compile JSDoc to an API reference page in markdown.
     ([#13](https://github.com/jakes-space/firetender/issues/13))
 * Concurrency
