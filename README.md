@@ -240,6 +240,33 @@ of its subcollections' docs, then call `delete()` on each doc.  The Firestore
 guide recommends only performing such unbounded batched deletions from a trusted
 server environment.
 
+### Update all matching documents
+
+In an inventory of items, markup by 10% all items awaiting a price increase.
+
+```javascript
+const itemSchema = z.object({
+  name: z.string(),
+  price: z.number().nonnegative(),
+  tags: z.array(z.string()),
+});
+const inventoryCollection = new FiretenderCollection(itemSchema, [
+  firestore,
+  "inventory",
+]);
+
+await Promise.all(
+  inventoryCollection
+    .query(where("tags", "array-contains", "awaiting-price-increase"))
+    .map((itemDoc) =>
+      itemDoc.update((data) => {
+        data.price *= 1.1;
+        delete data.tags["awaiting-price-increase"];
+      })
+    )
+);
+```
+
 ## TODO
 
 The [full list of issues](https://github.com/jakes-space/firetender/issues) is
