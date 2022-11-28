@@ -110,22 +110,24 @@ describe("load", () => {
   });
 });
 
-describe("rw accessors", () => {
-  it("read a primitive field.", async () => {
+describe("read-only accessor (.r)", () => {
+  it("reads a primitive field.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
     expect(testDoc.r.email).toBe("bob@example.com");
   });
 
-  it("do not contain a missing optional field.", async () => {
+  it("does not contain a missing optional field.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
     expect("ttl" in testDoc.r).toBe(false);
   });
+});
 
-  it("enforce schema rules when a field is set.", async () => {
+describe("writable accessor (.w)", () => {
+  it("enforces schema rules when a field is set.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
@@ -134,7 +136,7 @@ describe("rw accessors", () => {
     }).toThrowError("Invalid email");
   });
 
-  it("allow symbol properties to pass through objects.", async () => {
+  it("allows symbol properties to pass through objects.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
       recordOfObjects: {
@@ -147,7 +149,7 @@ describe("rw accessors", () => {
     expect(String(testDoc.w.recordOfObjects)).toBe("[object Object]");
   });
 
-  it("allow symbol properties to pass through arrays.", async () => {
+  it("allows symbol properties to pass through arrays.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
       arrayOfObjects: [
@@ -161,7 +163,7 @@ describe("rw accessors", () => {
     );
   });
 
-  it("can replace all document data by setting .w", async () => {
+  it("can replace all document data", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
       recordOfObjects: {
@@ -182,8 +184,23 @@ describe("rw accessors", () => {
     });
   });
 
-  // TODO: test that deleting a field clears it if the field is optional and
-  // throws if the field is required.
+  it("clears an optional field with delete operator", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      ttl: {
+        seconds: 123,
+        nanoseconds: 456,
+      },
+    });
+    delete testDoc.w.ttl;
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+    });
+    // Note that Typescript itself prevents you from deleting required fields.
+    // Attempting "delete testDoc.w.email;" is a TS compiler error.
+  });
 });
 
 describe("write", () => {
@@ -240,7 +257,9 @@ describe("update", () => {
 describe("record of primitives", () => {
   const initialState = {
     email: "bob@example.com",
-    recordOfPrimitives: { foo: "xyz" },
+    recordOfPrimitives: {
+      foo: "xyz",
+    },
   };
 
   it("reads an entry.", async () => {
@@ -255,7 +274,9 @@ describe("record of primitives", () => {
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
-      recordOfPrimitives: { foo: "abc" },
+      recordOfPrimitives: {
+        foo: "abc",
+      },
     });
   });
 
@@ -266,7 +287,10 @@ describe("record of primitives", () => {
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
-      recordOfPrimitives: { foo: "xyz", bar: "abc" },
+      recordOfPrimitives: {
+        foo: "xyz",
+        bar: "abc",
+      },
     });
   });
 
@@ -284,7 +308,21 @@ describe("record of primitives", () => {
     });
   });
 
-  // TODO: test setting the whole record: testDoc.w.recordOfPrimitives = { ... }
+  it("can set all record contents.", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      recordOfPrimitives: { foo: "xyz" },
+    });
+    testDoc.w.recordOfPrimitives = { bar: "abc" };
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      recordOfPrimitives: {
+        bar: "abc",
+      },
+    });
+  });
 });
 
 describe("record of objects", () => {
@@ -431,7 +469,26 @@ describe("record of objects", () => {
     });
   });
 
-  // TODO: test setting the whole record: testDoc.w.recordOfObjects = { ... }
+  it("can set all record contents.", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.w.recordOfObjects = {
+      tacos: {
+        rating: 9,
+        tags: ["crunchy"],
+      },
+    };
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      recordOfObjects: {
+        tacos: {
+          rating: 9,
+          tags: ["crunchy"],
+        },
+      },
+    });
+  });
 });
 
 describe("nested records", () => {
@@ -545,11 +602,6 @@ describe("array of objects", () => {
     };
     testDoc.w.arrayOfObjects[1].name += "bell";
     testDoc.w.arrayOfObjects[1].entries.a = 123;
-    // // in another test:
-    // testDoc.w.arrayOfObjects = [
-    //   { name: "baz", entries: {} },
-    //   { name: "qux", entries: { a: 111, b: 222 } },
-    // ];
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -594,9 +646,53 @@ describe("array of objects", () => {
     }).toThrow(RangeError);
   });
 
-  // TODO: test the case of deleting one of two identical array elements.
+  it("deletes the correct entry when there are multiple copies.", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      arrayOfObjects: [
+        { name: "A", entries: {} },
+        { name: "foo", entries: {} },
+        { name: "B", entries: {} },
+        { name: "foo", entries: {} },
+        { name: "C", entries: {} },
+        { name: "foo", entries: {} },
+        { name: "D", entries: {} },
+        { name: "foo", entries: {} },
+        { name: "E", entries: {} },
+      ],
+    });
+    delete testDoc.w.arrayOfObjects[5];
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      arrayOfObjects: [
+        // TODO #25: this is not the intended behavior!
+        { name: "A", entries: {} },
+        { name: "B", entries: {} },
+        { name: "C", entries: {} },
+        { name: "D", entries: {} },
+        { name: "E", entries: {} },
+      ],
+    });
+  });
 
-  // TODO: test setting the entire array: testDoc.w.arrayOfObjects = [ ... ]
+  it("can set the array contents.", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.w.arrayOfObjects = [
+      { name: "baz", entries: {} },
+      { name: "qux", entries: { a: 111, b: 222 } },
+    ];
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      arrayOfObjects: [
+        { name: "baz", entries: {} },
+        { name: "qux", entries: { a: 111, b: 222 } },
+      ],
+    });
+  });
 });
 
 describe("createNewDoc", () => {
