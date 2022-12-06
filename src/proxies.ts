@@ -34,6 +34,9 @@ function getPropertySchema(
         return schema.element;
       case z.ZodFirstPartyTypeKind.ZodObject:
         return schema.shape[propertyKey];
+      // If the parent is of type ZodAny, so are its properties.
+      case z.ZodFirstPartyTypeKind.ZodAny:
+        return z.any();
       default:
         throw TypeError(
           `Unsupported schema type for property "${propertyKey}": ${schema._def.typeName}`
@@ -41,6 +44,11 @@ function getPropertySchema(
     }
   }
 }
+
+/**
+ * Getting this symbol from one of our proxies returns the proxy's target.
+ */
+const PROXY_TARGET_SYMBOL = Symbol("proxy_target");
 
 /**
  * Wraps a top-level array, its elements, or its elements' subfields in a proxy
@@ -99,7 +107,10 @@ export function watchArrayForChanges<
         return result;
       }
       if (typeof propertyKey === "symbol") {
-        // Allow symbols to pass through.
+        if (propertyKey === PROXY_TARGET_SYMBOL) {
+          return target;
+        }
+        // Allow all other symbols to pass through.
         return property;
       }
       if (property instanceof Object) {
@@ -120,12 +131,22 @@ export function watchArrayForChanges<
         // Allow symbols to pass through.
         return Reflect.set(target, propertyKey, value);
       }
+      let processedValue = value;
+      // If the new value is an object wrapped in a Firetender proxy, which can
+      // commonly happen when referencing it inside a mutator function passed to
+      // FiretenderDoc.prototype.update(), unwrap it.
+      if (value instanceof Object) {
+        const valueTarget = value[PROXY_TARGET_SYMBOL];
+        if (valueTarget !== undefined) {
+          processedValue = valueTarget;
+        }
+      }
       // An array element or one of its subfields is being set to a new value.
       // Parse the new value with the appropriate schema, set it in the local
       // data, and mark the entire top-level array as needing to be written.
       const propertySchema = getPropertySchema(fieldSchema, propertyKey);
-      const parsedValue = propertySchema.parse(value);
-      const result = Reflect.set(target, propertyKey, parsedValue);
+      processedValue = propertySchema.parse(processedValue);
+      const result = Reflect.set(target, propertyKey, processedValue);
       addToUpdateList(arrayPath, array);
       return result;
     },
@@ -189,7 +210,10 @@ export function watchFieldForChanges<FieldSchemaType extends z.ZodTypeAny>(
         return (...args: any[]) => property.apply(field, args);
       }
       if (typeof propertyKey === "symbol") {
-        // Allow symbols to pass through.
+        if (propertyKey === PROXY_TARGET_SYMBOL) {
+          return target;
+        }
+        // Allow all other symbols to pass through.
         return property;
       }
       if (property instanceof Array) {
@@ -221,13 +245,23 @@ export function watchFieldForChanges<FieldSchemaType extends z.ZodTypeAny>(
         // Allow symbols to pass through.
         return Reflect.set(target, propertyKey, value);
       }
+      let processedValue = value;
+      // If the new value is an object wrapped in a Firetender proxy, which can
+      // commonly happen when referencing it inside a mutator function passed to
+      // FiretenderDoc.prototype.update(), unwrap it.
+      if (value instanceof Object) {
+        const valueTarget = value[PROXY_TARGET_SYMBOL];
+        if (valueTarget !== undefined) {
+          processedValue = valueTarget;
+        }
+      }
       // A property of this object is being set to a new value.  Parse the new
       // value with the appropriate schema, set it in the local data, and mark
       // the entire top-level array as needing to be written.
       const propertySchema = getPropertySchema(fieldSchema, propertyKey);
-      const parsedValue = propertySchema.parse(value);
-      addToUpdateList([...fieldPath, propertyKey], parsedValue);
-      return Reflect.set(target, propertyKey, parsedValue);
+      processedValue = propertySchema.parse(processedValue);
+      addToUpdateList([...fieldPath, propertyKey], processedValue);
+      return Reflect.set(target, propertyKey, processedValue);
     },
     deleteProperty(target, propertyKey) {
       assertKeyIsString(propertyKey);

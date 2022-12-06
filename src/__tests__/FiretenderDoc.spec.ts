@@ -929,6 +929,40 @@ describe("copy", () => {
   });
 });
 
+describe("other zod types", () => {
+  it("handles z.any", async () => {
+    const schema = z.object({
+      anything: z.any(),
+      arrayOfAnythings: z.array(z.any()),
+    });
+    const data: z.infer<typeof schema> = {
+      anything: {
+        foo: "hello",
+        bar: 123,
+      },
+      arrayOfAnythings: [{ a: { x: 123, y: 234 }, b: 222 }, { c: 333 }],
+    };
+    const docRef = await addDoc(testCollection, data);
+    const testDoc = await new FiretenderDoc(schema, docRef).load();
+    expect(testDoc.r).toEqual(data);
+    await testDoc.update((data) => {
+      data.anything = "I can haz primitive?";
+      data.arrayOfAnythings[1] = data.arrayOfAnythings[0];
+      const a = data.arrayOfAnythings[1].a;
+      data.arrayOfAnythings.push(a);
+    });
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      anything: "I can haz primitive?",
+      arrayOfAnythings: [
+        { a: { x: 123, y: 234 }, b: 222 },
+        { a: { x: 123, y: 234 }, b: 222 },
+        { x: 123, y: 234 },
+      ],
+    });
+  });
+});
+
 afterAll(async () => {
   await cleanupFirestoreEmulator();
 });
