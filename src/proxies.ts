@@ -8,6 +8,7 @@ import { assertKeyIsString } from "./ts-helpers";
  * specified property.
  */
 function getPropertySchema(
+  parent: any,
   parentSchema: z.ZodTypeAny,
   propertyKey: string
 ): z.ZodTypeAny {
@@ -34,6 +35,11 @@ function getPropertySchema(
         return schema.element;
       case z.ZodFirstPartyTypeKind.ZodObject:
         return schema.shape[propertyKey];
+      case z.ZodFirstPartyTypeKind.ZodDiscriminatedUnion:
+        // TODO: replace "options" with "optionsMap" for Zod 3.20.0+.
+        return (schema as any).options.get(
+          parent[(schema as any).discriminator]
+        );
       // If the parent is of type ZodAny, so are its properties.
       case z.ZodFirstPartyTypeKind.ZodAny:
         return z.any();
@@ -118,7 +124,7 @@ export function watchArrayForChanges<
         return watchArrayForChanges(
           arrayPath,
           array,
-          getPropertySchema(fieldSchema, propertyKey),
+          getPropertySchema(field, fieldSchema, propertyKey),
           property,
           addToUpdateList
         );
@@ -144,7 +150,7 @@ export function watchArrayForChanges<
       // An array element or one of its subfields is being set to a new value.
       // Parse the new value with the appropriate schema, set it in the local
       // data, and mark the entire top-level array as needing to be written.
-      const propertySchema = getPropertySchema(fieldSchema, propertyKey);
+      const propertySchema = getPropertySchema(field, fieldSchema, propertyKey);
       processedValue = propertySchema.parse(processedValue);
       const result = Reflect.set(target, propertyKey, processedValue);
       addToUpdateList(arrayPath, array);
@@ -223,7 +229,7 @@ export function watchFieldForChanges<FieldSchemaType extends z.ZodTypeAny>(
         return watchArrayForChanges(
           [...fieldPath, propertyKey],
           property,
-          getPropertySchema(fieldSchema, propertyKey),
+          getPropertySchema(field, fieldSchema, propertyKey),
           property,
           addToUpdateList
         );
@@ -232,7 +238,7 @@ export function watchFieldForChanges<FieldSchemaType extends z.ZodTypeAny>(
         // Wrap nested objects in another instance of this proxy.
         return watchFieldForChanges(
           [...fieldPath, propertyKey],
-          getPropertySchema(fieldSchema, propertyKey),
+          getPropertySchema(field, fieldSchema, propertyKey),
           property,
           addToUpdateList
         );
@@ -258,7 +264,7 @@ export function watchFieldForChanges<FieldSchemaType extends z.ZodTypeAny>(
       // A property of this object is being set to a new value.  Parse the new
       // value with the appropriate schema, set it in the local data, and mark
       // the entire top-level array as needing to be written.
-      const propertySchema = getPropertySchema(fieldSchema, propertyKey);
+      const propertySchema = getPropertySchema(field, fieldSchema, propertyKey);
       processedValue = propertySchema.parse(processedValue);
       addToUpdateList([...fieldPath, propertyKey], processedValue);
       return Reflect.set(target, propertyKey, processedValue);

@@ -996,6 +996,42 @@ describe("other zod types", () => {
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({ x: null, y: 222, z: { a: "foo", b: "baz" } });
   });
+
+  it("handles discriminating unions", async () => {
+    const schema = z.object({
+      someUnion: z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("x"),
+          x: z.object({
+            x2: z.string(),
+          }),
+        }),
+        z.object({
+          type: z.literal("y"),
+          y: z.object({
+            y2: z.number(),
+          }),
+        }),
+      ]),
+    });
+    const docRef = await addDoc(testCollection, {
+      someUnion: {
+        type: "x",
+        x: { x2: "123" },
+      },
+    });
+    const testDoc = await new FiretenderDoc(schema, docRef).load();
+    expect(testDoc.r).toEqual({ someUnion: { type: "x", x: { x2: "123" } } });
+    await testDoc.update((data) => {
+      let x2 = "";
+      if (data.someUnion.type === "x") {
+        x2 = data.someUnion.x.x2;
+      }
+      data.someUnion = { type: "y", y: { y2: Number(x2) } };
+    });
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({ someUnion: { type: "y", y: { y2: 123 } } });
+  });
 });
 
 afterAll(async () => {
