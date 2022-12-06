@@ -1,11 +1,8 @@
 /**
  * Start before testing: firebase emulators:start --project=firetender
  *
- * TODO: #4 nullable tests
  * TODO: #5 zod effects and preprocessing, but disallowing transforms
  * TODO: #6 timestamp tests
- * TODO: #7 enum tests
- * TODO: #8 validation tests: forbid creating, reading, or writing invalid data
  */
 
 import {
@@ -974,6 +971,30 @@ describe("other zod types", () => {
     });
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({ x: "c" });
+  });
+
+  it("handles nullable fields", async () => {
+    const schema = z.object({
+      x: z.number().nullable(),
+      y: z.number().nullable(),
+      z: z.object({ a: z.string(), b: z.string() }).nullable(),
+    });
+    const docRef = await addDoc(testCollection, {
+      x: 111,
+      y: null,
+      z: { a: "foo", b: "bar" },
+    });
+    const testDoc = await new FiretenderDoc(schema, docRef).load();
+    expect(testDoc.r).toEqual({ x: 111, y: null, z: { a: "foo", b: "bar" } });
+    await testDoc.update((data) => {
+      data.x = null;
+      data.y = 222;
+      if (data.z) {
+        data.z.b = "baz";
+      }
+    });
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({ x: null, y: 222, z: { a: "foo", b: "baz" } });
   });
 });
 
