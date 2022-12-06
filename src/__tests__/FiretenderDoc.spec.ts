@@ -961,6 +961,20 @@ describe("other zod types", () => {
       ],
     });
   });
+
+  it("handles enums", async () => {
+    const schema = z.object({
+      x: z.enum(["a", "b", "c"]),
+    });
+    const docRef = await addDoc(testCollection, { x: "b" });
+    const testDoc = await new FiretenderDoc(schema, docRef).load();
+    expect(testDoc.r).toEqual({ x: "b" });
+    await testDoc.update((data) => {
+      data.x = "c";
+    });
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({ x: "c" });
+  });
 });
 
 afterAll(async () => {
