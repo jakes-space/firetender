@@ -1,13 +1,55 @@
 # Firetender
 
-The goal of Firetender is to make Firestore documents look (almost) like any
-other Typescript objects, reducing boilerplate and conceptual overhead and
-providing type safety and data validation.
+Firetender takes your [Zod](https://github.com/colinhacks/zod) data schema ...
+
+```javascript
+const itemSchema = z.object({
+  description: z.string().optional(),
+  count: z.number().nonnegative().integer(),
+  tags: z.array(z.string()).default([]),
+});
+```
+
+associates it with a Firestore collection ...
+
+```javascript
+const itemCollection = new FiretenderCollection(itemSchema, db, "items");
+```
+
+and provides you with typesafe, validated Firestore documents that are easy to
+use and understand.
+
+```javascript
+// Add a document to the collection.
+await itemCollection.newDoc("foo", { count: 0, tags: ["needs +1"] }).write();
+
+// Read the document "bar", then update it.
+const itemDoc = await itemCollection.existingDoc("bar").load();
+const count = itemDoc.r.count;
+await itemDoc.update((item) => {
+  item.tags.push("needs +1");
+});
+
+// Increment the count of all docs with a "needs +1" tag.
+await Promise.all(
+  itemCollection
+    .query(where("tags", "array-contains", "needs +1"))
+    .map((itemDoc) =>
+      itemDoc.update((item) => {
+        item.count += 1;
+        delete item.tags["needs +1"];
+      })
+    )
+);
+```
+
+Changes to the document data are monitored, and only modified fields are updated
+on Firestore.
 
 ## Usage
 
-To illustrate, let's run through the basics of defining, creating, modifying,
-and copying a Firestore document.
+To illustrate in more detail, let's run through the basics of defining,
+creating, modifying, and copying a Firestore document.
 
 ### Initialize Cloud Firestore
 
