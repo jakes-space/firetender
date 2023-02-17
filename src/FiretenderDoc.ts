@@ -219,6 +219,14 @@ export class FiretenderDoc<
   }
 
   /**
+   * Does the document contain data, either because it was successfully loaded
+   * or is newly created?
+   */
+  isLoaded(): boolean {
+    return this.data !== undefined;
+  }
+
+  /**
    * Does this document contain data that has not yet been written to Firestore?
    */
   isPendingWrite(): boolean {

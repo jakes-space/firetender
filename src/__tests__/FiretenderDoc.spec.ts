@@ -63,6 +63,7 @@ describe("load", () => {
       testDataSchema,
       doc(testCollection, "foo")
     );
+    expect(testDoc.isLoaded()).toBe(false);
     expect(() => testDoc.r.email).toThrowError(
       "load() must be called before reading the document."
     );
@@ -755,6 +756,7 @@ describe("createNewDoc", () => {
     );
     testDoc.w.recordOfObjects.x = { rating: 5, tags: ["hi"] };
     expect(testDoc.isNew()).toBe(true);
+    expect(testDoc.isLoaded()).toBe(true);
     expect(testDoc.isPendingWrite()).toBe(true);
     await testDoc.write();
     expect(testDoc.isPendingWrite()).toBe(false);
