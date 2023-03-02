@@ -73,6 +73,14 @@ export class FiretenderDoc<
   private updates = new Map<string, any>();
 
   /**
+   * If a load() call is already in progress, this is a list of promise
+   * resolutions to be called once the load is complete.  Otherwise undefined.
+   */
+  private resolvesWaitingForLoad:
+    | { resolve: () => void; reject: (reason?: any) => void }[]
+    | undefined;
+
+  /**
    * @param schema the Zod object schema describing this document's data.
    * @param ref either a document reference specifying the full path of the
    *   document, or a collection reference specifying where a new document will
@@ -244,13 +252,25 @@ export class FiretenderDoc<
       throw Error("load() should not be called for new documents.");
     }
     if (!this.data || force) {
-      const snapshot = await getDoc(this.ref);
-      if (!snapshot.exists()) {
-        throw new Error("Document does not exist.");
+      if (this.resolvesWaitingForLoad !== undefined) {
+        await new Promise<void>((resolve, reject) => {
+          assertIsDefined(this.resolvesWaitingForLoad);
+          this.resolvesWaitingForLoad.push({ resolve, reject });
+        });
+      } else {
+        this.resolvesWaitingForLoad = [];
+        const snapshot = await getDoc(this.ref);
+        if (!snapshot.exists()) {
+          const error = Error("Document does not exist.");
+          this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
+          throw error;
+        }
+        this.data = this.schema.parse(snapshot.data());
+        // Dereference the old proxy, if any, to force a recapture of data.
+        this.dataProxy = undefined;
+        this.resolvesWaitingForLoad.forEach((wait) => wait.resolve());
+        this.resolvesWaitingForLoad = undefined;
       }
-      this.data = this.schema.parse(snapshot.data());
-      // Dereference the old proxy, if any, to force a recapture of data.
-      this.dataProxy = undefined;
     }
     return this;
   }

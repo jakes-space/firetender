@@ -106,6 +106,20 @@ describe("load", () => {
     await testDoc.load(true); // Forces load.
     expect(testDoc.r.email).toBe("alice@example.com");
   });
+
+  it("waits if a load call is already in progress", async () => {
+    const docRef = await addDoc(testCollection, { email: "bob@example.com" });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    const loadingPromise1 = testDoc.load();
+    expect(testDoc.isLoaded()).toBeFalsy();
+    const loadingPromise2 = testDoc.load();
+    expect(testDoc.isLoaded()).toBeFalsy();
+    const loadingPromise3 = testDoc.load();
+    expect(testDoc.isLoaded()).toBeFalsy();
+    await Promise.all([loadingPromise1, loadingPromise2, loadingPromise3]);
+    expect(testDoc.isLoaded()).toBeTruthy();
+    expect(testDoc.r.email).toBe("bob@example.com");
+  });
 });
 
 describe("read-only accessor (.r)", () => {
