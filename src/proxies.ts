@@ -30,6 +30,13 @@ function getPropertySchema(
         continue;
       // Return the sub-schemas of supported collection types.
       case z.ZodFirstPartyTypeKind.ZodRecord:
+        if (
+          schema.keySchema._def.typeName !== z.ZodFirstPartyTypeKind.ZodString
+        ) {
+          throw TypeError(
+            `The ZodRecord for property ${propertyKey} has keys of type ${schema.keySchema._def.typeName}.  Only strings are supported.`
+          );
+        }
         return schema.valueSchema;
       case z.ZodFirstPartyTypeKind.ZodArray:
         return schema.element;
