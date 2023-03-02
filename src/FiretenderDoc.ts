@@ -1,5 +1,6 @@
 import {
   addDoc,
+  collection,
   CollectionReference,
   doc,
   DocumentReference,
@@ -10,7 +11,7 @@ import {
 import { z } from "zod";
 
 import { watchFieldForChanges } from "./proxies";
-import { assertIsDefined, DeepReadonly } from "./ts-helpers";
+import { assertIsDefined, DeepReadonly, isFirestoreRef } from "./ts-helpers";
 
 /**
  * Public options for initializing a FiretenderDoc object.
@@ -147,16 +148,26 @@ export class FiretenderDoc<
 
   /**
    * Creates a copy of this document.  Returns a deep copy of its data with a
-   * new Firestore ID and reference.
+   * specified or undefined Firestore ID and reference.
    *
    * This method does not create the document in Firestore.  To do so, call the
-   * write() method.  If an ID or doc ref is not provided, those will be unset
-   * until the write.
+   * write() method.  If a document ID or reference is not provided, those will
+   * be unset until the write.
    *
-   * @param dest the destination can be a string or undefined to create a copy
-   *   in the same collection, or a document or collection reference to create
-   *   it elsewhere.  Firestore will assign a random doc ID if dest is undefined
-   *   or a collection reference.
+   * The location of the new document depends on the type of the `dest`
+   * argument:
+   * - `undefined` (default): It will be in the same collection and will be
+   *   assigned a random ID when written to Firestore.
+   * - `string`: It will be in the same collection and have a document ID given
+   *   by `dest`.
+   * - `string[]`: It will be in the specified subcollection and receive a
+   *   random ID (if `type` does not give an ID for the deepest subcollection)
+   *   or have the fully specified Firestore path (if `type` does).
+   * - `DocumentReference`: It will have the given Firestore reference.
+   * - `CollectionReference`: It will be in the given subcollection and have a
+   *   randomly assigned ID upon writing.
+   *
+   * @param dest the location of the new document; see above for details.
    * @param options optional parameters for the resulting FiretenderDoc; see
    *   FiretenderDocOptions for detail.
    */
@@ -165,6 +176,7 @@ export class FiretenderDoc<
       | DocumentReference
       | CollectionReference
       | string
+      | string[]
       | undefined = undefined,
     options: AllFiretenderDocOptions = {}
   ): FiretenderDoc<SchemaType, DataType> {
@@ -172,9 +184,27 @@ export class FiretenderDoc<
       throw Error("You must call load() before making a copy.");
     }
     let ref: DocumentReference | CollectionReference;
-    if (dest && typeof dest !== "string") {
+    if (isFirestoreRef(dest)) {
       ref = dest;
+    } else if (Array.isArray(dest)) {
+      const path = this.ref.path.split("/");
+      // Add 1 to length for copying a doc that has not been written and thus
+      // has no final ID.
+      const collectionDepth = (path.length + 1) / 2;
+      if (dest.length < collectionDepth - 1 || dest.length > collectionDepth) {
+        throw Error(
+          "copy() with a path array requires an ID for all collections and subcollections, except optionally the last."
+        );
+      }
+      dest.forEach((id, index) => {
+        path[index * 2 + 1] = id;
+      });
+      ref =
+        dest.length === collectionDepth
+          ? doc(this.ref.firestore, path[0], ...path.slice(1))
+          : collection(this.ref.firestore, path[0], ...path.slice(1));
     } else {
+      // For a string or undefined ...
       const collectionRef =
         this.ref.type === "document" ? this.ref.parent : this.ref;
       if (dest) {

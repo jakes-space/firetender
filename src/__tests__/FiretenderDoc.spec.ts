@@ -858,6 +858,12 @@ describe("copy", () => {
     });
   });
 
+  it("throws if the copied doc exists but was not loaded.", async () => {
+    const docRef = await addDoc(testCollection, initialState);
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    expect(() => testDoc.copy()).toThrowError();
+  });
+
   it("can copy into a specified collection.", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
@@ -939,6 +945,38 @@ describe("copy", () => {
       nestedRecords: {},
       arrayOfObjects: [],
     });
+  });
+
+  it("can copy into a doc given by string[].", async () => {
+    const testDoc1 = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      collection(testCollection, "id-A", "subcol-1"),
+      initialState
+    );
+    const testDoc2 = testDoc1.copy(["id-B", "copy-with-doc-ids"]);
+    expect(testDoc2.docRef.path).toBe(
+      "doctests/id-B/subcol-1/copy-with-doc-ids"
+    );
+  });
+
+  it("can copy into a collection given by string[].", async () => {
+    const testDoc1 = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      collection(testCollection, "id-A", "subcol-1"),
+      initialState
+    );
+    const testDoc2 = await testDoc1.copy(["id-B"]).write();
+    expect(testDoc2.docRef.path).toMatch(/^doctests\/id-B\/subcol-1\/[^/]+$/);
+  });
+
+  it("throws when given string[] with the wrong number of IDs.", async () => {
+    const testDoc1 = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      collection(testCollection, "id-A", "subcol-1", "id-B", "subcol-2"),
+      initialState
+    );
+    expect(() => testDoc1.copy(["A"])).toThrowError();
+    expect(() => testDoc1.copy(["A", "B", "C", "D"])).toThrowError();
   });
 });
 
