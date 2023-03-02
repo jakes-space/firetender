@@ -83,9 +83,9 @@ export class FiretenderCollection<
   ): FiretenderDoc<SchemaType, DataType> {
     const ids = id instanceof Array ? id : id ? [id] : [];
     let ref: DocumentReference | CollectionReference | undefined =
-      this.makeDocRef(ids);
+      this.makeDocRefInternal(ids);
     if (!ref) {
-      ref = this.makeCollectionRef(ids);
+      ref = this.makeCollectionRefInternal(ids);
     }
     if (!ref) {
       throw Error(
@@ -117,7 +117,7 @@ export class FiretenderCollection<
     id: string[] | string,
     options: FiretenderDocOptions = {}
   ): FiretenderDoc<SchemaType, DataType> {
-    const ref = this.makeDocRef([id].flat());
+    const ref = this.makeDocRefInternal([id].flat());
     if (!ref) {
       throw Error(
         "existingDoc() requires a full ID path for this collection and its parent collections, if any."
@@ -139,7 +139,7 @@ export class FiretenderCollection<
     id: string[] | string | undefined = undefined
   ): Promise<FiretenderDoc<SchemaType, DataType>[]> {
     const ids = id instanceof Array ? id : id ? [id] : [];
-    const collectionRef = this.makeCollectionRef(ids);
+    const collectionRef = this.makeCollectionRefInternal(ids);
     if (!collectionRef) {
       throw Error(
         "When querying a subcollection, getAllDocs() requires the IDs of all parent collections."
@@ -174,7 +174,7 @@ export class FiretenderCollection<
       whereClauses = [idOrWhereClause, ...moreWhereClauses];
     }
     let ref: CollectionReference | Query | undefined =
-      this.makeCollectionRef(ids);
+      this.makeCollectionRefInternal(ids);
     if (!ref) {
       ref = collectionGroup(
         this.firestore,
@@ -195,11 +195,49 @@ export class FiretenderCollection<
    * @param id full path ID of the target document.
    */
   async delete(id: string[] | string): Promise<void> {
-    const ref = this.makeDocRef([id].flat());
+    const ref = this.makeDocRefInternal([id].flat());
     if (!ref) {
       throw Error("delete() requires the full ID path of the target document.");
     }
     await deleteDoc(ref);
+  }
+
+  /**
+   * Returns a document reference for the specified ID.
+   *
+   * @param id the ID or array of IDs specifying the desired document.
+   */
+  makeDocRef(id: string[] | string): DocumentReference {
+    const ids = [id].flat();
+    const ref = this.makeDocRefInternal(ids);
+    if (!ref) {
+      throw Error(
+        `Document refs for /${this.collectionPath.join("/*")}/* require ${
+          this.collectionPath.length
+        } document IDs; received ${ids.length}.`
+      );
+    }
+    return ref;
+  }
+
+  /**
+   * Returns a collection reference for the specified ID.
+   *
+   * @param id the ID or array of IDs specifying the desired collection.
+   */
+  makeCollectionRef(
+    id: string[] | string | undefined = undefined
+  ): CollectionReference {
+    const ids = id ? [id].flat() : [];
+    const ref = this.makeCollectionRefInternal(ids);
+    if (!ref) {
+      throw Error(
+        `Collection refs for /${this.collectionPath.join("/*")} require ${
+          this.collectionPath.length - 1
+        } document IDs; received ${ids.length}.`
+      );
+    }
+    return ref;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -209,7 +247,7 @@ export class FiretenderCollection<
    * Builds a doc ref from the given IDs, or returns "undefined" if the IDs do
    * not correctly specify a doc path.
    */
-  private makeDocRef(ids: string[]): DocumentReference | undefined {
+  private makeDocRefInternal(ids: string[]): DocumentReference | undefined {
     if (ids.length !== this.collectionPath.length) {
       return undefined;
     }
@@ -221,7 +259,9 @@ export class FiretenderCollection<
    * Builds a collection ref from the given IDs, or returns "undefined" if the
    * IDs do not correctly specify a collection path.
    */
-  private makeCollectionRef(ids: string[]): CollectionReference | undefined {
+  private makeCollectionRefInternal(
+    ids: string[]
+  ): CollectionReference | undefined {
     if (ids.length !== this.collectionPath.length - 1) {
       return undefined;
     }

@@ -344,6 +344,62 @@ describe("delete", () => {
   });
 });
 
+describe("makeCollectionRef", () => {
+  it("throws for the wrong number of IDs", async () => {
+    const testCollection = new FiretenderCollection(testSchema, firestore, [
+      collectionName,
+      "subcol-A",
+      "subcol-B",
+    ]);
+    expect(() => testCollection.makeCollectionRef(["123"])).toThrowError();
+    expect(() =>
+      testCollection.makeCollectionRef(["123", "456", "789"])
+    ).toThrowError();
+  });
+
+  it("returns a correct subcollection ref", async () => {
+    const testCollection = new FiretenderCollection(testSchema, firestore, [
+      collectionName,
+      "subcol-A",
+      "subcol-B",
+    ]);
+    const ref = testCollection.makeCollectionRef(["123", "456"]);
+    expect(ref.path).toBe("coltests/123/subcol-A/456/subcol-B");
+  });
+
+  it("returns a correct top-level collection ref", async () => {
+    const testCollection = new FiretenderCollection(testSchema, firestore, [
+      collectionName,
+    ]);
+    const ref = testCollection.makeCollectionRef();
+    expect(ref.path).toBe("coltests");
+  });
+});
+
+describe("makeDocRef", () => {
+  it("throws for the wrong number of IDs", async () => {
+    const testCollection = new FiretenderCollection(testSchema, firestore, [
+      collectionName,
+      "subcol-A",
+      "subcol-B",
+    ]);
+    expect(() => testCollection.makeDocRef(["123", "456"])).toThrowError();
+    expect(() =>
+      testCollection.makeDocRef(["123", "456", "789", "abc"])
+    ).toThrowError();
+  });
+
+  it("returns an appropriate doc ref", async () => {
+    const testCollection = new FiretenderCollection(testSchema, firestore, [
+      collectionName,
+      "subcol-A",
+      "subcol-B",
+    ]);
+    const ref = testCollection.makeDocRef(["123", "456", "789"]);
+    expect(ref.path).toBe("coltests/123/subcol-A/456/subcol-B/789");
+  });
+});
+
 afterAll(async () => {
   await cleanupFirestoreEmulator();
 });
