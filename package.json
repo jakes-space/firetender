@@ -42,7 +42,7 @@
     "prepublishOnly": "npm run check && npm run test && npm run build"
   },
   "dependencies": {
-    "firebase": "^9.17.2",
+    "firebase": "9.17.0",
     "zod": "^3.20.6"
   },
   "devDependencies": {
