@@ -23,11 +23,7 @@ import { DeepPartial } from "./ts-helpers";
  * reference, sans IDs.  All docs at /databases/{db}/documents/foo/{*}/bar/{*}
  * are covered by a FiretenderCollection for the path ["foo", "bar"].
  */
-export class FiretenderCollection<
-  SchemaType extends z.SomeZodObject,
-  DataType extends z.infer<SchemaType> = z.infer<SchemaType>,
-  InputType extends z.input<SchemaType> = z.input<SchemaType>
-> {
+export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   /** Zod schema used to parse and validate the document's data */
   readonly schema: SchemaType;
 
@@ -38,7 +34,7 @@ export class FiretenderCollection<
   readonly collectionPath: string[];
 
   /** Initial values to be filled in when creating a new document  */
-  readonly baseInitialData: DeepPartial<InputType> | undefined;
+  readonly baseInitialData: DeepPartial<z.input<SchemaType>> | undefined;
 
   /**
    * @param schema the Zod object schema describing the documents in this
@@ -78,9 +74,9 @@ export class FiretenderCollection<
    */
   newDoc(
     id: string[] | string | undefined = undefined,
-    initialData: DeepPartial<InputType> | undefined = undefined,
+    initialData: DeepPartial<z.input<SchemaType>> | undefined = undefined,
     options: FiretenderDocOptions = {}
-  ): FiretenderDoc<SchemaType, DataType> {
+  ): FiretenderDoc<SchemaType> {
     const ids = id instanceof Array ? id : id ? [id] : [];
     let ref: DocumentReference | CollectionReference | undefined =
       this.makeDocRefInternal(ids);
@@ -116,7 +112,7 @@ export class FiretenderCollection<
   existingDoc(
     id: string[] | string,
     options: FiretenderDocOptions = {}
-  ): FiretenderDoc<SchemaType, DataType> {
+  ): FiretenderDoc<SchemaType> {
     const ref = this.makeDocRefInternal([id].flat());
     if (!ref) {
       throw Error(
@@ -137,7 +133,7 @@ export class FiretenderCollection<
    */
   async getAllDocs(
     id: string[] | string | undefined = undefined
-  ): Promise<FiretenderDoc<SchemaType, DataType>[]> {
+  ): Promise<FiretenderDoc<SchemaType>[]> {
     const ids = id instanceof Array ? id : id ? [id] : [];
     const collectionRef = this.makeCollectionRefInternal(ids);
     if (!collectionRef) {
@@ -160,7 +156,7 @@ export class FiretenderCollection<
   async query(
     idOrWhereClause: string | string[] | QueryConstraint,
     ...moreWhereClauses: QueryConstraint[]
-  ): Promise<FiretenderDoc<SchemaType, DataType>[]> {
+  ): Promise<FiretenderDoc<SchemaType>[]> {
     let ids: string[];
     let whereClauses: QueryConstraint[];
     if (idOrWhereClause instanceof Array) {
@@ -275,7 +271,7 @@ export class FiretenderCollection<
    */
   private async getAndWrapDocs(
     query: CollectionReference | Query
-  ): Promise<FiretenderDoc<SchemaType, DataType>[]> {
+  ): Promise<FiretenderDoc<SchemaType>[]> {
     const querySnapshot = await getDocs(query);
     return querySnapshot.docs.map(
       (queryDoc) =>

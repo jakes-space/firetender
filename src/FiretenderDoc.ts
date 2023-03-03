@@ -44,11 +44,7 @@ export type AllFiretenderDocOptions = FiretenderDocOptions & {
 /**
  * A local representation of a Firestore document.
  */
-export class FiretenderDoc<
-  SchemaType extends z.SomeZodObject,
-  DataType extends z.infer<SchemaType> = z.infer<SchemaType>,
-  InputType extends z.input<SchemaType> = z.input<SchemaType>
-> {
+export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /** Zod schema used to parse and validate the document's data */
   readonly schema: SchemaType;
 
@@ -65,10 +61,10 @@ export class FiretenderDoc<
   private isSettingNewContents: boolean;
 
   /** Local copy of the document data, parsed into the Zod type */
-  private data: DataType | undefined = undefined;
+  private data: z.infer<SchemaType> | undefined = undefined;
 
   /** Proxy to intercept write (.w) access to the data and track the changes */
-  private dataProxy: ProxyHandler<DataType> | undefined = undefined;
+  private dataProxy: ProxyHandler<z.infer<SchemaType>> | undefined = undefined;
 
   /** Map from the dot-delimited field path (per updateDoc()) to new value */
   private updates = new Map<string, any>();
@@ -129,15 +125,12 @@ export class FiretenderDoc<
    * @param options optional parameters for the resulting FiretenderDoc; see
    *   FiretenderDocOptions for detail.
    */
-  static createNewDoc<
-    SchemaType1 extends z.SomeZodObject,
-    InputType1 extends z.input<SchemaType1> = z.input<SchemaType1>
-  >(
+  static createNewDoc<SchemaType1 extends z.SomeZodObject>(
     schema: SchemaType1,
     ref: DocumentReference | CollectionReference,
-    initialData: InputType1,
+    initialData: z.input<SchemaType1>,
     options: FiretenderDocOptions = {}
-  ): FiretenderDoc<SchemaType1, z.infer<SchemaType1>> {
+  ): FiretenderDoc<SchemaType1> {
     const mergedOptions: AllFiretenderDocOptions = {
       ...options,
       createDoc: true,
@@ -179,7 +172,7 @@ export class FiretenderDoc<
       | string[]
       | undefined = undefined,
     options: AllFiretenderDocOptions = {}
-  ): FiretenderDoc<SchemaType, DataType> {
+  ): FiretenderDoc<SchemaType> {
     if (!this.data) {
       throw Error("You must call load() before making a copy.");
     }
@@ -308,11 +301,11 @@ export class FiretenderDoc<
   /**
    * Read-only accessor to the contents of this document.
    */
-  get r(): DeepReadonly<DataType> {
+  get r(): DeepReadonly<z.infer<SchemaType>> {
     if (!this.data) {
       throw Error("load() must be called before reading the document.");
     }
-    return this.data as DeepReadonly<DataType>;
+    return this.data as DeepReadonly<z.infer<SchemaType>>;
   }
 
   /**
@@ -321,10 +314,10 @@ export class FiretenderDoc<
    * Only use this accessor when making changes to the doc.  The .r accessor is
    * considerably more efficient when reading.
    */
-  get w(): DataType {
+  get w(): z.infer<SchemaType> {
     if (this.isSettingNewContents) {
       // No need to monitor changes if we're setting rather than updating.
-      return this.data as DataType;
+      return this.data as z.infer<SchemaType>;
     }
     if (!this.dataProxy) {
       if (!this.data) {
@@ -338,13 +331,13 @@ export class FiretenderDoc<
         this.addToUpdateList.bind(this)
       );
     }
-    return this.dataProxy as DataType;
+    return this.dataProxy as z.infer<SchemaType>;
   }
 
   /**
    * Writable accessor to overwrite all the document data.
    */
-  set w(newData: InputType) {
+  set w(newData: z.input<SchemaType>) {
     this.data = this.schema.parse(newData);
     this.isSettingNewContents = true;
     this.dataProxy = undefined;
@@ -399,7 +392,7 @@ export class FiretenderDoc<
    * @param mutator function that accepts a writable data object and makes
    *   changes to it.
    */
-  async update(mutator: (data: DataType) => void): Promise<this> {
+  async update(mutator: (data: z.infer<SchemaType>) => void): Promise<this> {
     await this.load();
     mutator(this.w);
     await this.write();

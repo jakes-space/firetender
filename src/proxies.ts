@@ -43,8 +43,7 @@ function getPropertySchema(
       case z.ZodFirstPartyTypeKind.ZodObject:
         return schema.shape[propertyKey];
       case z.ZodFirstPartyTypeKind.ZodDiscriminatedUnion:
-        // TODO: replace "options" with "optionsMap" for Zod 3.20.0+.
-        return (schema as any).options.get(
+        return (schema as any).optionsMap.get(
           parent[(schema as any).discriminator]
         );
       // If the parent is of type ZodAny, so are its properties.
