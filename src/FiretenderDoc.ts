@@ -11,7 +11,7 @@ import {
 import { z } from "zod";
 
 import { watchFieldForChanges } from "./proxies";
-import { assertIsDefined, DeepReadonly, isFirestoreRef } from "./ts-helpers";
+import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 
 /**
  * Public options for initializing a FiretenderDoc object.
@@ -177,12 +177,18 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       throw Error("You must call load() before making a copy.");
     }
     let ref: DocumentReference | CollectionReference;
-    if (isFirestoreRef(dest)) {
+    if (
+      dest instanceof DocumentReference ||
+      dest instanceof CollectionReference
+    ) {
       ref = dest;
     } else if (Array.isArray(dest)) {
       const path = this.ref.path.split("/");
-      // Add 1 to length for copying a doc that has not been written and thus
-      // has no final ID.
+      if (path.length % 2 === 0) {
+        // If this doc has a ID for the deepest collection, remove it so that
+        // path always starts as a collection path.
+        path.length -= 1;
+      }
       const collectionDepth = (path.length + 1) / 2;
       if (dest.length < collectionDepth - 1 || dest.length > collectionDepth) {
         throw Error(

@@ -959,12 +959,23 @@ describe("copy", () => {
     );
   });
 
-  it("can copy into a collection given by string[].", async () => {
+  it("can copy into a collection using string[] (for new doc).", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1"),
       initialState
     );
+    const testDoc2 = await testDoc1.copy(["id-B"]).write();
+    expect(testDoc2.docRef.path).toMatch(/^doctests\/id-B\/subcol-1\/[^/]+$/);
+  });
+
+  it("can copy into a collection using string[] (existing doc).", async () => {
+    const testDoc1 = FiretenderDoc.createNewDoc(
+      testDataSchema,
+      collection(testCollection, "id-A", "subcol-1"),
+      initialState
+    );
+    await testDoc1.write();
     const testDoc2 = await testDoc1.copy(["id-B"]).write();
     expect(testDoc2.docRef.path).toMatch(/^doctests\/id-B\/subcol-1\/[^/]+$/);
   });

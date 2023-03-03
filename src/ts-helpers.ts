@@ -2,8 +2,6 @@
  * Typescript-related helper functions and types.
  */
 
-import { CollectionReference, DocumentReference } from "firebase/firestore";
-
 export type DeepPartial<T> = T extends object
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : T;
@@ -38,10 +36,4 @@ export function assertKeyIsString(key: any): asserts key is string {
   if (typeof key !== "string") {
     throw TypeError("Property access using symbols is not supported.");
   }
-}
-
-export function isFirestoreRef(
-  ref: any
-): ref is DocumentReference | CollectionReference {
-  return ref && (ref.type === "document" || ref.type === "collection");
 }
