@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { z } from "zod";
 
+import { FiretenderUsageError } from "./errors";
 import { FiretenderDoc, FiretenderDocOptions } from "./FiretenderDoc";
 import { DeepPartial } from "./ts-helpers";
 
@@ -84,7 +85,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
       ref = this.makeCollectionRefInternal(ids);
     }
     if (!ref) {
-      throw Error(
+      throw new FiretenderUsageError(
         "newDoc() requires an ID path for all collections and subcollections, except optionally the last."
       );
     }
@@ -115,7 +116,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   ): FiretenderDoc<SchemaType> {
     const ref = this.makeDocRefInternal([id].flat());
     if (!ref) {
-      throw Error(
+      throw new FiretenderUsageError(
         "existingDoc() requires a full ID path for this collection and its parent collections, if any."
       );
     }
@@ -137,7 +138,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     const ids = id instanceof Array ? id : id ? [id] : [];
     const collectionRef = this.makeCollectionRefInternal(ids);
     if (!collectionRef) {
-      throw Error(
+      throw new FiretenderUsageError(
         "When querying a subcollection, getAllDocs() requires the IDs of all parent collections."
       );
     }
@@ -193,7 +194,9 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   async delete(id: string[] | string): Promise<void> {
     const ref = this.makeDocRefInternal([id].flat());
     if (!ref) {
-      throw Error("delete() requires the full ID path of the target document.");
+      throw new FiretenderUsageError(
+        "delete() requires the full ID path of the target document."
+      );
     }
     await deleteDoc(ref);
   }
@@ -207,7 +210,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     const ids = [id].flat();
     const ref = this.makeDocRefInternal(ids);
     if (!ref) {
-      throw Error(
+      throw new FiretenderUsageError(
         `Document refs for /${this.collectionPath.join("/*")}/* require ${
           this.collectionPath.length
         } document IDs; received ${ids.length}.`
@@ -227,7 +230,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     const ids = id ? [id].flat() : [];
     const ref = this.makeCollectionRefInternal(ids);
     if (!ref) {
-      throw Error(
+      throw new FiretenderUsageError(
         `Collection refs for /${this.collectionPath.join("/*")} require ${
           this.collectionPath.length - 1
         } document IDs; received ${ids.length}.`

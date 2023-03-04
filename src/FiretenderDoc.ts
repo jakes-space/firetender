@@ -10,6 +10,11 @@ import {
 } from "firebase/firestore";
 import { z } from "zod";
 
+import {
+  FiretenderInternalError,
+  FiretenderIOError,
+  FiretenderUsageError,
+} from "./errors";
 import { watchFieldForChanges } from "./proxies";
 import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 
@@ -174,7 +179,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     options: AllFiretenderDocOptions = {}
   ): FiretenderDoc<SchemaType> {
     if (!this.data) {
-      throw Error("You must call load() before making a copy.");
+      throw new FiretenderUsageError(
+        "You must call load() before making a copy."
+      );
     }
     let ref: DocumentReference | CollectionReference;
     if (
@@ -191,7 +198,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       }
       const collectionDepth = (path.length + 1) / 2;
       if (dest.length < collectionDepth - 1 || dest.length > collectionDepth) {
-        throw Error(
+        throw new FiretenderUsageError(
           "copy() with a path array requires an ID for all collections and subcollections, except optionally the last."
         );
       }
@@ -227,7 +234,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   get id(): string {
     if (!this.docID) {
-      throw Error(
+      throw new FiretenderUsageError(
         "id can only be accessed after the new doc has been written."
       );
     }
@@ -241,7 +248,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   get docRef(): DocumentReference {
     if (this.ref.type !== "document") {
-      throw Error(
+      throw new FiretenderUsageError(
         "docRef can only be accessed after the new doc has been written."
       );
     }
@@ -278,7 +285,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   async load(force = false): Promise<this> {
     if (this.isNewDoc || this.ref.type === "collection") {
-      throw Error("load() should not be called for new documents.");
+      throw new FiretenderUsageError(
+        "load() should not be called for new documents."
+      );
     }
     if (!this.data || force) {
       if (this.resolvesWaitingForLoad !== undefined) {
@@ -290,7 +299,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         this.resolvesWaitingForLoad = [];
         const snapshot = await getDoc(this.ref);
         if (!snapshot.exists()) {
-          const error = Error("Document does not exist.");
+          const error = new FiretenderIOError(
+            `Document does not exist: "${this.ref.path}"`
+          );
           this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
           throw error;
         }
@@ -309,7 +320,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   get r(): DeepReadonly<z.infer<SchemaType>> {
     if (!this.data) {
-      throw Error("load() must be called before reading the document.");
+      throw new FiretenderUsageError(
+        "load() must be called before reading the document."
+      );
     }
     return this.data as DeepReadonly<z.infer<SchemaType>>;
   }
@@ -328,7 +341,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     if (!this.dataProxy) {
       if (!this.data) {
         // TODO #23: Consider being able to update a doc without loading it.
-        throw Error("load() must be called before updating the document.");
+        throw new FiretenderUsageError(
+          "load() must be called before updating the document."
+        );
       }
       this.dataProxy = watchFieldForChanges(
         [],
@@ -369,7 +384,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     else {
       if (!(this.ref.type === "document")) {
         // We should never get here.
-        throw Error(
+        throw new FiretenderInternalError(
           "Internal error.  Firetender object should always reference a document when updating an existing doc."
         );
       }
