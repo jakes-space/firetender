@@ -4,6 +4,7 @@ import {
   CollectionReference,
   doc,
   DocumentReference,
+  DocumentSnapshot,
   getDoc,
   setDoc,
   updateDoc,
@@ -11,6 +12,7 @@ import {
 import { z } from "zod";
 
 import {
+  addContextToError,
   FiretenderInternalError,
   FiretenderIOError,
   FiretenderUsageError,
@@ -297,7 +299,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         });
       } else {
         this.resolvesWaitingForLoad = [];
-        const snapshot = await getDoc(this.ref);
+        let snapshot: DocumentSnapshot;
+        try {
+          snapshot = await getDoc(this.ref);
+        } catch (error) {
+          addContextToError(error, "getDoc", this.ref);
+          throw error;
+        }
         if (!snapshot.exists()) {
           const error = new FiretenderIOError(
             `Document does not exist: "${this.ref.path}"`
@@ -372,9 +380,19 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     if (this.isSettingNewContents) {
       assertIsDefined(this.data);
       if (this.ref.type === "document") {
-        await setDoc(this.ref, this.data);
+        try {
+          await setDoc(this.ref, this.data);
+        } catch (error) {
+          addContextToError(error, "setDoc", this.ref, this.data);
+          throw error;
+        }
       } else {
-        this.ref = await addDoc(this.ref, this.data);
+        try {
+          this.ref = await addDoc(this.ref, this.data);
+        } catch (error: any) {
+          addContextToError(error, "addDoc", this.ref, this.data);
+          throw error;
+        }
         this.docID = this.ref.path.split("/").pop(); // ID is last part of path.
       }
       this.isSettingNewContents = false;
@@ -391,12 +409,17 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       if (this.updates.size > 0) {
         // updateDoc() takes alternating field path and field value parameters.
         const flatUpdateList = Array.from(this.updates.entries()).flat();
-        await updateDoc(
-          this.ref,
-          flatUpdateList[0],
-          flatUpdateList[1],
-          ...flatUpdateList.slice(2)
-        );
+        try {
+          await updateDoc(
+            this.ref,
+            flatUpdateList[0],
+            flatUpdateList[1],
+            ...flatUpdateList.slice(2)
+          );
+        } catch (error: any) {
+          addContextToError(error, "updateDoc", this.ref, flatUpdateList);
+          throw error;
+        }
         this.updates.clear();
       }
     }

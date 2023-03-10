@@ -10,10 +10,11 @@ import {
   Query,
   query,
   QueryConstraint,
+  QuerySnapshot,
 } from "firebase/firestore";
 import { z } from "zod";
 
-import { FiretenderUsageError } from "./errors";
+import { addContextToError, FiretenderUsageError } from "./errors";
 import { FiretenderDoc, FiretenderDocOptions } from "./FiretenderDoc";
 import { DeepPartial } from "./ts-helpers";
 
@@ -198,7 +199,11 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
         "delete() requires the full ID path of the target document."
       );
     }
-    await deleteDoc(ref);
+    try {
+      await deleteDoc(ref);
+    } catch (error) {
+      addContextToError(error, "deleteDoc", ref);
+    }
   }
 
   /**
@@ -275,7 +280,17 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   private async getAndWrapDocs(
     query: CollectionReference | Query
   ): Promise<FiretenderDoc<SchemaType>[]> {
-    const querySnapshot = await getDocs(query);
+    let querySnapshot: QuerySnapshot;
+    try {
+      querySnapshot = await getDocs(query);
+    } catch (error) {
+      addContextToError(
+        error,
+        "getDocs",
+        query instanceof CollectionReference ? query : undefined
+      );
+      throw error;
+    }
     return querySnapshot.docs.map(
       (queryDoc) =>
         new FiretenderDoc(this.schema, queryDoc.ref, {

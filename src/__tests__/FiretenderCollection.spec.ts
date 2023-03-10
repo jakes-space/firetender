@@ -267,6 +267,23 @@ describe("query functions", () => {
         "requires the IDs of all parent collections"
       );
     });
+
+    it("provides context on errors.", async () => {
+      const nonexistentCollection = new FiretenderCollection(
+        testSchema,
+        firestore,
+        "no-collection-here"
+      );
+      await expect(nonexistentCollection.getAllDocs()).rejects.toThrowError();
+      try {
+        await nonexistentCollection.getAllDocs();
+      } catch (error: any) {
+        expect(error.firetenderContext).toEqual({
+          call: "getDocs",
+          ref: "no-collection-here",
+        });
+      }
+    });
   });
 
   describe("query", () => {
@@ -316,6 +333,25 @@ describe("query functions", () => {
         "National Museum of Nature and Science",
         "The Getty",
       ]);
+    });
+
+    it("provides context on errors.", async () => {
+      const nonexistentCollection = new FiretenderCollection(
+        testSchema,
+        firestore,
+        "no-collection-here"
+      );
+      const whereClause = where("not-an-actual-field", "==", "foo");
+      await expect(
+        nonexistentCollection.query(whereClause)
+      ).rejects.toThrowError();
+      try {
+        await nonexistentCollection.query(whereClause);
+      } catch (error: any) {
+        expect(error.firetenderContext).toEqual({
+          call: "getDocs",
+        });
+      }
     });
   });
 });

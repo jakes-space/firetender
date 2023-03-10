@@ -10,6 +10,7 @@ import {
   collection,
   CollectionReference,
   doc,
+  Firestore,
   getDoc,
   updateDoc,
 } from "firebase/firestore";
@@ -47,9 +48,11 @@ const testDataSchema = z.object({
     .default([]),
 });
 
+let firestore: Firestore;
 let testCollection: CollectionReference;
 beforeAll(async () => {
-  testCollection = collection(await setupFirestoreEmulator(), "doctests");
+  firestore = await setupFirestoreEmulator();
+  testCollection = collection(firestore, "doctests");
 });
 
 async function createAndLoadDoc(data: Record<string, unknown>) {
@@ -243,6 +246,30 @@ describe("write", () => {
         nanoseconds: 456,
       },
     });
+  });
+
+  it("provides context on errors.", async () => {
+    const badRef = collection(firestore, "not-in-access-rules");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const badDoc = FiretenderDoc.createNewDoc(testDataSchema, badRef, {
+      email: "bob@example.com",
+    });
+    await expect(badDoc.write()).rejects.toThrowError();
+    try {
+      await badDoc.write();
+    } catch (error: any) {
+      expect(error.firetenderContext).toEqual({
+        call: "addDoc",
+        ref: "not-in-access-rules",
+        data: {
+          email: "bob@example.com",
+          recordOfPrimitives: {},
+          recordOfObjects: {},
+          nestedRecords: {},
+          arrayOfObjects: [],
+        },
+      });
+    }
   });
 });
 

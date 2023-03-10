@@ -19,8 +19,19 @@ export async function setupFirestoreEmulator(port = 8080) {
       rules: `
         rules_version = '2';
         service cloud.firestore {
-          match /{document=**} {
-            allow read, write: if true;
+          match /databases/{database}/documents {
+            match /coltests/{document=**} {
+              allow read, write: if true;
+            }
+            match /doctests/{document=**} {
+              allow read, write: if true;
+            }
+            match /cities/{document=**} {
+              allow read, write: if true;
+            }
+            match /{path=**}/landmarks/{id} {
+              allow read: if true;
+            }
           }
         }`,
     },
