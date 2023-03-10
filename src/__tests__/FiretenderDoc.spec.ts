@@ -9,6 +9,7 @@ import {
   addDoc,
   collection,
   CollectionReference,
+  deleteDoc,
   doc,
   Firestore,
   getDoc,
@@ -248,7 +249,7 @@ describe("write", () => {
     });
   });
 
-  it("provides context on errors.", async () => {
+  it("provides context on errors when adding a doc.", async () => {
     const badRef = collection(firestore, "not-in-access-rules");
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const badDoc = FiretenderDoc.createNewDoc(testDataSchema, badRef, {
@@ -268,6 +269,24 @@ describe("write", () => {
           nestedRecords: {},
           arrayOfObjects: [],
         },
+      });
+    }
+  });
+
+  it("provides context on errors when updating a doc.", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+    });
+    await deleteDoc(testDoc.docRef);
+    testDoc.w.email = "alice@example.com";
+    await expect(testDoc.write()).rejects.toThrowError();
+    try {
+      await testDoc.write();
+    } catch (error: any) {
+      expect(error.firetenderContext).toEqual({
+        call: "updateDoc",
+        ref: testDoc.docRef.path,
+        data: ["email", "alice@example.com"],
       });
     }
   });
