@@ -251,7 +251,6 @@ describe("write", () => {
 
   it("provides context on errors when adding a doc.", async () => {
     const badRef = collection(firestore, "not-in-access-rules");
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const badDoc = FiretenderDoc.createNewDoc(testDataSchema, badRef, {
       email: "bob@example.com",
     });
