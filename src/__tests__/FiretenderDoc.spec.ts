@@ -1146,7 +1146,7 @@ describe("other zod types", () => {
 });
 
 describe("timestamps", () => {
-  it("reads and writes Firestore's Timestamp type", async () => {
+  it("writes Firestore's Timestamp type", async () => {
     const now = new Date();
     const testDoc = await FiretenderDoc.createNewDoc(
       testDataSchema,
@@ -1158,6 +1158,15 @@ describe("timestamps", () => {
     ).write();
     const doc = await getDoc(testDoc.docRef);
     expect(doc.data()?.ttl.toDate()).toEqual(now);
+  });
+
+  it("reads Firestore's Timestamp type.", async () => {
+    const now = new Date();
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      ttl: Timestamp.fromDate(now),
+    });
+    expect(testDoc.r.ttl?.toDate()).toEqual(now);
   });
 
   it("generates server timestamps", async () => {
