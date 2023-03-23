@@ -7,6 +7,7 @@ import {
 import { FiretenderCollection } from "./FiretenderCollection";
 import type { FiretenderDocOptions } from "./FiretenderDoc";
 import { FiretenderDoc } from "./FiretenderDoc";
+import { futureTimestampDays, timestampSchema } from "./timestamps";
 
 export {
   FiretenderCollection,
@@ -16,8 +17,6 @@ export {
   FiretenderInternalError,
   FiretenderIOError,
   FiretenderUsageError,
+  futureTimestampDays,
+  timestampSchema,
 };
-
-// TODO #6, #9, #10: stop using a direct export after the timestamp module gets
-// cleaned up.
-export * from "./timestamps";

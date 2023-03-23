@@ -1,38 +1,32 @@
+import { FieldValue, Timestamp } from "firebase/firestore";
 import { z } from "zod";
 
 /**
  * Timestamp representation used by Firestore: seconds and nanoseconds since the
  * epoch.
  */
-export const timestampSchema = z.object({
-  seconds: z.number().positive().int(),
-  nanoseconds: z.number().nonnegative().int(),
-});
-export type TimestampData = z.infer<typeof timestampSchema>;
+export const timestampSchema = z.union([
+  z
+    .object({
+      seconds: z.number().positive().int(),
+      nanoseconds: z.number().nonnegative().int(),
+    })
+    .transform(
+      ({ seconds, nanoseconds }) => new Timestamp(seconds, nanoseconds)
+    ),
+  z.custom<FieldValue>((value: any) => value._methodName === "serverTimestamp"),
+]);
 
-export function dateFromTimestamp(timestamp: TimestampData): Date {
-  return new Date(timestamp.seconds * 1e3 + timestamp.nanoseconds / 1e6);
-}
-
-export function makeTTL(daysFromNow = 30) {
-  // TODO: #10 is there a way to use the server time rather than Date.now()?
-  return timestampFromUnixMillis(
-    Date.now() + daysFromNow * 24 * 60 * 60 * 1000
-  );
-}
-
-export function timestampFromDate(date: Date): TimestampData {
-  return timestampFromUnixMillis(date.getTime());
-}
-
-export function timestampFromUnixMillis(msSinceEpoch: number): TimestampData {
-  return {
-    seconds: Math.floor(msSinceEpoch / 1000),
-    nanoseconds: Math.floor((msSinceEpoch % 1000) * 1000000),
-  };
-}
-
-export function nowTimestamp() {
-  // TODO: #9 is there a way to use the server time rather than Date.now()?
-  return timestampFromUnixMillis(Date.now());
+/**
+ * Returns a Firestore Timestamp for some future date.  The result is typically
+ * used for writing TTLs.
+ *
+ * The client's clock (specifically `Date.now()`) is used to generate the
+ * timestamp.  For TTLs days in the future, this is generally not a concern.
+ * However, this function should not be depended on for short offsets.
+ *
+ * @param daysFromNow days in the future to set this Timestamp.
+ */
+export function futureTimestampDays(daysFromNow: number) {
+  return Timestamp.fromMillis(Date.now() + daysFromNow * 24 * 60 * 60 * 1000);
 }

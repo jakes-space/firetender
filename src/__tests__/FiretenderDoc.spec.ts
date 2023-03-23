@@ -2,7 +2,6 @@
  * Start before testing: firebase emulators:start --project=firetender
  *
  * TODO: #5 zod effects and preprocessing, but disallowing transforms
- * TODO: #6 timestamp tests
  */
 
 import {
@@ -13,12 +12,14 @@ import {
   doc,
   Firestore,
   getDoc,
+  serverTimestamp,
+  Timestamp,
   updateDoc,
 } from "firebase/firestore";
 import { z } from "zod";
 
 import { FiretenderDoc } from "../FiretenderDoc";
-import { timestampSchema } from "../timestamps";
+import { futureTimestampDays, timestampSchema } from "../timestamps";
 import {
   cleanupFirestoreEmulator,
   setupFirestoreEmulator,
@@ -237,14 +238,14 @@ describe("write", () => {
       email: "bob@example.com",
     });
     testDoc.w.email = "alice@example.com";
-    testDoc.w.ttl = { seconds: 123, nanoseconds: 456 };
+    testDoc.w.ttl = new Timestamp(123, 456000);
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "alice@example.com",
       ttl: {
         seconds: 123,
-        nanoseconds: 456,
+        nanoseconds: 456000,
       },
     });
   });
@@ -1141,6 +1142,51 @@ describe("other zod types", () => {
     });
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({ someUnion: { type: "y", y: { y2: 123 } } });
+  });
+});
+
+describe("timestamps", () => {
+  it("reads and writes Firestore's Timestamp type", async () => {
+    const now = new Date();
+    const testDoc = await FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      {
+        email: "bob@example.com",
+        ttl: Timestamp.fromDate(now),
+      }
+    ).write();
+    const doc = await getDoc(testDoc.docRef);
+    expect(doc.data()?.ttl.toDate()).toEqual(now);
+  });
+
+  it("generates server timestamps", async () => {
+    const testDoc = await FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      {
+        email: "bob@example.com",
+        ttl: serverTimestamp(),
+      }
+    ).write();
+    const doc = await getDoc(testDoc.docRef);
+    const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - Date.now());
+    expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
+  });
+
+  it("generates future timestamps", async () => {
+    const testDoc = await FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      {
+        email: "bob@example.com",
+        ttl: futureTimestampDays(30),
+      }
+    ).write();
+    const doc = await getDoc(testDoc.docRef);
+    const futureMillis = Date.now() + 30 * 86400e3;
+    const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - futureMillis);
+    expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
 });
 
