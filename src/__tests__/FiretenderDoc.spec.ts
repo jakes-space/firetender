@@ -18,7 +18,7 @@ import {
 import { z } from "zod";
 
 import { FiretenderDoc } from "../FiretenderDoc";
-import { timestampSchema } from "../Timestamps";
+import { timestampSchema } from "../timestamps";
 import {
   cleanupFirestoreEmulator,
   setupFirestoreEmulator,
