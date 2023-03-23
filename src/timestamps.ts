@@ -16,7 +16,7 @@ export const timestampSchema = z.union([
     ),
   z
     .custom<FieldValue>((value: any) => value._methodName === "serverTimestamp")
-    .transform((v) => v as Timestamp), // Output type will always be Timestamp.
+    .transform((v) => v as never), // Output type should always be Timestamp.
 ]);
 
 /**
