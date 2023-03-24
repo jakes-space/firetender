@@ -207,10 +207,7 @@ describe("writable accessor (.w)", () => {
   it("clears an optional field with delete operator", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
-      ttl: {
-        seconds: 123,
-        nanoseconds: 456,
-      },
+      ttl: new Timestamp(123, 456000),
     });
     delete testDoc.w.ttl;
     await testDoc.write();

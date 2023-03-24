@@ -8,7 +8,10 @@ import { z } from "zod";
  * Timestamp representation used by Firestore: seconds and nanoseconds since the
  * epoch.
  */
-export const timestampSchema = z.custom<Timestamp>();
+export const timestampSchema = z.custom<Timestamp>(
+  (data: any) =>
+    data instanceof Timestamp || data._methodName === "serverTimestamp"
+);
 
 /**
  * Returns a Firestore Timestamp for some future date.  The result is typically
