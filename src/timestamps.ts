@@ -1,23 +1,14 @@
-import { FieldValue, Timestamp } from "firebase/firestore";
+import {
+  serverTimestamp as firestoreServerTimestamp,
+  Timestamp,
+} from "firebase/firestore";
 import { z } from "zod";
 
 /**
  * Timestamp representation used by Firestore: seconds and nanoseconds since the
  * epoch.
  */
-export const timestampSchema = z.union([
-  z
-    .object({
-      seconds: z.number().positive().int(),
-      nanoseconds: z.number().nonnegative().int(),
-    })
-    .transform(
-      ({ seconds, nanoseconds }) => new Timestamp(seconds, nanoseconds)
-    ),
-  z
-    .custom<FieldValue>((value: any) => value._methodName === "serverTimestamp")
-    .transform((v) => v as never), // Output type should always be Timestamp.
-]);
+export const timestampSchema = z.custom<Timestamp>();
 
 /**
  * Returns a Firestore Timestamp for some future date.  The result is typically
@@ -32,3 +23,9 @@ export const timestampSchema = z.union([
 export function futureTimestampDays(daysFromNow: number) {
   return Timestamp.fromMillis(Date.now() + daysFromNow * 24 * 60 * 60 * 1000);
 }
+
+/**
+ * Returns a sentinel to include a server-generated timestamp in the written
+ * data.
+ */
+export const serverTimestamp = () => firestoreServerTimestamp() as Timestamp;

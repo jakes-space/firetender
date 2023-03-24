@@ -7,7 +7,11 @@ import {
 import { FiretenderCollection } from "./FiretenderCollection";
 import type { FiretenderDocOptions } from "./FiretenderDoc";
 import { FiretenderDoc } from "./FiretenderDoc";
-import { futureTimestampDays, timestampSchema } from "./timestamps";
+import {
+  futureTimestampDays,
+  serverTimestamp,
+  timestampSchema,
+} from "./timestamps";
 
 export {
   FiretenderCollection,
@@ -18,5 +22,6 @@ export {
   FiretenderIOError,
   FiretenderUsageError,
   futureTimestampDays,
+  serverTimestamp,
   timestampSchema,
 };

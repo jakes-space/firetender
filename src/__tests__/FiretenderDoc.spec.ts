@@ -12,14 +12,17 @@ import {
   doc,
   Firestore,
   getDoc,
-  serverTimestamp,
   Timestamp,
   updateDoc,
 } from "firebase/firestore";
 import { z } from "zod";
 
 import { FiretenderDoc } from "../FiretenderDoc";
-import { futureTimestampDays, timestampSchema } from "../timestamps";
+import {
+  futureTimestampDays,
+  serverTimestamp,
+  timestampSchema,
+} from "../timestamps";
 import {
   cleanupFirestoreEmulator,
   setupFirestoreEmulator,
@@ -1169,7 +1172,7 @@ describe("timestamps", () => {
     expect(testDoc.r.ttl?.toDate()).toEqual(now);
   });
 
-  it("generates server timestamps", async () => {
+  it("generates server timestamps in new doc", async () => {
     const testDoc = await FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
@@ -1178,6 +1181,27 @@ describe("timestamps", () => {
         ttl: serverTimestamp(),
       }
     ).write();
+    const doc = await getDoc(testDoc.docRef);
+    const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - Date.now());
+    expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
+  });
+
+  it("generates server timestamps in existing doc", async () => {
+    const pastDate = new Date(2001, 2, 3);
+    const testDoc = await FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      {
+        email: "bob@example.com",
+        ttl: Timestamp.fromDate(pastDate),
+      }
+    ).write();
+    expect((await getDoc(testDoc.docRef)).data()?.ttl.toDate()).toEqual(
+      pastDate
+    );
+    await testDoc.update((doc) => {
+      doc.ttl = serverTimestamp();
+    });
     const doc = await getDoc(testDoc.docRef);
     const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - Date.now());
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
