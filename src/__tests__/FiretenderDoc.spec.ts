@@ -21,6 +21,7 @@ import { FiretenderDoc } from "../FiretenderDoc";
 import {
   futureTimestampDays,
   serverTimestamp,
+  serverTimestampWithClientTime,
   timestampSchema,
 } from "../timestamps";
 import {
@@ -1201,6 +1202,39 @@ describe("timestamps", () => {
     });
     const doc = await getDoc(testDoc.docRef);
     const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - Date.now());
+    expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
+  });
+
+  it("provides temporary client-generated timestamps", async () => {
+    const now = new Date();
+    const testDoc = await FiretenderDoc.createNewDoc(
+      testDataSchema,
+      testCollection,
+      {
+        email: "bob@example.com",
+        ttl: serverTimestampWithClientTime(),
+      }
+    );
+
+    // Wait 100 ms before writing to avoid coincident timestamps.  The test
+    // server runs locally, so this should always work....
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await testDoc.write();
+
+    // Was a temp timestamp defined, and is it approximately now?
+    const tempTimestamp = testDoc.r.ttl as Timestamp;
+    expect(tempTimestamp).toBeDefined();
+    let millisDiff = Math.abs(tempTimestamp.toMillis() - now.valueOf());
+    expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
+
+    // On reading, is there a server timestamp that differs from the temp one?
+    await testDoc.load(true); // Force load.
+    const assignedTimestamp = testDoc.r.ttl as Timestamp;
+    expect(assignedTimestamp).toBeDefined();
+    expect(assignedTimestamp.toMillis() !== tempTimestamp.toMillis());
+
+    // Is the server timestamp approximately now?
+    millisDiff = Math.abs(assignedTimestamp.toMillis() - now.valueOf());
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
 

@@ -10,6 +10,7 @@ import { FiretenderDoc } from "./FiretenderDoc";
 import {
   futureTimestampDays,
   serverTimestamp,
+  serverTimestampWithClientTime,
   timestampSchema,
 } from "./timestamps";
 
@@ -23,5 +24,6 @@ export {
   FiretenderUsageError,
   futureTimestampDays,
   serverTimestamp,
+  serverTimestampWithClientTime,
   timestampSchema,
 };
