@@ -35,8 +35,10 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   /** The collection path of this object: a series of collection names */
   readonly collectionPath: string[];
 
-  /** Initial values to be filled in when creating a new document  */
-  readonly baseInitialData: DeepPartial<z.input<SchemaType>> | undefined;
+  /** Function to return the initial values when creating a new document. */
+  readonly baseInitialDataFactory:
+    | (() => DeepPartial<z.input<SchemaType>>)
+    | undefined;
 
   /**
    * @param schema the Zod object schema describing the documents in this
@@ -44,19 +46,27 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
    * @param firestore the thing you get from getFirestore().
    * @param collectionPath the path of this collection in Firestore: the names
    *   of any parent collections and of this collection.
-   * @param baseInitialData (optional) default field values for this collection.
+   * @param baseInitialData (optional) an object or object factory providing
+   *   default field values for this collection.
    */
   constructor(
     schema: SchemaType,
     firestore: Firestore,
     collectionPath: [string, ...string[]] | string,
-    baseInitialData: DeepPartial<z.input<SchemaType>> | undefined = undefined
+    baseInitialData:
+      | (() => DeepPartial<z.input<SchemaType>>)
+      | DeepPartial<z.input<SchemaType>>
+      | undefined = undefined
   ) {
     this.schema = schema;
     this.firestore = firestore;
     this.collectionPath = [collectionPath].flat();
     if (baseInitialData) {
-      this.baseInitialData = baseInitialData;
+      if (typeof baseInitialData === "function") {
+        this.baseInitialDataFactory = baseInitialData;
+      } else {
+        this.baseInitialDataFactory = () => baseInitialData;
+      }
     }
   }
 
@@ -91,8 +101,8 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
       );
     }
     const data = {};
-    if (this.baseInitialData) {
-      Object.assign(data, this.baseInitialData);
+    if (this.baseInitialDataFactory) {
+      Object.assign(data, this.baseInitialDataFactory());
     }
     if (initialData) {
       Object.assign(data, initialData);

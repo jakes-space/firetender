@@ -83,6 +83,17 @@ describe("newDoc", () => {
     const testDoc = testCollection.newDoc(undefined, { bar: 123 });
     expect(testDoc.r).toEqual({ foo: "hello", bar: 123 });
   });
+
+  it("takes a factory method for the initial data.", () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      collectionName,
+      () => ({ foo: "hello" })
+    );
+    const testDoc = testCollection.newDoc(undefined, { bar: 123 });
+    expect(testDoc.r).toEqual({ foo: "hello", bar: 123 });
+  });
 });
 
 describe("existingDoc", () => {
