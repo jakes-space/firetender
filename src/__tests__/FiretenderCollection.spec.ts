@@ -1,13 +1,14 @@
+import { z } from "zod";
+
 import {
   addDoc,
   collection,
   doc,
   Firestore,
+  FIRESTORE_DEPS_TYPE,
   setDoc,
   where,
-} from "firebase/firestore";
-import { z } from "zod";
-
+} from "../firestore-deps";
 import { FiretenderCollection } from "../FiretenderCollection";
 import {
   cleanupFirestoreEmulator,
@@ -285,6 +286,8 @@ describe("query functions", () => {
         firestore,
         "no-collection-here"
       );
+      // Admin can read anywhere, so this test does not throw an error.
+      if (FIRESTORE_DEPS_TYPE === "admin") return;
       await expect(nonexistentCollection.getAllDocs()).rejects.toThrowError();
       try {
         await nonexistentCollection.getAllDocs();
@@ -347,6 +350,8 @@ describe("query functions", () => {
     });
 
     it("provides context on errors.", async () => {
+      // Admin can read anywhere, so this test does not throw an error.
+      if (FIRESTORE_DEPS_TYPE === "admin") return;
       const nonexistentCollection = new FiretenderCollection(
         testSchema,
         firestore,

@@ -1,6 +1,6 @@
-import { arrayRemove, deleteField } from "firebase/firestore";
 import { z } from "zod";
 
+import { arrayRemove, deleteField } from "./firestore-deps";
 import { assertKeyIsString } from "./ts-helpers";
 
 /**

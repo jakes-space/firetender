@@ -1,3 +1,6 @@
+import { z } from "zod";
+
+import { addContextToError, FiretenderUsageError } from "./errors";
 import {
   collection,
   collectionGroup,
@@ -11,10 +14,7 @@ import {
   query,
   QueryConstraint,
   QuerySnapshot,
-} from "firebase/firestore";
-import { z } from "zod";
-
-import { addContextToError, FiretenderUsageError } from "./errors";
+} from "./firestore-deps";
 import { FiretenderDoc, FiretenderDocOptions } from "./FiretenderDoc";
 import { DeepPartial } from "./ts-helpers";
 

@@ -7,11 +7,14 @@ import {
   initializeTestEnvironment,
   RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { collection } from "firebase/firestore";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
-let testEnv: RulesTestEnvironment;
+import { Firestore, FIRESTORE_DEPS_TYPE } from "../firestore-deps";
 
-export async function setupFirestoreEmulator(port = 8080) {
+let testEnv: RulesTestEnvironment | undefined;
+
+export async function setupFirestoreEmulator(port = 8080): Promise<Firestore> {
   testEnv = await initializeTestEnvironment({
     firestore: {
       host: "localhost",
@@ -38,12 +41,13 @@ export async function setupFirestoreEmulator(port = 8080) {
     projectId: "firetender",
   });
   await testEnv.clearFirestore();
-  // Creating a dummy collection is needed because the Firestore object returned
-  // by testenv.unauthenticatedContext().firestore() is missing some properties.
-  // Getting it from a collection fixes that, probably due to some type coersion
-  // going on inside of collection().  It's ugly, but it works.
-  return collection(testEnv.unauthenticatedContext().firestore(), "dummy")
-    .firestore;
+  if (FIRESTORE_DEPS_TYPE === "web") {
+    return testEnv.unauthenticatedContext().firestore() as any;
+  } else {
+    process.env["FIRESTORE_EMULATOR_HOST"] = `localhost:${port}`;
+    const app = initializeApp({ projectId: "firetender" });
+    return getFirestore(app) as any;
+  }
 }
 
 export async function cleanupFirestoreEmulator() {

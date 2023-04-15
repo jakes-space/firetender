@@ -1,3 +1,11 @@
+import { z } from "zod";
+
+import {
+  addContextToError,
+  FiretenderInternalError,
+  FiretenderIOError,
+  FiretenderUsageError,
+} from "./errors";
 import {
   addDoc,
   collection,
@@ -8,15 +16,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-} from "firebase/firestore";
-import { z } from "zod";
-
-import {
-  addContextToError,
-  FiretenderInternalError,
-  FiretenderIOError,
-  FiretenderUsageError,
-} from "./errors";
+} from "./firestore-deps";
 import { watchFieldForChanges } from "./proxies";
 import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 
@@ -108,7 +108,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         "Initial data must be given when creating a new doc."
       );
     }
-    if (this.ref.type === "document") {
+    if (this.ref instanceof DocumentReference) {
       this.docID = this.ref.path.split("/").pop();
     } else if (!this.isNewDoc) {
       throw TypeError(
@@ -214,7 +214,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     } else {
       // For a string or undefined ...
       const collectionRef =
-        this.ref.type === "document" ? this.ref.parent : this.ref;
+        this.ref instanceof DocumentReference ? this.ref.parent : this.ref;
       if (dest) {
         ref = doc(collectionRef, dest);
       } else {
@@ -249,7 +249,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * @throws Throws an error if the document does not yet have a reference.
    */
   get docRef(): DocumentReference {
-    if (this.ref.type !== "document") {
+    if (!(this.ref instanceof DocumentReference)) {
       throw new FiretenderUsageError(
         "docRef can only be accessed after the new doc has been written."
       );
@@ -286,7 +286,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    *   the document already contains data.
    */
   async load(force = false): Promise<this> {
-    if (this.isNewDoc || this.ref.type === "collection") {
+    if (this.isNewDoc || this.ref instanceof CollectionReference) {
       throw new FiretenderUsageError(
         "load() should not be called for new documents."
       );
@@ -306,7 +306,12 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           addContextToError(error, "getDoc", this.ref);
           throw error;
         }
-        if (!snapshot.exists()) {
+        // DocumentSnapshot.prototype.exists is a boolean for
+        // "firebase-admin/firestore" and a function for "firebase/firestore".
+        if (
+          (typeof snapshot.exists === "boolean" && !snapshot.exists) ||
+          (typeof snapshot.exists === "function" && !(snapshot.exists as any)())
+        ) {
           const error = new FiretenderIOError(
             `Document does not exist: "${this.ref.path}"`
           );
@@ -379,7 +384,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     // For new docs, this.data should contain its initial state.
     if (this.isSettingNewContents) {
       assertIsDefined(this.data);
-      if (this.ref.type === "document") {
+      if (this.ref instanceof DocumentReference) {
         try {
           await setDoc(this.ref, this.data);
         } catch (error) {
@@ -400,24 +405,18 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     }
     // For existing docs, this.updates should contain a list of changes.
     else {
-      if (!(this.ref.type === "document")) {
+      if (!(this.ref instanceof DocumentReference)) {
         // We should never get here.
         throw new FiretenderInternalError(
           "Internal error.  Firetender object should always reference a document when updating an existing doc."
         );
       }
       if (this.updates.size > 0) {
-        // updateDoc() takes alternating field path and field value parameters.
-        const flatUpdateList = Array.from(this.updates.entries()).flat();
+        const updateData = Object.fromEntries(this.updates);
         try {
-          await updateDoc(
-            this.ref,
-            flatUpdateList[0],
-            flatUpdateList[1],
-            ...flatUpdateList.slice(2)
-          );
+          await updateDoc(this.ref, updateData);
         } catch (error: any) {
-          addContextToError(error, "updateDoc", this.ref, flatUpdateList);
+          addContextToError(error, "updateDoc", this.ref, updateData);
           throw error;
         }
         this.updates.clear();

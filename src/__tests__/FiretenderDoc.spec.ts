@@ -4,6 +4,8 @@
  * TODO: #5 zod effects and preprocessing, but disallowing transforms
  */
 
+import { z } from "zod";
+
 import {
   addDoc,
   collection,
@@ -11,12 +13,11 @@ import {
   deleteDoc,
   doc,
   Firestore,
+  FIRESTORE_DEPS_TYPE,
   getDoc,
   Timestamp,
   updateDoc,
-} from "firebase/firestore";
-import { z } from "zod";
-
+} from "../firestore-deps";
 import { FiretenderDoc } from "../FiretenderDoc";
 import {
   futureTimestampDays,
@@ -244,14 +245,13 @@ describe("write", () => {
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "alice@example.com",
-      ttl: {
-        seconds: 123,
-        nanoseconds: 456000,
-      },
+      ttl: new Timestamp(123, 456000),
     });
   });
 
   it("provides context on errors when adding a doc.", async () => {
+    // Admin can read anywhere, so this test does not throw an error.
+    if (FIRESTORE_DEPS_TYPE === "admin") return;
     const badRef = collection(firestore, "not-in-access-rules");
     const badDoc = FiretenderDoc.createNewDoc(testDataSchema, badRef, {
       email: "bob@example.com",
@@ -287,7 +287,7 @@ describe("write", () => {
       expect(error.firetenderContext).toEqual({
         call: "updateDoc",
         ref: testDoc.docRef.path,
-        data: ["email", "alice@example.com"],
+        data: { email: "alice@example.com" },
       });
     }
   });

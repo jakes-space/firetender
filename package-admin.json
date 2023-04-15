@@ -1,6 +1,6 @@
 {
-  "name": "firetender",
-  "displayName": "Firetender",
+  "name": "firetender-admin",
+  "displayName": "Firetender (for firebase-admin/firestore)",
   "description": "Typescript wrapper for Firestore documents",
   "version": "0.9.5",
   "author": "Jake Hartman",
@@ -29,8 +29,8 @@
     "/src/*.ts"
   ],
   "scripts": {
-    "use-admin-firestore": "cp package-admin.json package.json && cp src/firestore-deps-admin.ts src/firestore-deps.ts && npm install",
-    "use-web-firestore": "echo Already using web firestore.",
+    "use-web-firestore": "cp package-web.json package.json && cp src/firestore-deps-web.ts src/firestore-deps.ts && npm install",
+    "use-admin-firestore": "echo Already using admin firestore.",
     "diff-web-admin": "diff package-web.json package-admin.json",
     "lint:check": "eslint src --ext .ts",
     "lint:fix": "eslint --fix src --ext .ts",
@@ -46,7 +46,7 @@
     "prepublishOnly": "npm run check && npm run test && npm run build"
   },
   "dependencies": {
-    "firebase": "9.17.0",
+    "firebase-admin": "^11.6.0",
     "zod": "^3.20.6"
   },
   "devDependencies": {

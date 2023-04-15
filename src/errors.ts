@@ -1,4 +1,4 @@
-import { CollectionReference, DocumentReference } from "firebase/firestore";
+import { CollectionReference, DocumentReference } from "./firestore-deps";
 
 export class FiretenderError extends Error {}
 

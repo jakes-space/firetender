@@ -1,5 +1,10 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+if grep -q '"name": "firetender-admin"' package.json; then
+  echo "Switch to the web variant before committing: npm run use-web-firestore"
+  exit 1
+fi
+
 npm run check
 npm test
