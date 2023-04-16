@@ -4,6 +4,7 @@ import {
   FiretenderIOError,
   FiretenderUsageError,
 } from "./errors";
+import { where } from "./firestore-deps";
 import { FiretenderCollection } from "./FiretenderCollection";
 import type { FiretenderDocOptions } from "./FiretenderDoc";
 import { FiretenderDoc } from "./FiretenderDoc";
@@ -26,4 +27,5 @@ export {
   serverTimestamp,
   serverTimestampWithClientTime,
   timestampSchema,
+  where,
 };
