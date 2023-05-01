@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { arrayRemove, deleteField } from "./firestore-deps";
+import { deleteField } from "./firestore-deps";
 import { assertKeyIsString } from "./ts-helpers";
 
 /**
@@ -167,18 +167,14 @@ export function watchArrayForChanges<
       // Calling Reflect.deleteProperty on an array item sets it to undefined,
       // which causes Firestore updates to fail unless ignoreUndefinedProperties
       // is set, and which is generally not what we want.  Hence splice.
-      const removedValues = array.splice(Number(propertyKey), 1);
-      if (removedValues.length !== 1) {
+      if (array.splice(Number(propertyKey), 1).length !== 1) {
         throw RangeError(
           `Failed to delete array item with index ${propertyKey}.  Out of bounds?`
         );
       }
-      // Only top-level elements can be deleted with Firestore's arrayRemove.
-      if (target === array) {
-        addToUpdateList(arrayPath, arrayRemove(removedValues[0]));
-      } else {
-        addToUpdateList(arrayPath, array);
-      }
+      // Firestore's arrayRemove() deletes all matching entries, whihc is not
+      // desired.  So we have to rewrite the full array.
+      addToUpdateList(arrayPath, array);
       return true;
     },
   });

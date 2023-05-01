@@ -739,11 +739,13 @@ describe("array of objects", () => {
     expect(result).toEqual({
       email: "bob@example.com",
       arrayOfObjects: [
-        // TODO #25: this is not the intended behavior!
         { name: "A", entries: {} },
+        { name: "foo", entries: {} },
         { name: "B", entries: {} },
+        { name: "foo", entries: {} },
         { name: "C", entries: {} },
         { name: "D", entries: {} },
+        { name: "foo", entries: {} },
         { name: "E", entries: {} },
       ],
     });
