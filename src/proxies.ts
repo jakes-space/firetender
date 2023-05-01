@@ -269,11 +269,17 @@ export function watchFieldForChanges<FieldSchemaType extends z.ZodTypeAny>(
       }
       // A property of this object is being set to a new value.  Parse the new
       // value with the appropriate schema, set it in the local data, and mark
-      // the entire top-level array as needing to be written.
+      // the entire top-level array as needing to be written.  If the new value
+      // is undefined, delete the property.
       const propertySchema = getPropertySchema(field, fieldSchema, propertyKey);
       processedValue = propertySchema.parse(processedValue);
-      addToUpdateList([...fieldPath, propertyKey], processedValue);
-      return Reflect.set(target, propertyKey, processedValue);
+      if (processedValue === undefined) {
+        addToUpdateList([...fieldPath, propertyKey], deleteField());
+        return Reflect.deleteProperty(target, propertyKey);
+      } else {
+        addToUpdateList([...fieldPath, propertyKey], processedValue);
+        return Reflect.set(target, propertyKey, processedValue);
+      }
     },
     deleteProperty(target, propertyKey) {
       assertKeyIsString(propertyKey);

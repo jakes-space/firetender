@@ -220,6 +220,19 @@ describe("writable accessor (.w)", () => {
     // Note that Typescript itself prevents you from deleting required fields.
     // Attempting "delete testDoc.w.email;" is a TS compiler error.
   });
+
+  it("clears an optional field set to undefined", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      ttl: new Timestamp(123, 456000),
+    });
+    testDoc.w.ttl = undefined;
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+    });
+  });
 });
 
 describe("write", () => {
