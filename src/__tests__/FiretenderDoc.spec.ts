@@ -712,11 +712,16 @@ describe("array of objects", () => {
     });
   });
 
-  it("fails to delete if index is out of bounds.", async () => {
+  it("handles an array index that is out of bounds.", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    expect(delete testDoc.w.arrayOfObjects[99]).toBeTruthy();
+  });
+
+  it("fails to delete for malformed indices.", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect(() => {
-      delete testDoc.w.arrayOfObjects[99];
-    }).toThrow(RangeError);
+      delete testDoc.w.arrayOfObjects[-99];
+    }).toThrow(TypeError);
   });
 
   it("deletes the correct entry when there are multiple copies.", async () => {

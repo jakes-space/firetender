@@ -17,7 +17,7 @@ import {
   setDoc,
   updateDoc,
 } from "./firestore-deps";
-import { watchFieldForChanges } from "./proxies";
+import { watchForChanges } from "./proxy";
 import { assertIsDefined, DeepReadonly } from "./ts-helpers";
 
 /**
@@ -358,7 +358,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           "load() must be called before updating the document."
         );
       }
-      this.dataProxy = watchFieldForChanges(
+      this.dataProxy = watchForChanges(
         [],
         this.schema,
         this.data,
