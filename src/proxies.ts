@@ -158,24 +158,35 @@ export function watchArrayForChanges<
       // data, and mark the entire top-level array as needing to be written.
       const propertySchema = getPropertySchema(field, fieldSchema, propertyKey);
       processedValue = propertySchema.parse(processedValue);
-      const result = Reflect.set(target, propertyKey, processedValue);
+      let result = true;
+      if (processedValue === undefined) {
+        result = Reflect.deleteProperty(target, propertyKey);
+      } else {
+        result = Reflect.set(target, propertyKey, processedValue);
+      }
       addToUpdateList(arrayPath, array);
       return result;
     },
     deleteProperty(target, propertyKey) {
       assertKeyIsString(propertyKey);
-      // Calling Reflect.deleteProperty on an array item sets it to undefined,
-      // which causes Firestore updates to fail unless ignoreUndefinedProperties
-      // is set, and which is generally not what we want.  Hence splice.
-      if (array.splice(Number(propertyKey), 1).length !== 1) {
-        throw RangeError(
-          `Failed to delete array item with index ${propertyKey}.  Out of bounds?`
-        );
+      let result = true;
+      if ((target as any) instanceof Array) {
+        // Calling Reflect.deleteProperty on an array item sets it to undefined,
+        // which causes Firestore writes to fail if ignoreUndefinedProperties is
+        // not set, and which is generally not what we want.  Hence splice.
+        const index = Number(propertyKey);
+        if (target.splice(index, 1).length !== 1) {
+          throw RangeError(
+            `Failed to delete array item with index ${propertyKey}.  Out of bounds?`
+          );
+        }
+      } else {
+        result = Reflect.deleteProperty(target, propertyKey);
       }
-      // Firestore's arrayRemove() deletes all matching entries, whihc is not
+      // Firestore's arrayRemove() deletes all matching entries, which is not
       // desired.  So we have to rewrite the full array.
       addToUpdateList(arrayPath, array);
-      return true;
+      return result;
     },
   });
 }

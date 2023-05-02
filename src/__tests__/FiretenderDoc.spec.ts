@@ -47,9 +47,8 @@ const testDataSchema = z.object({
     .array(
       z.object({
         name: z.string(),
-        // No default({}) for entries, as default or optional values cause
-        // issues with array deletion: {name: "x"} != {name: "x", entries: {}}
-        entries: z.record(z.number()),
+        entries: z.record(z.number()).default({}),
+        favoriteColor: z.string().optional(),
       })
     )
     .default([]),
@@ -653,7 +652,7 @@ describe("array of objects", () => {
     email: "bob@example.com",
     arrayOfObjects: [
       { name: "foo", entries: {} },
-      { name: "bar", entries: { a: 111, b: 222 } },
+      { name: "bar", entries: { a: 111, b: 222 }, favoriteColor: "blue" },
     ],
   };
 
@@ -680,7 +679,7 @@ describe("array of objects", () => {
       email: "bob@example.com",
       arrayOfObjects: [
         { name: "constants", entries: { pi: 3.14159, e: 2.71828 } },
-        { name: "barbell", entries: { a: 123, b: 222 } },
+        { name: "barbell", entries: { a: 123, b: 222 }, favoriteColor: "blue" },
       ],
     });
   });
@@ -694,7 +693,7 @@ describe("array of objects", () => {
       email: "bob@example.com",
       arrayOfObjects: [
         { name: "foo", entries: {} },
-        { name: "bar", entries: { a: 111, b: 222 } },
+        { name: "bar", entries: { a: 111, b: 222 }, favoriteColor: "blue" },
         { name: "baz", entries: { c: 333 } },
       ],
     });
@@ -707,7 +706,9 @@ describe("array of objects", () => {
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
-      arrayOfObjects: [{ name: "bar", entries: { a: 111, b: 222 } }],
+      arrayOfObjects: [
+        { name: "bar", entries: { a: 111, b: 222 }, favoriteColor: "blue" },
+      ],
     });
   });
 
@@ -747,6 +748,34 @@ describe("array of objects", () => {
         { name: "D", entries: {} },
         { name: "foo", entries: {} },
         { name: "E", entries: {} },
+      ],
+    });
+  });
+
+  it("removes a field within an entry with the delete operator", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    delete testDoc.w.arrayOfObjects[1].entries.a;
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      arrayOfObjects: [
+        { name: "foo", entries: {} },
+        { name: "bar", entries: { b: 222 }, favoriteColor: "blue" },
+      ],
+    });
+  });
+
+  it("removes a field within an entry when set to undefined", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.w.arrayOfObjects[1].favoriteColor = undefined;
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      arrayOfObjects: [
+        { name: "foo", entries: {} },
+        { name: "bar", entries: { a: 111, b: 222 } },
       ],
     });
   });
