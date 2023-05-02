@@ -1,61 +1,7 @@
 import { z } from "zod";
 
-import { deleteField } from "./firestore-deps";
+import { deleteField, isServerTimestamp, Timestamp } from "./firestore-deps";
 import { assertKeyIsString } from "./ts-helpers";
-
-/**
- * Given a Zod schema representing a collection, returns the sub-schema of the
- * specified property.
- */
-function getPropertySchema(
-  parent: any,
-  parentSchema: z.ZodTypeAny,
-  propertyKey: string
-): z.ZodTypeAny {
-  let schema: any = parentSchema;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    switch (schema._def.typeName) {
-      // If the schema object is wrapped (e.g., by being optional or having a
-      // default), unwrap it until we get to the underlying collection type.
-      case z.ZodFirstPartyTypeKind.ZodOptional:
-      case z.ZodFirstPartyTypeKind.ZodNullable:
-        schema = schema.unwrap();
-        continue;
-      case z.ZodFirstPartyTypeKind.ZodDefault:
-        schema = schema.removeDefault();
-        continue;
-      case z.ZodFirstPartyTypeKind.ZodEffects:
-        schema = schema.innerType();
-        continue;
-      // Return the sub-schemas of supported collection types.
-      case z.ZodFirstPartyTypeKind.ZodRecord:
-        if (
-          schema.keySchema._def.typeName !== z.ZodFirstPartyTypeKind.ZodString
-        ) {
-          throw TypeError(
-            `The ZodRecord for property ${propertyKey} has keys of type ${schema.keySchema._def.typeName}.  Only strings are supported.`
-          );
-        }
-        return schema.valueSchema;
-      case z.ZodFirstPartyTypeKind.ZodArray:
-        return schema.element;
-      case z.ZodFirstPartyTypeKind.ZodObject:
-        return schema.shape[propertyKey];
-      case z.ZodFirstPartyTypeKind.ZodDiscriminatedUnion:
-        return (schema as any).optionsMap.get(
-          parent[(schema as any).discriminator]
-        );
-      // If the parent is of type ZodAny, so are its properties.
-      case z.ZodFirstPartyTypeKind.ZodAny:
-        return z.any();
-      default:
-        throw TypeError(
-          `Unsupported schema type for property "${propertyKey}": ${schema._def.typeName}`
-        );
-    }
-  }
-}
 
 /**
  * Getting this symbol from one of our proxies returns the proxy's target.
@@ -173,12 +119,12 @@ export function watchForChanges<
       // undefined, delete the property.
       const propertySchema = getPropertySchema(field, fieldSchema, propertyKey);
       processedValue = propertySchema.parse(processedValue);
-      // TODO: for objects, prune properties set to undefined.
       let result: boolean;
       if (processedValue === undefined) {
-        result = Reflect.deleteProperty(target, propertyKey);
         processedValue = deleteField();
+        result = Reflect.deleteProperty(target, propertyKey);
       } else {
+        processedValue = pruneUndefinedFields(processedValue);
         result = Reflect.set(target, propertyKey, processedValue);
       }
       if (arrayAncestor) {
@@ -216,4 +162,85 @@ export function watchForChanges<
       return result;
     },
   });
+}
+
+/**
+ * Given a Zod schema representing a collection, returns the sub-schema of the
+ * specified property.
+ */
+function getPropertySchema(
+  parent: any,
+  parentSchema: z.ZodTypeAny,
+  propertyKey: string
+): z.ZodTypeAny {
+  let schema: any = parentSchema;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    switch (schema._def.typeName) {
+      // If the schema object is wrapped (e.g., by being optional or having a
+      // default), unwrap it until we get to the underlying collection type.
+      case z.ZodFirstPartyTypeKind.ZodOptional:
+      case z.ZodFirstPartyTypeKind.ZodNullable:
+        schema = schema.unwrap();
+        continue;
+      case z.ZodFirstPartyTypeKind.ZodDefault:
+        schema = schema.removeDefault();
+        continue;
+      case z.ZodFirstPartyTypeKind.ZodEffects:
+        schema = schema.innerType();
+        continue;
+      // Return the sub-schemas of supported collection types.
+      case z.ZodFirstPartyTypeKind.ZodRecord:
+        if (
+          schema.keySchema._def.typeName !== z.ZodFirstPartyTypeKind.ZodString
+        ) {
+          throw TypeError(
+            `The ZodRecord for property ${propertyKey} has keys of type ${schema.keySchema._def.typeName}.  Only strings are supported.`
+          );
+        }
+        return schema.valueSchema;
+      case z.ZodFirstPartyTypeKind.ZodArray:
+        return schema.element;
+      case z.ZodFirstPartyTypeKind.ZodObject:
+        return schema.shape[propertyKey];
+      case z.ZodFirstPartyTypeKind.ZodDiscriminatedUnion:
+        return (schema as any).optionsMap.get(
+          parent[(schema as any).discriminator]
+        );
+      // If the parent is of type ZodAny, so are its properties.
+      case z.ZodFirstPartyTypeKind.ZodAny:
+        return z.any();
+      default:
+        throw TypeError(
+          `Unsupported schema type for property "${propertyKey}": ${schema._def.typeName}`
+        );
+    }
+  }
+}
+
+/**
+ * Returns a deep copy of the given object, omitting any undefined fields.
+ *
+ * Note: Timestamps and server timestamps pass through unmodified, but all other
+ * objects will be stripped of their methods.
+ */
+function pruneUndefinedFields<T>(obj: T): T {
+  if (
+    typeof obj !== "object" ||
+    obj === null ||
+    obj instanceof Timestamp ||
+    isServerTimestamp(obj)
+  ) {
+    return obj;
+  }
+  if (obj instanceof Array) {
+    return obj
+      .filter((v) => v !== undefined)
+      .map((v) => pruneUndefinedFields(v)) as T;
+  }
+  return Object.fromEntries(
+    Object.entries(obj as Record<string | number | symbol, unknown>)
+      .filter(([_k, v]) => v !== undefined)
+      .map(([k, v]) => [k, pruneUndefinedFields(v)])
+  ) as T;
 }

@@ -39,6 +39,7 @@ const testDataSchema = z.object({
       z.object({
         rating: z.number(),
         tags: z.array(z.string()).default([]),
+        favoriteColor: z.string().optional(),
       })
     )
     .default({}),
@@ -230,6 +231,40 @@ describe("writable accessor (.w)", () => {
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
+    });
+  });
+
+  it("deeply removes undefined fields", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      recordOfObjects: {
+        c: { rating: 3, tags: ["111", "222"], favoriteColor: "red" },
+        d: { rating: 4, tags: ["333", "444"] },
+      },
+      arrayOfObjects: [
+        { name: "abc", entries: { x: 1, y: 2 } },
+        { name: "xyz", favoriteColor: "blue" },
+      ],
+    });
+    await testDoc.update((doc) => {
+      doc.recordOfObjects.c = { rating: 5, tags: [], favoriteColor: undefined };
+      doc.arrayOfObjects[1] = {
+        name: "xyz",
+        entries: {},
+        favoriteColor: undefined,
+      };
+    });
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      recordOfObjects: {
+        c: { rating: 5, tags: [] },
+        d: { rating: 4, tags: ["333", "444"] },
+      },
+      arrayOfObjects: [
+        { name: "abc", entries: { x: 1, y: 2 } },
+        { name: "xyz", entries: {} },
+      ],
     });
   });
 });
