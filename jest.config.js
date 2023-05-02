@@ -1,7 +1,7 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
+  preset: "ts-jest",
+  testEnvironment: "node",
   rootDir: ".",
   testRegex: "(\\.|/)(test|spec)\\.[jt]sx?$",
   collectCoverage: true,
@@ -11,6 +11,8 @@ module.exports = {
   coveragePathIgnorePatterns: [
     "/node_modules/",
     "/__tests__/",
+    "/src/firestore-deps-admin.ts",
+    "/src/firestore-deps-web.ts",
     "/src/index.ts",
   ],
 };
