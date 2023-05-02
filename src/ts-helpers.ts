@@ -31,9 +31,3 @@ export function assertIsDefined<T>(value: T): asserts value is NonNullable<T> {
     throw new TypeError(`${value} is not defined`);
   }
 }
-
-export function assertKeyIsString(key: any): asserts key is string {
-  if (typeof key !== "string") {
-    throw TypeError("Property access using symbols is not supported.");
-  }
-}

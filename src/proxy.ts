@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { deleteField, isServerTimestamp, Timestamp } from "./firestore-deps";
-import { assertKeyIsString } from "./ts-helpers";
 
 /**
  * Getting this symbol from one of our proxies returns the proxy's target.
@@ -135,7 +134,10 @@ export function watchForChanges<
       return result;
     },
     deleteProperty(target, propertyKey) {
-      assertKeyIsString(propertyKey);
+      if (typeof propertyKey === "symbol") {
+        // Allow symbols to pass through.
+        return Reflect.deleteProperty(target, propertyKey);
+      }
       let result = true;
       if ((target as any) instanceof Array) {
         // Calling Reflect.deleteProperty on an array item sets it to undefined,
