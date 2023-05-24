@@ -1322,6 +1322,19 @@ describe("timestamps", () => {
     let millisDiff = Math.abs(tempTimestamp.toMillis() - now.valueOf());
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
 
+    // Check that the temp timestamp's polyfills are working.
+    expect(
+      tempTimestamp.isEqual(
+        new Timestamp(tempTimestamp.seconds, tempTimestamp.nanoseconds)
+      )
+    );
+    expect(tempTimestamp.toDate().getTime() === tempTimestamp.toMillis());
+    const jsonTimestamp = tempTimestamp.toJSON();
+    expect(jsonTimestamp.seconds === tempTimestamp.seconds);
+    expect(jsonTimestamp.nanoseconds === tempTimestamp.nanoseconds);
+    expect(tempTimestamp.toString().length > 0);
+    expect(tempTimestamp.valueOf().length > 0);
+
     // On reading, is there a server timestamp that differs from the temp one?
     await testDoc.load(true); // Force load.
     const assignedTimestamp = testDoc.r.ttl as Timestamp;

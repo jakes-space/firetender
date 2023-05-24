@@ -18,7 +18,7 @@ import {
   updateDoc,
 } from "./firestore-deps";
 import { watchForChanges } from "./proxy";
-import { assertIsDefined, DeepReadonly } from "./ts-helpers";
+import { DeepReadonly } from "./ts-helpers";
 
 /**
  * Public options for initializing a FiretenderDoc object.
@@ -294,8 +294,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     if (!this.data || force) {
       if (this.resolvesWaitingForLoad !== undefined) {
         await new Promise<void>((resolve, reject) => {
-          assertIsDefined(this.resolvesWaitingForLoad);
-          this.resolvesWaitingForLoad.push({ resolve, reject });
+          this.resolvesWaitingForLoad!.push({ resolve, reject });
         });
       } else {
         this.resolvesWaitingForLoad = [];
@@ -383,7 +382,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   async write(): Promise<this> {
     // For new docs, this.data should contain its initial state.
     if (this.isSettingNewContents) {
-      assertIsDefined(this.data);
+      if (!this.data) {
+        throw Error("New documents must be given data before calling write().");
+      }
       if (this.ref instanceof DocumentReference) {
         try {
           await setDoc(this.ref, this.data);

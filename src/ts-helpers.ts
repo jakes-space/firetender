@@ -1,5 +1,5 @@
 /**
- * Typescript-related helper functions and types.
+ * Typescript helper types.
  */
 
 export type DeepPartial<T> = T extends object
@@ -25,9 +25,3 @@ export type MakeFieldsWithDefaultsOptional<T> = T extends Array<infer ArrKey>
   : T extends Record<any, unknown>
   ? { readonly [ObjKey in keyof T]: DeepReadonly<T[ObjKey]> }
   : T;
-
-export function assertIsDefined<T>(value: T): asserts value is NonNullable<T> {
-  if (value === undefined || value === null) {
-    throw new TypeError(`${value} is not defined`);
-  }
-}

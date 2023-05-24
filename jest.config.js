@@ -14,5 +14,6 @@ module.exports = {
     "/src/firestore-deps-admin.ts",
     "/src/firestore-deps-web.ts",
     "/src/index.ts",
+    "/src/ts-helpers.ts",
   ],
 };

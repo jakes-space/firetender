@@ -55,6 +55,7 @@ export function serverTimestampWithClientTime(): Timestamp {
   Object.assign(sentinel, timestamp);
   (sentinel as any).isEqual = (other: Timestamp) => timestamp.isEqual(other);
   (sentinel as any).toDate = () => timestamp.toDate();
+  (sentinel as any).toJSON = () => timestamp.toJSON();
   (sentinel as any).toMillis = () => timestamp.toMillis();
   (sentinel as any).toString = () => timestamp.toString();
   (sentinel as any).valueOf = () => timestamp.valueOf();
