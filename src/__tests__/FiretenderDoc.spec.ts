@@ -1322,10 +1322,15 @@ describe("timestamps", () => {
     let millisDiff = Math.abs(tempTimestamp.toMillis() - now.valueOf());
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
 
-    // Check that the temp timestamp's polyfills are working.
+    // Check that the temp timestamp's polyfills are working.  Note that the
+    // firestore-admin version of Timestamp has underscores preceding its
+    // seconds and nanoseconds properties.
     expect(
       tempTimestamp.isEqual(
-        new Timestamp(tempTimestamp.seconds, tempTimestamp.nanoseconds)
+        new Timestamp(
+          tempTimestamp.seconds ?? (tempTimestamp as any)._seconds,
+          tempTimestamp.nanoseconds ?? (tempTimestamp as any)._nanoseconds
+        )
       )
     );
     expect(tempTimestamp.toDate().getTime() === tempTimestamp.toMillis());
