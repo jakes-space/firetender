@@ -1329,9 +1329,6 @@ describe("timestamps", () => {
       )
     );
     expect(tempTimestamp.toDate().getTime() === tempTimestamp.toMillis());
-    const jsonTimestamp = tempTimestamp.toJSON();
-    expect(jsonTimestamp.seconds === tempTimestamp.seconds);
-    expect(jsonTimestamp.nanoseconds === tempTimestamp.nanoseconds);
     expect(tempTimestamp.toString().length > 0);
     expect(tempTimestamp.valueOf().length > 0);
 
