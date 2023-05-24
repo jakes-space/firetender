@@ -47,7 +47,7 @@ export function watchForChanges<
   arrayAncestor: ArrayElementType[] | undefined = undefined
 ): z.infer<FieldSchemaType> {
   return new Proxy(field, {
-    get(target, propertyKey) {
+    get(target, propertyKey): any {
       const property = target[propertyKey];
       if (property instanceof Function) {
         const result = (...args: any[]) => property.apply(field, args);
@@ -99,10 +99,24 @@ export function watchForChanges<
       // Otherwise we must be getting a primitive.  No need to wrap it.
       return property;
     },
-    set(target, propertyKey, value) {
+    set(target, propertyKey, value): boolean {
       if (typeof propertyKey === "symbol") {
         // Allow symbols to pass through.
         return Reflect.set(target, propertyKey, value);
+      }
+      // If this is an array and its length is being set, truncate the array if
+      // needed.
+      if ((target as any) instanceof Array && propertyKey === "length") {
+        if (typeof value !== "number") {
+          throw TypeError(
+            `Failed to set array length to ${value} (type: ${typeof value}).`
+          );
+        }
+        if (target.length > value) {
+          target.length = value;
+          addToUpdateList(updatePath, arrayAncestor);
+        }
+        return true;
       }
       let processedValue = value;
       // If the new value is an object wrapped in a Firetender proxy, which can
@@ -133,7 +147,7 @@ export function watchForChanges<
       }
       return result;
     },
-    deleteProperty(target, propertyKey) {
+    deleteProperty(target, propertyKey): boolean {
       if (typeof propertyKey === "symbol") {
         // Allow symbols to pass through.
         return Reflect.deleteProperty(target, propertyKey);

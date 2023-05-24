@@ -836,6 +836,17 @@ describe("array of objects", () => {
       ],
     });
   });
+
+  it("truncates an array using its length property.", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.w.arrayOfObjects.length = 1;
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      arrayOfObjects: [{ name: "foo", entries: {} }],
+    });
+  });
 });
 
 describe("createNewDoc", () => {
