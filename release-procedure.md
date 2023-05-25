@@ -10,7 +10,7 @@ cannot simply use `npm version` followed by `npm publish`.  Instead:
 1. Run `npm i`.
 1. Commit the change.  The name of the commit should be the new version number
    and nothing else (e.g., `0.10.4`).
-1. Run `npm publish`.
 1. Run `npm run use-admin-firestore`.
 1. Run `npm publish`.
 1. Run `npm run use-web-firestore`.
+1. Run `npm publish`.
