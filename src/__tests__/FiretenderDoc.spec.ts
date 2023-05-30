@@ -130,6 +130,22 @@ describe("load", () => {
     expect(testDoc.isLoaded()).toBeTruthy();
     expect(testDoc.r.email).toBe("bob@example.com");
   });
+
+  it("can listen for changes to a doc", async () => {
+    const docRef = await addDoc(testCollection, { email: "bob@example.com" });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    let wasCallbackCalled = false;
+    await testDoc.load({
+      listen: () => {
+        wasCallbackCalled = true;
+      },
+    });
+    expect(wasCallbackCalled).toBeFalsy();
+    expect(testDoc.r.email).toBe("bob@example.com");
+    await updateDoc(testDoc.docRef, { email: "alice@example.com" });
+    expect(wasCallbackCalled).toBeTruthy();
+    expect(testDoc.r.email).toBe("alice@example.com");
+  });
 });
 
 describe("read-only accessor (.r)", () => {

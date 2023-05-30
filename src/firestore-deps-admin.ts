@@ -1,9 +1,8 @@
 /**
  * Provides all dependencies normally imported from "firebase/firestore".
  *
- * For web clients, the "firebase/firestore" API is simply re-exported.
- *
- * For the server client API, ...
+ * For the server client API, we need to wrap the namespaced calls so they are
+ * compatible with the v9 modular calls used by the web version.
  */
 
 import {
@@ -34,12 +33,17 @@ export {
 };
 
 export type QueryConstraint = Filter;
+export type Unsubscribe = () => void;
 export const where = Filter.where;
 export const arrayRemove = FieldValue.arrayRemove;
 export const deleteField = FieldValue.delete;
 export const serverTimestamp = FieldValue.serverTimestamp;
 
 export const isServerTimestamp = (x: any) => x instanceof FieldValue;
+
+// DocumentSnapshot.prototype.exists is a function for "firebase/firestore" and
+// a boolean for "firebase-admin/firestore".
+export const snapshotExists = (snapshot: DocumentSnapshot) => snapshot.exists;
 
 export const addDoc = <T>(
   ref: CollectionReference<T>,
@@ -85,6 +89,13 @@ export const getDoc = <T>(
 
 export const getDocs = <T>(query: Query<T>): Promise<QuerySnapshot<T>> =>
   query.get();
+
+export const onSnapshot = (
+  ref: DocumentReference,
+  callback: (snapshot: DocumentSnapshot) => void
+): Unsubscribe => {
+  return ref.onSnapshot(callback);
+};
 
 export const query = <T>(
   ref: Query<T>,

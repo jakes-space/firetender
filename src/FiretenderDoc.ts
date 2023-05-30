@@ -14,7 +14,10 @@ import {
   DocumentReference,
   DocumentSnapshot,
   getDoc,
+  onSnapshot,
   setDoc,
+  snapshotExists,
+  Unsubscribe,
   updateDoc,
 } from "./firestore-deps";
 import { watchForChanges } from "./proxy";
@@ -59,15 +62,21 @@ export type LoadOptions<FiretenderDocType> = {
   force?: boolean;
 
   /**
-   * Listen for changes to the document.  If set to `true`, the document's data
-   * will be silently updated when the data on Firestore changes; if set to a
-   * callback function, the data will be updated and the function will be
-   * called.
+   * Listen for changes to the document.
+   *
+   * If set to `true`, the document's data will be silently updated when the
+   * data on Firestore changes.
+   *
+   * Iif set to a callback function, the data will be updated, then the function
+   * will be called.  This function is only called on updates; it is not called
+   * during the initial load.
    *
    * Note that updates will be ignored if there are pending writes.  For this
    * reason, it is safest to use {@link update} when `listen` is set.
    */
-  listen?: boolean | ((doc: FiretenderDocType) => void);
+  listen?:
+    | boolean
+    | ((doc: FiretenderDocType, snapshot: DocumentSnapshot) => void);
 };
 
 /**
@@ -97,6 +106,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
 
   /** Map from the dot-delimited field path (per updateDoc()) to new value */
   private updates = new Map<string, any>();
+
+  /** Function to unsubscribe from changes to the doc, if we're listening. */
+  private detachListener: Unsubscribe | undefined;
 
   /**
    * If a load() call is already in progress, this is a list of promise
@@ -302,6 +314,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   }
 
   /**
+   * Are we listening for changes to this document?
+   */
+  isListening(): boolean {
+    return this.detachListener !== undefined;
+  }
+
+  /**
    * Loads this document's data from Firestore.
    *
    * @param options options for forcing the load or listening for changes.  See
@@ -315,30 +334,72 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         "load() should not be called for new documents."
       );
     }
-    if (this.data && !options.force) {
-      return this; // Already loaded.
+    if (
+      this.data &&
+      !options.force &&
+      (!options.listen || this.detachListener)
+    ) {
+      // We're already loaded, and we're listening if that was requested.
+      return this;
     }
     if (this.resolvesWaitingForLoad !== undefined) {
-      // Loading is already in progress.
+      // Loading is already in progress.  Add this call to the waiting queue.
       await new Promise<void>((resolve, reject) => {
         this.resolvesWaitingForLoad!.push({ resolve, reject });
       });
-      return this;
+      // We're done, unless listening was requested but not provided by the
+      // previous call to load().
+      if (!options.listen || this.detachListener) {
+        return this;
+      }
     }
     this.resolvesWaitingForLoad = [];
     let snapshot: DocumentSnapshot;
-    try {
-      snapshot = await getDoc(this.ref);
-    } catch (error) {
-      addContextToError(error, "getDoc", this.ref);
-      throw error;
+    if (options.listen) {
+      const callback =
+        typeof options.listen === "function" ? options.listen : undefined;
+      const listener = (
+        newSnapshot: DocumentSnapshot,
+        initialResolve: (ns: DocumentSnapshot) => void
+      ) => {
+        if (!this.detachListener) {
+          initialResolve(newSnapshot);
+          return;
+        }
+        if (this.isPendingWrite()) {
+          // TODO: load changes then apply the pending update.
+          return;
+        }
+        if (!snapshotExists(newSnapshot)) {
+          // TODO: switch to "new doc" mode.
+          return;
+        }
+        this.data = this.schema.parse(newSnapshot.data());
+        // Dereference the old proxy to force a recapture of data.
+        this.dataProxy = undefined;
+        callback?.(this, newSnapshot);
+      };
+      let detach: Unsubscribe | undefined;
+      snapshot = await new Promise((resolve) => {
+        try {
+          detach = onSnapshot(this.ref as DocumentReference, (newSnapshot) =>
+            listener(newSnapshot, resolve)
+          );
+        } catch (error) {
+          addContextToError(error, "onSnapshot", this.ref);
+          throw error;
+        }
+      });
+      this.detachListener = detach;
+    } else {
+      try {
+        snapshot = await getDoc(this.ref);
+      } catch (error) {
+        addContextToError(error, "getDoc", this.ref);
+        throw error;
+      }
     }
-    // DocumentSnapshot.prototype.exists is a boolean for
-    // "firebase-admin/firestore" and a function for "firebase/firestore".
-    if (
-      (typeof snapshot.exists === "boolean" && !snapshot.exists) ||
-      (typeof snapshot.exists === "function" && !(snapshot.exists as any)())
-    ) {
+    if (!snapshotExists(snapshot)) {
       const error = new FiretenderIOError(
         `Document does not exist: "${this.ref.path}"`
       );
