@@ -49,6 +49,28 @@ export type AllFiretenderDocOptions = FiretenderDocOptions & {
 };
 
 /**
+ * Options for loading an existing document.
+ */
+export type LoadOptions<FiretenderDocType> = {
+  /**
+   * Force a read from Firestore.  Normally load() does nothing if the document
+   * already contains data.
+   */
+  force?: boolean;
+
+  /**
+   * Listen for changes to the document.  If set to `true`, the document's data
+   * will be silently updated when the data on Firestore changes; if set to a
+   * callback function, the data will be updated and the function will be
+   * called.
+   *
+   * Note that updates will be ignored if there are pending writes.  For this
+   * reason, it is safest to use {@link update} when `listen` is set.
+   */
+  listen?: boolean | ((doc: FiretenderDocType) => void);
+};
+
+/**
  * A local representation of a Firestore document.
  */
 export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
@@ -282,48 +304,52 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /**
    * Loads this document's data from Firestore.
    *
-   * @param force force a read from Firestore.  Normally load() does nothing if
-   *   the document already contains data.
+   * @param options options for forcing the load or listening for changes.  See
+   *   {@link LoadOptions} for details.
    */
-  async load(force = false): Promise<this> {
+  async load(
+    options: LoadOptions<FiretenderDoc<SchemaType>> = {}
+  ): Promise<this> {
     if (this.isNewDoc || this.ref instanceof CollectionReference) {
       throw new FiretenderUsageError(
         "load() should not be called for new documents."
       );
     }
-    if (!this.data || force) {
-      if (this.resolvesWaitingForLoad !== undefined) {
-        await new Promise<void>((resolve, reject) => {
-          this.resolvesWaitingForLoad!.push({ resolve, reject });
-        });
-      } else {
-        this.resolvesWaitingForLoad = [];
-        let snapshot: DocumentSnapshot;
-        try {
-          snapshot = await getDoc(this.ref);
-        } catch (error) {
-          addContextToError(error, "getDoc", this.ref);
-          throw error;
-        }
-        // DocumentSnapshot.prototype.exists is a boolean for
-        // "firebase-admin/firestore" and a function for "firebase/firestore".
-        if (
-          (typeof snapshot.exists === "boolean" && !snapshot.exists) ||
-          (typeof snapshot.exists === "function" && !(snapshot.exists as any)())
-        ) {
-          const error = new FiretenderIOError(
-            `Document does not exist: "${this.ref.path}"`
-          );
-          this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
-          throw error;
-        }
-        this.data = this.schema.parse(snapshot.data());
-        // Dereference the old proxy, if any, to force a recapture of data.
-        this.dataProxy = undefined;
-        this.resolvesWaitingForLoad.forEach((wait) => wait.resolve());
-        this.resolvesWaitingForLoad = undefined;
-      }
+    if (this.data && !options.force) {
+      return this; // Already loaded.
     }
+    if (this.resolvesWaitingForLoad !== undefined) {
+      // Loading is already in progress.
+      await new Promise<void>((resolve, reject) => {
+        this.resolvesWaitingForLoad!.push({ resolve, reject });
+      });
+      return this;
+    }
+    this.resolvesWaitingForLoad = [];
+    let snapshot: DocumentSnapshot;
+    try {
+      snapshot = await getDoc(this.ref);
+    } catch (error) {
+      addContextToError(error, "getDoc", this.ref);
+      throw error;
+    }
+    // DocumentSnapshot.prototype.exists is a boolean for
+    // "firebase-admin/firestore" and a function for "firebase/firestore".
+    if (
+      (typeof snapshot.exists === "boolean" && !snapshot.exists) ||
+      (typeof snapshot.exists === "function" && !(snapshot.exists as any)())
+    ) {
+      const error = new FiretenderIOError(
+        `Document does not exist: "${this.ref.path}"`
+      );
+      this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
+      throw error;
+    }
+    this.data = this.schema.parse(snapshot.data());
+    // Dereference the old proxy, if any, to force a recapture of data.
+    this.dataProxy = undefined;
+    this.resolvesWaitingForLoad.forEach((wait) => wait.resolve());
+    this.resolvesWaitingForLoad = undefined;
     return this;
   }
 

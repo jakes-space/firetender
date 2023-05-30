@@ -113,7 +113,7 @@ describe("load", () => {
     await updateDoc(testDoc.docRef, { email: "alice@example.com" });
     await testDoc.load(); // Does nothing.
     expect(testDoc.r.email).toBe("bob@example.com");
-    await testDoc.load(true); // Forces load.
+    await testDoc.load({ force: true });
     expect(testDoc.r.email).toBe("alice@example.com");
   });
 
@@ -1338,7 +1338,7 @@ describe("timestamps", () => {
     expect(tempTimestamp.valueOf().length > 0);
 
     // On reading, is there a server timestamp that differs from the temp one?
-    await testDoc.load(true); // Force load.
+    await testDoc.load({ force: true });
     const assignedTimestamp = testDoc.r.ttl as Timestamp;
     expect(assignedTimestamp).toBeDefined();
     expect(assignedTimestamp.toMillis() !== tempTimestamp.toMillis());
