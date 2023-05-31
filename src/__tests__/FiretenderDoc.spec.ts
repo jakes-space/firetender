@@ -140,10 +140,17 @@ describe("load", () => {
         wasCallbackCalled = true;
       },
     });
+    expect(testDoc.isListening()).toBeTruthy();
     expect(wasCallbackCalled).toBeFalsy();
     expect(testDoc.r.email).toBe("bob@example.com");
     await updateDoc(testDoc.docRef, { email: "alice@example.com" });
     expect(wasCallbackCalled).toBeTruthy();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    wasCallbackCalled = false;
+    testDoc.stopListening();
+    expect(testDoc.isListening()).toBeFalsy();
+    await updateDoc(testDoc.docRef, { email: "cindy@example.com" });
+    expect(wasCallbackCalled).toBeFalsy();
     expect(testDoc.r.email).toBe("alice@example.com");
   });
 

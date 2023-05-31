@@ -423,6 +423,16 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   }
 
   /**
+   * Stops listening to the remote doc for changes.
+   */
+  stopListening() {
+    if (this.detachListener) {
+      this.detachListener();
+      this.detachListener = undefined;
+    }
+  }
+
+  /**
    * Read-only accessor to the contents of this document.
    */
   get r(): DeepReadonly<z.infer<SchemaType>> {
