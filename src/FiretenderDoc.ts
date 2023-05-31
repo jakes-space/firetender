@@ -67,12 +67,13 @@ export type LoadOptions<FiretenderDocType> = {
    * If set to `true`, the document's data will be silently updated when the
    * data on Firestore changes.
    *
-   * Iif set to a callback function, the data will be updated, then the function
+   * If set to a callback function, the data will be updated, then the function
    * will be called.  This function is only called on updates; it is not called
    * during the initial load.
    *
-   * Note that updates will be ignored if there are pending writes.  For this
-   * reason, it is safest to use {@link update} when `listen` is set.
+   * Remote changes are ignored if local updates are pending.  Assuming the
+   * local change does not overwrite them, the remote changes will be picked up
+   * when the write triggers the callback.
    */
   listen?:
     | boolean
@@ -367,7 +368,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           return;
         }
         if (this.isPendingWrite()) {
-          // TODO: load changes then apply the pending update.
+          // Drop changes when a write is pending.  This listener will be called
+          // again when the write happens, at which point it will include both
+          // the locally written changes and the remote changes.
           return;
         }
         if (!snapshotExists(newSnapshot)) {
@@ -501,13 +504,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       }
       if (this.updates.size > 0) {
         const updateData = Object.fromEntries(this.updates);
+        this.updates.clear();
         try {
           await updateDoc(this.ref, updateData);
         } catch (error: any) {
           addContextToError(error, "updateDoc", this.ref, updateData);
           throw error;
         }
-        this.updates.clear();
       }
     }
     return this;
