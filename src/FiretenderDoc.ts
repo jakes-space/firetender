@@ -374,7 +374,12 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           return;
         }
         if (!snapshotExists(newSnapshot)) {
-          // TODO: switch to "new doc" mode.
+          // The doc was deleted on Firestore.  Mark this local representation
+          // as a "new" document.
+          this.isNewDoc = true;
+          this.isSettingNewContents = true;
+          this.dataProxy = undefined;
+          callback?.(this, newSnapshot);
           return;
         }
         this.data = this.schema.parse(newSnapshot.data());

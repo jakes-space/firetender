@@ -177,6 +177,30 @@ describe("load", () => {
       ttl: new Timestamp(123, 456000),
     });
   });
+
+  it("marks the doc as new if the remote doc is deleted", async () => {
+    const docRef = await addDoc(testCollection, { email: "bob@example.com" });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    let wasCallbackCalled = false;
+    await testDoc.load({
+      listen: () => {
+        wasCallbackCalled = true;
+      },
+    });
+    expect(wasCallbackCalled).toBeFalsy();
+    await deleteDoc(testDoc.docRef);
+    expect(wasCallbackCalled).toBeTruthy();
+    expect(testDoc.isNew()).toBeTruthy();
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      recordOfPrimitives: {},
+      recordOfObjects: {},
+      nestedRecords: {},
+      arrayOfObjects: [],
+    });
+  });
 });
 
 describe("read-only accessor (.r)", () => {
