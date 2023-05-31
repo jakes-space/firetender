@@ -18,14 +18,29 @@ export const timestampSchema = z.custom<Timestamp>(
  * Returns a Firestore Timestamp for some future date.  The result is typically
  * used for writing TTLs.
  *
- * The client's clock (specifically `Date.now()`) is used to generate the
- * timestamp.  For TTLs days in the future, this is generally not a concern.
- * However, this function should not be depended on for short offsets.
+ * The client's clock is used to generate the timestamp.  For TTLs days in the
+ * future, this is generally not a concern.  However, this function should not
+ * be depended on for short offsets.
  *
- * @param daysFromNow days in the future to set this Timestamp.
+ * @param interval how far in the future to set the timestamp.  It can be any
+ *   combination of `days`, `hours`, `minutes`, `seconds`, and `millis`.
+ *
+ * @example const timestamp = futureTimestamp({days: 30});
  */
-export function futureTimestampDays(daysFromNow: number) {
-  return Timestamp.fromMillis(Date.now() + daysFromNow * 24 * 60 * 60 * 1000);
+export function futureTimestamp(interval: {
+  days?: number;
+  hours?: number;
+  minutes?: number;
+  seconds?: number;
+  millis?: number;
+}) {
+  let utcMillis = Date.now();
+  if (interval.days) utcMillis += interval.days * 24 * 60 * 60 * 1000;
+  if (interval.hours) utcMillis += interval.hours * 60 * 60 * 1000;
+  if (interval.minutes) utcMillis += interval.minutes * 60 * 1000;
+  if (interval.seconds) utcMillis += interval.seconds * 1000;
+  if (interval.millis) utcMillis += interval.millis;
+  return Timestamp.fromMillis(utcMillis);
 }
 
 /**

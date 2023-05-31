@@ -9,7 +9,7 @@ import { FiretenderCollection } from "./FiretenderCollection";
 import type { FiretenderDocOptions } from "./FiretenderDoc";
 import { FiretenderDoc } from "./FiretenderDoc";
 import {
-  futureTimestampDays,
+  futureTimestamp,
   serverTimestamp,
   serverTimestampWithClientTime,
   timestampSchema,
@@ -23,7 +23,7 @@ export {
   FiretenderInternalError,
   FiretenderIOError,
   FiretenderUsageError,
-  futureTimestampDays,
+  futureTimestamp,
   serverTimestamp,
   serverTimestampWithClientTime,
   Timestamp,

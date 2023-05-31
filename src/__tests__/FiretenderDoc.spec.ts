@@ -20,7 +20,7 @@ import {
 } from "../firestore-deps";
 import { FiretenderDoc } from "../FiretenderDoc";
 import {
-  futureTimestampDays,
+  futureTimestamp,
   serverTimestamp,
   serverTimestampWithClientTime,
   timestampSchema,
@@ -1432,7 +1432,7 @@ describe("timestamps", () => {
       testCollection,
       {
         email: "bob@example.com",
-        ttl: futureTimestampDays(30),
+        ttl: futureTimestamp({ days: 30 }),
       }
     ).write();
     const doc = await getDoc(testDoc.docRef);
