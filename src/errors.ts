@@ -20,6 +20,15 @@ export class FiretenderUsageError extends FiretenderError {}
 export class FiretenderInternalError extends FiretenderError {}
 
 /**
+ * Thrown to signal that a `timestampSchema` field was set to null.  This
+ * happens when listening to a timestamp being set to the server time.  See
+ * https://stackoverflow.com/questions/64287252/ for background.
+ *
+ * This error is only used internally.
+ */
+export class NullTimestampError extends FiretenderError {}
+
+/**
  * Adds a "firetenderContext" property to the given error.
  *
  * @param error the error to which the context is added.  If `error` is not an

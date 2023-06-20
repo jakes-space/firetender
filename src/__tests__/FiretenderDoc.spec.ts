@@ -133,46 +133,47 @@ describe("load", () => {
     expect(testDoc.isLoaded).toBeTruthy();
     expect(testDoc.r.email).toBe("bob@example.com");
   });
+});
 
+describe("listener", () => {
   it("can listen for changes to a doc", async () => {
     const docRef = await addDoc(testCollection, { email: "bob@example.com" });
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
-    let wasCallbackCalled = false;
+    let callbackCount = 0;
     await testDoc.load({
       listen: () => {
-        wasCallbackCalled = true;
+        callbackCount += 1;
       },
     });
     expect(testDoc.isListening).toBeTruthy();
-    expect(wasCallbackCalled).toBeFalsy();
+    expect(callbackCount).toEqual(0);
     expect(testDoc.r.email).toBe("bob@example.com");
     await updateDoc(testDoc.docRef, { email: "alice@example.com" });
-    expect(wasCallbackCalled).toBeTruthy();
+    expect(callbackCount).toEqual(1);
     expect(testDoc.r.email).toBe("alice@example.com");
-    wasCallbackCalled = false;
     testDoc.stopListening();
     expect(testDoc.isListening).toBeFalsy();
     await updateDoc(testDoc.docRef, { email: "cindy@example.com" });
-    expect(wasCallbackCalled).toBeFalsy();
+    expect(callbackCount).toEqual(1);
     expect(testDoc.r.email).toBe("alice@example.com");
   });
 
   it("can merge local and Firestore changse", async () => {
     const docRef = await addDoc(testCollection, { email: "bob@example.com" });
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
-    let wasCallbackCalled = false;
+    let callbackCount = 0;
     await testDoc.load({
       listen: () => {
-        wasCallbackCalled = true;
+        callbackCount += 1;
       },
     });
-    expect(wasCallbackCalled).toBeFalsy();
+    expect(callbackCount).toEqual(0);
     expect(testDoc.r.email).toBe("bob@example.com");
     testDoc.w.ttl = new Timestamp(123, 456000);
     await updateDoc(testDoc.docRef, { email: "alice@example.com" });
-    expect(wasCallbackCalled).toBeFalsy();
+    expect(callbackCount).toEqual(0);
     await testDoc.write();
-    expect(wasCallbackCalled).toBeTruthy();
+    expect(callbackCount).toEqual(1);
     expect(testDoc.r).toEqual({
       email: "alice@example.com",
       ttl: new Timestamp(123, 456000),
@@ -191,15 +192,15 @@ describe("load", () => {
   it("marks the doc as new if the remote doc is deleted", async () => {
     const docRef = await addDoc(testCollection, { email: "bob@example.com" });
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
-    let wasCallbackCalled = false;
+    let callbackCount = 0;
     await testDoc.load({
       listen: () => {
-        wasCallbackCalled = true;
+        callbackCount += 1;
       },
     });
-    expect(wasCallbackCalled).toBeFalsy();
+    expect(callbackCount).toEqual(0);
     await deleteDoc(testDoc.docRef);
-    expect(wasCallbackCalled).toBeTruthy();
+    expect(callbackCount).toEqual(1);
     expect(testDoc.isNew).toBeTruthy();
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
@@ -210,6 +211,27 @@ describe("load", () => {
       nestedRecords: {},
       arrayOfObjects: [],
     });
+  });
+
+  it("ignores server timestamp's initial update of null", async () => {
+    const docRef = await addDoc(testCollection, { email: "bob@example.com" });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    let callbackCount = 0;
+    await testDoc.load({
+      listen: () => {
+        callbackCount += 1;
+      },
+    });
+    const nowMillis = Date.now();
+    await testDoc.update((doc) => {
+      doc.ttl = serverTimestamp();
+    });
+    // Wait a second for the timestamp to be set by the server.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(callbackCount).toEqual(1);
+    const doc = await getDoc(testDoc.docRef);
+    const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - nowMillis);
+    expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
 });
 

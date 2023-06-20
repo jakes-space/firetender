@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { NullTimestampError } from "./errors";
 import {
   isServerTimestamp,
   serverTimestamp as firestoreServerTimestamp,
@@ -10,9 +11,12 @@ import {
  * Timestamp representation used by Firestore: seconds and nanoseconds since the
  * epoch.
  */
-export const timestampSchema = z.custom<Timestamp>(
-  (data: any) => data instanceof Timestamp || isServerTimestamp(data)
-);
+export const timestampSchema = z.custom<Timestamp>((data: any) => {
+  if (data === null) {
+    throw new NullTimestampError();
+  }
+  return data instanceof Timestamp || isServerTimestamp(data);
+});
 
 /**
  * Returns a Firestore Timestamp for some future date.  The result is typically

@@ -5,6 +5,7 @@ import {
   FiretenderInternalError,
   FiretenderIOError,
   FiretenderUsageError,
+  NullTimestampError,
 } from "./errors";
 import {
   addDoc,
@@ -639,7 +640,21 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         }
       }
     }
-    this.data = this.schema.parse(data);
+    let parsedData: z.infer<SchemaType>;
+    try {
+      parsedData = this.schema.parse(data);
+    } catch (error) {
+      if (error instanceof NullTimestampError) {
+        // We are almost certainly in a listener, receiving the first snapshot
+        // update of a timestamp being set to serverTimestamp().  Ignore it.
+        // There will be another snapshot momentarily with the proper time.
+        //
+        // See https://stackoverflow.com/questions/64287252/ for background.
+        return false;
+      }
+      throw error; // Rethrow otherwise.
+    }
+    this.data = parsedData;
     // Dereference the old proxy to force a recapture of data.
     this.dataProxy = undefined;
     return true;

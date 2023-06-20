@@ -15,4 +15,4 @@ export const FIRESTORE_DEPS_TYPE: "web" | "admin" = "web";
 export const snapshotExists = (snapshot: DocumentSnapshot) => snapshot.exists();
 
 export const isServerTimestamp = (data: any) =>
-  data._methodName === "serverTimestamp";
+  data && data._methodName === "serverTimestamp";
