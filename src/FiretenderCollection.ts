@@ -40,14 +40,8 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     | (() => DeepPartial<z.input<SchemaType>>)
     | undefined;
 
-  /**
-   * List of functions that modify (patch) the data read from Firestore prior to
-   * parsing by Zod.  If any patcher function returns true, the patched data
-   * will be asynchronously updated on Firestore.
-   */
-  private patchers = new Array<
-    (data: DeepPartial<z.input<SchemaType>>) => boolean
-  >();
+  /** Default options to send to docs in this collection. */
+  private readonly defaultDocOptions: FiretenderDocOptions;
 
   /**
    * @param schema the Zod object schema describing the documents in this
@@ -57,6 +51,9 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
    *   of any parent collections and of this collection.
    * @param baseInitialData (optional) an object or object factory providing
    *   default field values for this collection.
+   * @param options default optional parameters for the resulting FiretenderDoc;
+   *   see FiretenderDocOptions for detail.  Options passed to `.newDoc()` and
+   *   `.existingDoc()` override these.
    */
   constructor(
     schema: SchemaType,
@@ -65,7 +62,8 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     baseInitialData:
       | (() => DeepPartial<z.input<SchemaType>>)
       | DeepPartial<z.input<SchemaType>>
-      | undefined = undefined
+      | undefined = undefined,
+    options: FiretenderDocOptions = {}
   ) {
     this.schema = schema;
     this.firestore = firestore;
@@ -77,6 +75,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
         this.baseInitialDataFactory = () => baseInitialData;
       }
     }
+    this.defaultDocOptions = options;
   }
 
   /**
@@ -116,7 +115,10 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     if (initialData) {
       Object.assign(data, initialData);
     }
-    return FiretenderDoc.createNewDoc(this.schema, ref, data, options);
+    return FiretenderDoc.createNewDoc(this.schema, ref, data, {
+      ...this.defaultDocOptions,
+      ...options,
+    });
   }
 
   /**
@@ -141,7 +143,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
       );
     }
     return new FiretenderDoc(this.schema, ref, {
-      patchers: this.patchers.length > 0 ? this.patchers : undefined,
+      ...this.defaultDocOptions,
       ...options,
     });
   }
@@ -266,8 +268,17 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     return ref;
   }
 
+  /**
+   * Convenience method to provide a single patcher function for this
+   * collection's documents.  Patchers can also be passed in the options
+   * argument of this class's constructor.
+   */
   patch(patcher: (data: DeepPartial<z.input<SchemaType>>) => boolean) {
-    this.patchers.push(patcher);
+    if (!this.defaultDocOptions.patchers) {
+      this.defaultDocOptions.patchers = [patcher];
+    } else {
+      this.defaultDocOptions.patchers.push(patcher);
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////

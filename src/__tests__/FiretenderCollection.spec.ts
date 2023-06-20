@@ -95,6 +95,19 @@ describe("newDoc", () => {
     const testDoc = testCollection.newDoc(undefined, { bar: 123 });
     expect(testDoc.r).toEqual({ foo: "hello", bar: 123 });
   });
+
+  it("fails in readonly mode.", () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      collectionName,
+      { foo: "hello" },
+      { readonly: true }
+    );
+    expect(() => testCollection.newDoc()).toThrowError(
+      "Cannot create new docs in readonly mode."
+    );
+  });
 });
 
 describe("existingDoc", () => {

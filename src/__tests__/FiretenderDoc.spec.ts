@@ -18,7 +18,7 @@ import {
   Timestamp,
   updateDoc,
 } from "../firestore-deps";
-import { FiretenderDoc, Patcher } from "../FiretenderDoc";
+import { FiretenderDoc, FiretenderDocOptions, Patcher } from "../FiretenderDoc";
 import {
   futureTimestamp,
   serverTimestamp,
@@ -62,9 +62,12 @@ beforeAll(async () => {
   testCollection = collection(firestore, "doctests");
 });
 
-async function createAndLoadDoc(data: Record<string, unknown>) {
+async function createAndLoadDoc(
+  data: Record<string, unknown>,
+  options: FiretenderDocOptions = {}
+) {
   const docRef = await addDoc(testCollection, data);
-  return new FiretenderDoc(testDataSchema, docRef).load();
+  return new FiretenderDoc(testDataSchema, docRef, options).load();
 }
 
 describe("load", () => {
@@ -370,6 +373,19 @@ describe("writable accessor (.w)", () => {
       ],
     });
   });
+
+  it("throws in readonly mode.", async () => {
+    const testDoc = await createAndLoadDoc(
+      {
+        email: "bob@example.com",
+      },
+      { readonly: true }
+    );
+    expect(testDoc.isReadonly()).toBeTruthy();
+    expect(() => {
+      testDoc.w.email = "alice@example.com";
+    }).toThrowError("An attempt was made to modify or write a read-only doc");
+  });
 });
 
 describe("write", () => {
@@ -440,6 +456,20 @@ describe("write", () => {
         data: { email: "alice@example.com" },
       });
     }
+  });
+
+  it("throws in readonly mode.", async () => {
+    const testDoc = await createAndLoadDoc(
+      {
+        email: "bob@example.com",
+      },
+      { readonly: true }
+    );
+    await expect(async () => {
+      await testDoc.write();
+    }).rejects.toThrowError(
+      "An attempt was made to modify or write a read-only doc"
+    );
   });
 });
 

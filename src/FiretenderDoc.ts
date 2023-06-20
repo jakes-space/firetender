@@ -23,15 +23,6 @@ import {
 import { watchForChanges } from "./proxy";
 import { DeepReadonly } from "./ts-helpers";
 
-/**
- * Public options for initializing a FiretenderDoc object.
- *
- * These will be added as needed (e.g., "readonly" for issue #1, possibly
- * "queryPageLength" for issue #21).
- */
-// eslint-disable-next-line @typescript-eslint/ban-types
-export type FiretenderDocOptions = {};
-
 /*
  * Patcher functions serially modify the data from Firestore before it is parsed by Zod.
  * If any of these functions returns true, the data is asynchronously updated
@@ -40,22 +31,14 @@ export type FiretenderDocOptions = {};
 export type Patcher = (data: any) => boolean;
 
 /**
- * All options when initializing a FiretenderDoc object.
- *
- * This type includes options meant for internal use (createDoc, initialData)
- * as well as the options in FiretenderDocOptions.
+ * Public options for initializing a FiretenderDoc object.
  */
-export type AllFiretenderDocOptions = FiretenderDocOptions & {
+export type FiretenderDocOptions = {
   /**
-   * Does this FiretenderDoc represent a new document in Firestore?
+   * If set, using the `.w` accessor or `.update()` method will throw an error
+   * and any data patches will not be written.
    */
-  createDoc?: true;
-
-  /**
-   * The document's initial data, which must define a valid instance of the
-   * document according to its schema.
-   */
-  initialData?: Record<string, any>;
+  readonly?: boolean;
 
   /**
    * Functions that modify the data from Firestore before it is parsed by Zod.
@@ -74,6 +57,25 @@ export type AllFiretenderDocOptions = FiretenderDocOptions & {
    * Defaults to 500, for a half-second delay.
    */
   savePatchAfterDelay?: false | number;
+};
+
+/**
+ * All options when initializing a FiretenderDoc object.
+ *
+ * This type includes options meant for internal use (createDoc, initialData)
+ * as well as the options in FiretenderDocOptions.
+ */
+export type AllFiretenderDocOptions = FiretenderDocOptions & {
+  /**
+   * Does this FiretenderDoc represent a new document in Firestore?
+   */
+  createDoc?: true;
+
+  /**
+   * The document's initial data, which must define a valid instance of the
+   * document according to its schema.
+   */
+  initialData?: Record<string, any>;
 };
 
 /**
@@ -117,6 +119,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
 
   /** Firestore document ID; undefined for new docs not yet on Firestore */
   private docID: string | undefined = undefined;
+
+  /** If set, writes will throw and patches will not be written. */
+  private readonly isReadonlyDoc: boolean;
 
   /** Is this a doc we presume does not yet exist in Firestore? */
   private isNewDoc: boolean;
@@ -165,12 +170,18 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   ) {
     this.schema = schema;
     this.ref = ref;
+    this.isReadonlyDoc = options.readonly ?? false;
     this.isNewDoc = options.createDoc ?? false;
+    if (this.isReadonlyDoc && this.isNewDoc) {
+      throw new FiretenderUsageError(
+        "Cannot create new docs in readonly mode."
+      );
+    }
     this.isSettingNewContents = this.isNewDoc;
     if (options.initialData) {
       this.data = schema.parse(options.initialData);
     } else if (this.isNewDoc) {
-      throw ReferenceError(
+      throw new FiretenderUsageError(
         "Initial data must be given when creating a new doc."
       );
     }
@@ -323,6 +334,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       );
     }
     return this.ref;
+  }
+
+  /**
+   * Is this doc readonly?  Using `.w` or `.update()` will throw errors if so.
+   */
+  isReadonly(): boolean {
+    return this.isReadonlyDoc;
   }
 
   /**
@@ -480,6 +498,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * considerably more efficient when reading.
    */
   get w(): z.infer<SchemaType> {
+    this.throwIfReadonly();
     if (this.isSettingNewContents) {
       // No need to monitor changes if we're setting rather than updating.
       return this.data as z.infer<SchemaType>;
@@ -505,6 +524,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * Writable accessor to overwrite all the document data.
    */
   set w(newData: z.input<SchemaType>) {
+    this.throwIfReadonly();
     this.data = this.schema.parse(newData);
     this.isSettingNewContents = true;
     this.dataProxy = undefined;
@@ -514,6 +534,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * Writes the document or any updates to Firestore.
    */
   async write(): Promise<this> {
+    this.throwIfReadonly();
     // For new docs, this.data should contain its initial state.
     if (this.isSettingNewContents) {
       if (!this.data) {
@@ -576,6 +597,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    *   changes to it.
    */
   async update(mutator: (data: z.infer<SchemaType>) => void): Promise<this> {
+    this.throwIfReadonly();
     await this.load();
     mutator(this.w);
     await this.write();
@@ -584,6 +606,14 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
 
   //////////////////////////////////////////////////////////////////////////////
   // Private functions
+
+  private throwIfReadonly() {
+    if (this.isReadonlyDoc) {
+      throw new FiretenderUsageError(
+        `An attempt was made to modify or write a read-only doc: ${this.docID}`
+      );
+    }
+  }
 
   /**
    * Given a snapshot, patch it, parse it, and save it as this doc's data.  If
@@ -607,7 +637,11 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       if (wasPatched) {
         // Listeners don't update the data on Firestore, as that would cause an
         // infinite loop of updates if a patcher always returns true.
-        if (!isListener && this.savePatchAfterDelay !== false) {
+        if (
+          !isListener &&
+          !this.isReadonlyDoc &&
+          this.savePatchAfterDelay !== false
+        ) {
           setTimeout(() => this.write(), this.savePatchAfterDelay);
         }
       }
