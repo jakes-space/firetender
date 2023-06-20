@@ -26,19 +26,28 @@ import { DeepPartial } from "./ts-helpers";
  * are covered by a FiretenderCollection for the path ["foo", "bar"].
  */
 export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
-  /** Zod schema used to parse and validate the document's data */
+  /** Zod schema used to parse and validate the document's data. */
   readonly schema: SchemaType;
 
-  /** Firestore object: the thing you get from getFirestore() */
+  /** Firestore object: the thing you get from getFirestore(). */
   readonly firestore: Firestore;
 
-  /** The collection path of this object: a series of collection names */
+  /** The collection path of this object: a series of collection names. */
   readonly collectionPath: string[];
 
   /** Function to return the initial values when creating a new document. */
-  readonly baseInitialDataFactory:
+  private readonly baseInitialDataFactory:
     | (() => DeepPartial<z.input<SchemaType>>)
     | undefined;
+
+  /**
+   * List of functions that modify (patch) the data read from Firestore prior to
+   * parsing by Zod.  If any patcher function returns true, the patched data
+   * will be asynchronously updated on Firestore.
+   */
+  private patchers = new Array<
+    (data: DeepPartial<z.input<SchemaType>>) => boolean
+  >();
 
   /**
    * @param schema the Zod object schema describing the documents in this
@@ -131,7 +140,10 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
         "existingDoc() requires a full ID path for this collection and its parent collections, if any."
       );
     }
-    return new FiretenderDoc(this.schema, ref, options);
+    return new FiretenderDoc(this.schema, ref, {
+      patchers: this.patchers.length > 0 ? this.patchers : undefined,
+      ...options,
+    });
   }
 
   /**
@@ -252,6 +264,10 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
       );
     }
     return ref;
+  }
+
+  patch(patcher: (data: DeepPartial<z.input<SchemaType>>) => boolean) {
+    this.patchers.push(patcher);
   }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -32,6 +32,13 @@ import { DeepReadonly } from "./ts-helpers";
 // eslint-disable-next-line @typescript-eslint/ban-types
 export type FiretenderDocOptions = {};
 
+/*
+ * Patcher functions serially modify the data from Firestore before it is parsed by Zod.
+ * If any of these functions returns true, the data is asynchronously updated
+ * on Firestore half a second later, if it hasn't already been written back.
+ */
+export type Patcher = (data: any) => boolean;
+
 /**
  * All options when initializing a FiretenderDoc object.
  *
@@ -49,6 +56,24 @@ export type AllFiretenderDocOptions = FiretenderDocOptions & {
    * document according to its schema.
    */
   initialData?: Record<string, any>;
+
+  /**
+   * Functions that modify the data from Firestore before it is parsed by Zod.
+   * If any of these functions returns true, the data is asynchronously updated
+   * on Firestore half a second later, if it hasn't already been written back.
+   *
+   * The patchers are applied to the data in the order given, each receiving the
+   * output of the previous.  The output of the last is fed to Zod.
+   */
+  patchers?: Patcher[] | undefined;
+
+  /**
+   * If false, don't write the data back to Firestore, even if a patcher returns
+   * true.  Otherwise, the delay in milliseconds before patching.  This delay
+   * avoids an extra write in the case of a quick read/modify/write cycle.
+   * Defaults to 500, for a half-second delay.
+   */
+  savePatchAfterDelay?: false | number;
 };
 
 /**
@@ -99,6 +124,12 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /** Use addDoc or setDoc to write all the data?  If not, use updateDoc. */
   private isSettingNewContents: boolean;
 
+  /** Patcher functions given in options; applied to the raw data in order. */
+  private readonly patchers: Patcher[] | undefined;
+
+  /** Don't save patches if false; delay in milliseconds if set. */
+  private readonly savePatchAfterDelay: false | number;
+
   /** Local copy of the document data, parsed into the Zod type */
   private data: z.infer<SchemaType> | undefined = undefined;
 
@@ -143,6 +174,8 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         "Initial data must be given when creating a new doc."
       );
     }
+    this.patchers = options.patchers;
+    this.savePatchAfterDelay = options.savePatchAfterDelay ?? 500;
     if (this.ref instanceof DocumentReference) {
       this.docID = this.ref.path.split("/").pop();
     } else if (!this.isNewDoc) {
@@ -382,9 +415,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           callback?.(this, newSnapshot);
           return;
         }
-        this.data = this.schema.parse(newSnapshot.data());
-        // Dereference the old proxy to force a recapture of data.
-        this.dataProxy = undefined;
+        if (!this.loadFromSnapshot(newSnapshot, true)) return;
         callback?.(this, newSnapshot);
       };
       let detach: Unsubscribe | undefined;
@@ -414,9 +445,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
       throw error;
     }
-    this.data = this.schema.parse(snapshot.data());
-    // Dereference the old proxy, if any, to force a recapture of data.
-    this.dataProxy = undefined;
+    this.loadFromSnapshot(snapshot, false);
     this.resolvesWaitingForLoad.forEach((wait) => wait.resolve());
     this.resolvesWaitingForLoad = undefined;
     return this;
@@ -490,10 +519,15 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       if (!this.data) {
         throw Error("New documents must be given data before calling write().");
       }
+      const wasNewDoc = this.isNewDoc;
+      this.isSettingNewContents = false;
+      this.isNewDoc = false;
       if (this.ref instanceof DocumentReference) {
         try {
           await setDoc(this.ref, this.data);
         } catch (error) {
+          this.isSettingNewContents = true; // Assume the write didn't happen.
+          this.isNewDoc = wasNewDoc;
           addContextToError(error, "setDoc", this.ref, this.data);
           throw error;
         }
@@ -501,13 +535,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         try {
           this.ref = await addDoc(this.ref, this.data);
         } catch (error: any) {
+          this.isSettingNewContents = true; // Assume the write didn't happen.
+          this.isNewDoc = wasNewDoc;
           addContextToError(error, "addDoc", this.ref, this.data);
           throw error;
         }
         this.docID = this.ref.path.split("/").pop(); // ID is last part of path.
       }
-      this.isSettingNewContents = false;
-      this.isNewDoc = false;
     }
     // For existing docs, this.updates should contain a list of changes.
     else {
@@ -550,6 +584,39 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
 
   //////////////////////////////////////////////////////////////////////////////
   // Private functions
+
+  /**
+   * Given a snapshot, patch it, parse it, and save it as this doc's data.  If
+   * not called from a listener, the patched data may be written to Firestore
+   * after a delay.
+   */
+  private loadFromSnapshot(snapshot: DocumentSnapshot, isListener = false) {
+    const data = snapshot.data();
+    if (!data) {
+      // I'm not sure why this ever happens given that the snapshot claims to
+      // exists, but I've seen it in listeners in real-world use.  I can't
+      // duplicate in test.  Not much we can do but ignore it.
+      return false;
+    }
+    if (this.patchers) {
+      const wasPatched = this.patchers.reduce(
+        (wasPatched, patcher) => patcher(data) || wasPatched,
+        false
+      );
+      this.isSettingNewContents = true;
+      if (wasPatched) {
+        // Listeners don't update the data on Firestore, as that would cause an
+        // infinite loop of updates if a patcher always returns true.
+        if (!isListener && this.savePatchAfterDelay !== false) {
+          setTimeout(() => this.write(), this.savePatchAfterDelay);
+        }
+      }
+    }
+    this.data = this.schema.parse(data);
+    // Dereference the old proxy to force a recapture of data.
+    this.dataProxy = undefined;
+    return true;
+  }
 
   /**
    * Adds a field and its new value to the list of updates to be passed to

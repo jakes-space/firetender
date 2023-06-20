@@ -18,7 +18,7 @@ import {
   Timestamp,
   updateDoc,
 } from "../firestore-deps";
-import { FiretenderDoc } from "../FiretenderDoc";
+import { FiretenderDoc, Patcher } from "../FiretenderDoc";
 import {
   futureTimestamp,
   serverTimestamp,
@@ -202,6 +202,31 @@ describe("load", () => {
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "bob@example.com",
+      recordOfPrimitives: {},
+      recordOfObjects: {},
+      nestedRecords: {},
+      arrayOfObjects: [],
+    });
+  });
+});
+
+describe("patch", () => {
+  it("applies patches to the data.", async () => {
+    const docRef = await addDoc(testCollection, {});
+    const patcher: Patcher = (data: any) => {
+      data.email = "alice@example.com";
+      return true;
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      patchers: [patcher],
+      savePatchAfterDelay: 0, // Save at next opportunity.
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "alice@example.com",
       recordOfPrimitives: {},
       recordOfObjects: {},
       nestedRecords: {},
