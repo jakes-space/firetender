@@ -76,7 +76,7 @@ describe("load", () => {
       testDataSchema,
       doc(testCollection, "foo")
     );
-    expect(testDoc.isLoaded()).toBe(false);
+    expect(testDoc.isLoaded).toBe(false);
     expect(() => testDoc.r.email).toThrowError(
       "load() must be called before reading the document."
     );
@@ -124,13 +124,13 @@ describe("load", () => {
     const docRef = await addDoc(testCollection, { email: "bob@example.com" });
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
     const loadingPromise1 = testDoc.load();
-    expect(testDoc.isLoaded()).toBeFalsy();
+    expect(testDoc.isLoaded).toBeFalsy();
     const loadingPromise2 = testDoc.load();
-    expect(testDoc.isLoaded()).toBeFalsy();
+    expect(testDoc.isLoaded).toBeFalsy();
     const loadingPromise3 = testDoc.load();
-    expect(testDoc.isLoaded()).toBeFalsy();
+    expect(testDoc.isLoaded).toBeFalsy();
     await Promise.all([loadingPromise1, loadingPromise2, loadingPromise3]);
-    expect(testDoc.isLoaded()).toBeTruthy();
+    expect(testDoc.isLoaded).toBeTruthy();
     expect(testDoc.r.email).toBe("bob@example.com");
   });
 
@@ -143,7 +143,7 @@ describe("load", () => {
         wasCallbackCalled = true;
       },
     });
-    expect(testDoc.isListening()).toBeTruthy();
+    expect(testDoc.isListening).toBeTruthy();
     expect(wasCallbackCalled).toBeFalsy();
     expect(testDoc.r.email).toBe("bob@example.com");
     await updateDoc(testDoc.docRef, { email: "alice@example.com" });
@@ -151,7 +151,7 @@ describe("load", () => {
     expect(testDoc.r.email).toBe("alice@example.com");
     wasCallbackCalled = false;
     testDoc.stopListening();
-    expect(testDoc.isListening()).toBeFalsy();
+    expect(testDoc.isListening).toBeFalsy();
     await updateDoc(testDoc.docRef, { email: "cindy@example.com" });
     expect(wasCallbackCalled).toBeFalsy();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -200,7 +200,7 @@ describe("load", () => {
     expect(wasCallbackCalled).toBeFalsy();
     await deleteDoc(testDoc.docRef);
     expect(wasCallbackCalled).toBeTruthy();
-    expect(testDoc.isNew()).toBeTruthy();
+    expect(testDoc.isNew).toBeTruthy();
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -381,7 +381,7 @@ describe("writable accessor (.w)", () => {
       },
       { readonly: true }
     );
-    expect(testDoc.isReadonly()).toBeTruthy();
+    expect(testDoc.isReadonly).toBeTruthy();
     expect(() => {
       testDoc.w.email = "alice@example.com";
     }).toThrowError("An attempt was made to modify or write a read-only doc");
@@ -1044,11 +1044,11 @@ describe("createNewDoc", () => {
       initialState
     );
     testDoc.w.recordOfObjects.x = { rating: 5, tags: ["hi"] };
-    expect(testDoc.isNew()).toBe(true);
-    expect(testDoc.isLoaded()).toBe(true);
-    expect(testDoc.isPendingWrite()).toBe(true);
+    expect(testDoc.isNew).toBe(true);
+    expect(testDoc.isLoaded).toBe(true);
+    expect(testDoc.isPendingWrite).toBe(true);
     await testDoc.write();
-    expect(testDoc.isPendingWrite()).toBe(false);
+    expect(testDoc.isPendingWrite).toBe(false);
     const result1 = (await getDoc(testDoc.docRef)).data();
     expect(result1).toEqual({
       email: "bob@example.com",
@@ -1058,9 +1058,9 @@ describe("createNewDoc", () => {
       arrayOfObjects: [],
     });
     testDoc.w.recordOfPrimitives.a = "bye";
-    expect(testDoc.isPendingWrite()).toBe(true);
+    expect(testDoc.isPendingWrite).toBe(true);
     await testDoc.write();
-    expect(testDoc.isPendingWrite()).toBe(false);
+    expect(testDoc.isPendingWrite).toBe(false);
     const result2 = (await getDoc(testDoc.docRef)).data();
     expect(result2).toEqual({
       email: "bob@example.com",

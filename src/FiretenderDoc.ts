@@ -121,7 +121,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   private docID: string | undefined = undefined;
 
   /** If set, writes will throw and patches will not be written. */
-  private readonly isReadonlyDoc: boolean;
+  readonly isReadonly: boolean;
 
   /** Is this a doc we presume does not yet exist in Firestore? */
   private isNewDoc: boolean;
@@ -170,9 +170,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   ) {
     this.schema = schema;
     this.ref = ref;
-    this.isReadonlyDoc = options.readonly ?? false;
+    this.isReadonly = options.readonly ?? false;
     this.isNewDoc = options.createDoc ?? false;
-    if (this.isReadonlyDoc && this.isNewDoc) {
+    if (this.isReadonly && this.isNewDoc) {
       throw new FiretenderUsageError(
         "Cannot create new docs in readonly mode."
       );
@@ -337,16 +337,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   }
 
   /**
-   * Is this doc readonly?  Using `.w` or `.update()` will throw errors if so.
-   */
-  isReadonly(): boolean {
-    return this.isReadonlyDoc;
-  }
-
-  /**
    * Is this a new doc that has not yet been written to Firestore?
    */
-  isNew(): boolean {
+  get isNew(): boolean {
     return this.isNewDoc;
   }
 
@@ -354,21 +347,21 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * Does the document contain data, either because it was successfully loaded
    * or is newly created?
    */
-  isLoaded(): boolean {
+  get isLoaded(): boolean {
     return this.data !== undefined;
   }
 
   /**
    * Does this document contain data that has not yet been written to Firestore?
    */
-  isPendingWrite(): boolean {
+  get isPendingWrite(): boolean {
     return this.isSettingNewContents || this.updates.size > 0;
   }
 
   /**
    * Are we listening for changes to this document?
    */
-  isListening(): boolean {
+  get isListening(): boolean {
     return this.detachListener !== undefined;
   }
 
@@ -418,7 +411,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           initialResolve(newSnapshot);
           return;
         }
-        if (this.isPendingWrite()) {
+        if (this.isPendingWrite) {
           // Drop changes when a write is pending.  This listener will be called
           // again when the write happens, at which point it will include both
           // the locally written changes and the remote changes.
@@ -608,7 +601,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   // Private functions
 
   private throwIfReadonly() {
-    if (this.isReadonlyDoc) {
+    if (this.isReadonly) {
       throw new FiretenderUsageError(
         `An attempt was made to modify or write a read-only doc: ${this.docID}`
       );
@@ -639,7 +632,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         // infinite loop of updates if a patcher always returns true.
         if (
           !isListener &&
-          !this.isReadonlyDoc &&
+          !this.isReadonly &&
           this.savePatchAfterDelay !== false
         ) {
           setTimeout(() => this.write(), this.savePatchAfterDelay);
