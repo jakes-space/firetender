@@ -592,7 +592,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   async update(mutator: (data: z.infer<SchemaType>) => void): Promise<this> {
     this.throwIfReadonly();
-    await this.load();
+    if (!this.data) {
+      await this.load();
+    }
     mutator(this.w);
     await this.write();
     return this;
