@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 
+import { FiretenderIOError } from "../errors";
 import {
   addDoc,
   collection,
@@ -53,6 +54,7 @@ const testDataSchema = z.object({
       })
     )
     .default([]),
+  unreadable: z.boolean().optional(),
 });
 
 let firestore: Firestore;
@@ -91,6 +93,17 @@ describe("load", () => {
       doc(testCollection, "foo")
     );
     await expect(testDoc.load()).rejects.toThrowError("does not exist");
+  });
+
+  it("throws for a doc blocked by Firestore rules.", async () => {
+    // Admin can read anywhere, so this test does not throw an error.
+    if (FIRESTORE_DEPS_TYPE === "admin") return;
+    const docRef = await addDoc(testCollection, {
+      email: "bob@example.com",
+      unreadable: true,
+    });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    await expect(testDoc.load()).rejects.toThrowError(FiretenderIOError);
   });
 
   it("throws for a created but not yet written doc.", async () => {

@@ -27,7 +27,8 @@ export async function setupFirestoreEmulator(port = 8080): Promise<Firestore> {
               allow read, write: if true;
             }
             match /doctests/{document=**} {
-              allow read, write: if true;
+              allow read: if !('unreadable' in resource.data) || !resource.data.unreadable;
+              allow write: if true;
             }
             match /cities/{document=**} {
               allow read, write: if true;

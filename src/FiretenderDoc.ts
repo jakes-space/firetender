@@ -14,6 +14,8 @@ import {
   doc,
   DocumentReference,
   DocumentSnapshot,
+  FirebaseError,
+  FirestoreError,
   getDoc,
   onSnapshot,
   setDoc,
@@ -400,7 +402,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       }
     }
     this.resolvesWaitingForLoad = [];
-    let snapshot: DocumentSnapshot;
+    let snapshot: DocumentSnapshot | undefined;
     if (options.listen) {
       const callback =
         typeof options.listen === "function" ? options.listen : undefined;
@@ -446,13 +448,21 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       try {
         snapshot = await getDoc(this.ref);
       } catch (error) {
-        addContextToError(error, "getDoc", this.ref);
-        throw error;
+        if (
+          (error instanceof FirestoreError || error instanceof FirebaseError) &&
+          (error.code === "not-found" || error.code === "permission-denied")
+        ) {
+          // Not found and permission errors are handled below; snapshot is left
+          // undefined.
+        } else {
+          addContextToError(error, "getDoc", this.ref);
+          throw error;
+        }
       }
     }
-    if (!snapshotExists(snapshot)) {
+    if (!snapshot || !snapshotExists(snapshot)) {
       const error = new FiretenderIOError(
-        `Document does not exist: "${this.ref.path}"`
+        `Document does not exist or insufficient permissions: "${this.ref.path}"`
       );
       this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
       throw error;

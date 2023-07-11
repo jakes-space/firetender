@@ -6,6 +6,7 @@
 
 import { DocumentSnapshot } from "firebase/firestore";
 
+export { FirebaseError } from "firebase/app";
 export * from "firebase/firestore";
 
 export const FIRESTORE_DEPS_TYPE: "web" | "admin" = "web";
