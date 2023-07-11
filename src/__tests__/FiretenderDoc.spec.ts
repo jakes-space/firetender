@@ -516,21 +516,26 @@ describe("update", () => {
     const testDoc = await createAndLoadDoc(
       {
         email: "bob@example.com",
-      }, { readonly: true });
+      },
+      { readonly: true }
+    );
     expect(testDoc.isReadonly).toBeTruthy();
-    await expect(testDoc.update((data) => {
-      data.email = "alice@example.com";
-    })).rejects.toThrowError("An attempt was made to modify or write a read-only doc");
+    await expect(
+      testDoc.update((data) => {
+        data.email = "alice@example.com";
+      })
+    ).rejects.toThrowError(
+      "An attempt was made to modify or write a read-only doc"
+    );
   });
 
   it("updates a new doc.", async () => {
-    const testDoc = new FiretenderDoc(
-      testDataSchema, testCollection, {
-        createDoc: true, initialData: {
-          email: "bob@example.com"
-        }
-      }
-    );
+    const testDoc = new FiretenderDoc(testDataSchema, testCollection, {
+      createDoc: true,
+      initialData: {
+        email: "bob@example.com",
+      },
+    });
     expect(testDoc.isNew).toBeTruthy();
     await testDoc.update((data) => {
       data.email = "alice@example.com";

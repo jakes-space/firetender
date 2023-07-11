@@ -38,7 +38,7 @@ const PROXY_TARGET_SYMBOL = Symbol("proxy_target");
  */
 export function watchForChanges<
   FieldSchemaType extends z.ZodTypeAny,
-  ArrayElementType
+  ArrayElementType,
 >(
   updatePath: string[],
   fieldSchema: FieldSchemaType,
