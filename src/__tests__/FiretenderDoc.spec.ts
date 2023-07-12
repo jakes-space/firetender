@@ -28,7 +28,7 @@ import {
 } from "../timestamps";
 import {
   cleanupFirestoreEmulator,
-  setupFirestoreEmulator,
+  getFirestoreEmulator,
 } from "./firestore-emulator";
 
 const testDataSchema = z.object({
@@ -59,10 +59,13 @@ const testDataSchema = z.object({
 
 let firestore: Firestore;
 let testCollection: CollectionReference;
+
 beforeAll(async () => {
-  firestore = await setupFirestoreEmulator();
+  firestore = await getFirestoreEmulator();
   testCollection = collection(firestore, "doctests");
 });
+
+afterAll(cleanupFirestoreEmulator);
 
 async function createAndLoadDoc(
   data: Record<string, unknown>,
@@ -1566,8 +1569,4 @@ describe("timestamps", () => {
     const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - futureMillis);
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
-});
-
-afterAll(async () => {
-  await cleanupFirestoreEmulator();
 });

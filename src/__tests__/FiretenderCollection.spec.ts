@@ -12,7 +12,7 @@ import {
 import { FiretenderCollection } from "../FiretenderCollection";
 import {
   cleanupFirestoreEmulator,
-  setupFirestoreEmulator,
+  getFirestoreEmulator,
 } from "./firestore-emulator";
 
 const testSchema = z.object({
@@ -22,9 +22,12 @@ const testSchema = z.object({
 
 const collectionName = "coltests";
 let firestore: Firestore;
+
 beforeAll(async () => {
-  firestore = await setupFirestoreEmulator();
+  firestore = await getFirestoreEmulator();
 });
+
+afterAll(cleanupFirestoreEmulator);
 
 describe("newDoc", () => {
   it("creates a doc with the given ID.", () => {
@@ -463,8 +466,4 @@ describe("makeDocRef", () => {
     const ref = testCollection.makeDocRef(["123", "456", "789"]);
     expect(ref.path).toBe("coltests/123/subcol-A/456/subcol-B/789");
   });
-});
-
-afterAll(async () => {
-  await cleanupFirestoreEmulator();
 });

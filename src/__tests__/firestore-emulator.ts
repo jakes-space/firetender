@@ -1,8 +1,3 @@
-/**
- * TODO: #2 emulator setup should run before ALL test files, not before each.
- * TODO: #3 Emulator should be started before tests.
- */
-
 import {
   initializeTestEnvironment,
   RulesTestEnvironment,
@@ -12,47 +7,78 @@ import { getFirestore } from "firebase-admin/firestore";
 
 import { Firestore, FIRESTORE_DEPS_TYPE } from "../firestore-deps";
 
-let testEnv: RulesTestEnvironment | undefined;
+const EMULATOR_HOST = "127.0.0.1";
+const EMULATOR_PORT = 8080;
 
-export async function setupFirestoreEmulator(port = 8080): Promise<Firestore> {
-  testEnv = await initializeTestEnvironment({
-    firestore: {
-      host: "localhost",
-      port,
-      rules: `
-        rules_version = '2';
-        service cloud.firestore {
-          match /databases/{database}/documents {
-            match /coltests/{document=**} {
-              allow read, write: if true;
-            }
-            match /doctests/{document=**} {
-              allow read: if !('unreadable' in resource.data) || !resource.data.unreadable;
-              allow write: if true;
-            }
-            match /cities/{document=**} {
-              allow read, write: if true;
-            }
-            match /{path=**}/landmarks/{id} {
-              allow read: if true;
-            }
-          }
-        }`,
-    },
-    projectId: "firetender",
-  });
-  await testEnv.clearFirestore();
+let globalTestEnv: RulesTestEnvironment | undefined;
+
+/**
+ * Returns the Firestore test environment.
+ */
+async function getTestEnv(): Promise<RulesTestEnvironment> {
+  if (!globalTestEnv) {
+    globalTestEnv = await initializeTestEnvironment({
+      firestore: { host: EMULATOR_HOST, port: EMULATOR_PORT },
+      projectId: "firetender",
+    });
+  }
+  return globalTestEnv;
+}
+
+/**
+ * Clears all Firestore data in the given test environment.
+ *
+ * The Firestore emulator sometimes fails with response code 500 (observed for
+ * Firestore 10.0.0 with CLI version 12.4.3), so we retry up to 10 times.
+ */
+async function clearFirestore(testEnv: RulesTestEnvironment): Promise<void> {
+  for (let tryNum = 1; ; tryNum += 1) {
+    try {
+      await testEnv.clearFirestore();
+      return;
+    } catch (error: any) {
+      if (error.code === "ECONNREFUSED") {
+        console.error(
+          `\n\nFailed to connect to the Firestore emulator at ${EMULATOR_HOST}:${EMULATOR_PORT}.\nUse "npm run start-emulator" to start it.\n`
+        );
+        throw error;
+      }
+      if (tryNum > 10) throw error;
+      console.error(error);
+      console.debug(`Clearing Firestore failed (${tryNum}).  Retrying...`);
+    }
+  }
+}
+
+/**
+ * Returns a Firestore database connected to the emulator.
+ */
+export async function getFirestoreEmulator(): Promise<Firestore> {
   if (FIRESTORE_DEPS_TYPE === "web") {
+    const testEnv = await getTestEnv();
     return testEnv.unauthenticatedContext().firestore() as any;
   } else {
-    process.env["FIRESTORE_EMULATOR_HOST"] = `localhost:${port}`;
+    process.env.FIRESTORE_EMULATOR_HOST = `${EMULATOR_HOST}:${EMULATOR_PORT}`;
     const app = initializeApp({ projectId: "firetender" });
     return getFirestore(app) as any;
   }
 }
 
-export async function cleanupFirestoreEmulator() {
-  if (testEnv) {
-    await testEnv.cleanup();
+/**
+ * Frees resources associated with the Firestore emulator.
+ */
+export async function cleanupFirestoreEmulator(): Promise<void> {
+  if (globalTestEnv) {
+    await globalTestEnv.cleanup();
   }
+}
+
+/**
+ * Initializes the Firestore emulator and clear its data.
+ *
+ * This function is called by Jest's global setup hook.
+ */
+export default async function (): Promise<void> {
+  const testEnv = await getTestEnv();
+  await clearFirestore(testEnv);
 }

@@ -38,7 +38,7 @@
     "prettier:fix": "prettier --write src/*.ts src/**/*.ts",
     "check": "npm run lint:check && npm run prettier:check",
     "fix": "npm run lint:fix && npm run prettier:fix",
-    "emulate-db": "firebase emulators:start --project=firetender",
+    "start-emulator": "firebase emulators:start --config=./src/__tests__/firebase.json --project=firetender --only=firestore",
     "test": "jest --forceExit --detectOpenHandles",
     "prepare": "husky install",
     "clean": "rm -rf dist/*",

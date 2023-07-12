@@ -16,4 +16,5 @@ module.exports = {
     "/src/index.ts",
     "/src/ts-helpers.ts",
   ],
+  globalSetup: "./src/__tests__/firestore-emulator.ts",
 };
