@@ -54,8 +54,18 @@ const testDataSchema = z.object({
       })
     )
     .default([]),
+  arrayOfDiscUnions: z
+    .array(
+      z.discriminatedUnion("type", [
+        z.object({ type: z.literal("A"), someNumber: z.number() }),
+        z.object({ type: z.literal("B"), someString: z.string() }),
+        z.object({ type: z.literal("C"), someBoolean: z.boolean() }),
+      ])
+    )
+    .optional(),
   unreadable: z.boolean().optional(),
 });
+type TestDataInput = z.input<typeof testDataSchema>;
 
 let firestore: Firestore;
 let testCollection: CollectionReference;
@@ -568,7 +578,7 @@ describe("update", () => {
 });
 
 describe("record of primitives", () => {
-  const initialState = {
+  const initialState: TestDataInput = {
     email: "bob@example.com",
     recordOfPrimitives: {
       foo: "xyz",
@@ -639,7 +649,7 @@ describe("record of primitives", () => {
 });
 
 describe("record of objects", () => {
-  const initialState = {
+  const initialState: TestDataInput = {
     email: "bob@example.com",
     recordOfObjects: {
       "ice cream": {
@@ -805,7 +815,7 @@ describe("record of objects", () => {
 });
 
 describe("nested records", () => {
-  const initialState = {
+  const initialState: TestDataInput = {
     email: "bob@example.com",
     nestedRecords: {
       x: {
@@ -890,7 +900,7 @@ describe("nested records", () => {
 });
 
 describe("array of objects", () => {
-  const initialState = {
+  const initialState: TestDataInput = {
     email: "bob@example.com",
     arrayOfObjects: [
       { name: "foo", entries: {} },
@@ -1056,8 +1066,59 @@ describe("array of objects", () => {
   });
 });
 
+describe("array of discriminating unions", () => {
+  const initialState: TestDataInput = {
+    email: "bob@example.com",
+    arrayOfDiscUnions: [
+      { type: "A", someNumber: 123 },
+      { type: "B", someString: "yo" },
+      { type: "C", someBoolean: true },
+    ],
+  };
+
+  it("reads entries.", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    expect(testDoc.r.arrayOfDiscUnions).toBeDefined();
+    expect(testDoc.r.arrayOfDiscUnions!.length).toBe(3);
+    expect(testDoc.r.arrayOfDiscUnions![0].type).toBe("A");
+    expect((testDoc.r.arrayOfDiscUnions![0] as any).someNumber).toBe(123);
+    expect(testDoc.r.arrayOfDiscUnions![1].type).toBe("B");
+    expect((testDoc.r.arrayOfDiscUnions![1] as any).someString).toBe("yo");
+    expect(testDoc.r.arrayOfDiscUnions![2].type).toBe("C");
+    expect((testDoc.r.arrayOfDiscUnions![2] as any).someBoolean).toBe(true);
+  });
+
+  it("updates entries and changes type", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    const entry0 = testDoc.w.arrayOfDiscUnions![0];
+    expect(entry0.type).toBe("A");
+    if (entry0.type === "A") {
+      entry0.someNumber = 456;
+    }
+    testDoc.w.arrayOfDiscUnions![1] = {
+      type: "C",
+      someBoolean: false,
+    };
+    testDoc.w.arrayOfDiscUnions!.push({
+      type: "B",
+      someString: "hello",
+    });
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      arrayOfDiscUnions: [
+        { type: "A", someNumber: 456 },
+        { type: "C", someBoolean: false },
+        { type: "C", someBoolean: true },
+        { type: "B", someString: "hello" },
+      ],
+    });
+  });
+});
+
 describe("createNewDoc", () => {
-  const initialState = {
+  const initialState: TestDataInput = {
     email: "bob@example.com",
   };
 
@@ -1147,7 +1208,7 @@ describe("createNewDoc", () => {
 });
 
 describe("copy", () => {
-  const initialState = {
+  const initialState: TestDataInput = {
     email: "bob@example.com",
     recordOfObjects: {
       "ice cream": {
