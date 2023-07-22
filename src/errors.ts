@@ -42,7 +42,7 @@ export function addContextToError(
   call: string,
   ref?: DocumentReference | CollectionReference,
   data?: any
-) {
+): void {
   if (typeof error !== "object") {
     return;
   }

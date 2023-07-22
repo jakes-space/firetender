@@ -22,13 +22,20 @@ module.exports = {
   rules: {
     "import/extensions": ["error", "never"],
     "import/prefer-default-export": "off",
-    "lines-between-class-members": ["error", "always"],
+    "lines-between-class-members": [
+      "error",
+      "always",
+      { exceptAfterSingleLine: true },
+    ],
+    "no-bitwise": "off",
     "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
     "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
+    "no-else-return": "off",
     "no-empty-function": [
       "error",
       { allow: ["arrowFunctions", "constructors"] },
     ],
+    "no-lonely-if": "off",
     "no-param-reassign": ["error", { props: false }],
     "no-unused-vars": "off",
     "no-use-before-define": ["error", { functions: false }],
@@ -36,6 +43,10 @@ module.exports = {
     "prettier/prettier": "warn",
     "simple-import-sort/imports": "error",
     "simple-import-sort/exports": "error",
+    "@typescript-eslint/explicit-function-return-type": [
+      "warn",
+      { allowExpressions: true, allowIIFEs: true },
+    ],
     "@typescript-eslint/no-empty-function": [
       "error",
       { allow: ["arrowFunctions", "constructors"] },

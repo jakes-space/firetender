@@ -80,7 +80,7 @@ afterAll(cleanupFirestoreEmulator);
 async function createAndLoadDoc(
   data: Record<string, unknown>,
   options: FiretenderDocOptions = {}
-) {
+): Promise<FiretenderDoc<typeof testDataSchema>> {
   const docRef = await addDoc(testCollection, data);
   return new FiretenderDoc(testDataSchema, docRef, options).load();
 }

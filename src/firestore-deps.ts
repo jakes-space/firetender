@@ -13,7 +13,8 @@ export const FIRESTORE_DEPS_TYPE: "web" | "admin" = "web";
 
 // DocumentSnapshot.prototype.exists is a function for "firebase/firestore" and
 // a boolean for "firebase-admin/firestore".
-export const snapshotExists = (snapshot: DocumentSnapshot) => snapshot.exists();
+export const snapshotExists = (snapshot: DocumentSnapshot): boolean =>
+  snapshot.exists();
 
-export const isServerTimestamp = (data: any) =>
-  data && data._methodName === "serverTimestamp";
+export const isServerTimestamp = (data: any): boolean =>
+  !!data && data._methodName === "serverTimestamp";

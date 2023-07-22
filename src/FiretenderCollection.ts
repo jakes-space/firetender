@@ -273,7 +273,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
    * collection's documents.  Patchers can also be passed in the options
    * argument of this class's constructor.
    */
-  patch(patcher: (data: DeepPartial<z.input<SchemaType>>) => boolean) {
+  patch(patcher: (data: DeepPartial<z.input<SchemaType>>) => boolean): void {
     if (!this.defaultDocOptions.patchers) {
       this.defaultDocOptions.patchers = [patcher];
     } else {

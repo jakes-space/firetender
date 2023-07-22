@@ -50,7 +50,7 @@ export function watchForChanges<
     get(target, propertyKey): any {
       const property = target[propertyKey];
       if (property instanceof Function) {
-        const result = (...args: any[]) => property.apply(field, args);
+        const result = (...args: any[]): any => property.apply(field, args);
         if (arrayAncestor) {
           // All methods of an array or its children are presumed to make
           // modifications, thus triggering an update of the full array.

@@ -39,11 +39,12 @@ export const arrayRemove = FieldValue.arrayRemove;
 export const deleteField = FieldValue.delete;
 export const serverTimestamp = FieldValue.serverTimestamp;
 
-export const isServerTimestamp = (x: any) => x instanceof FieldValue;
+export const isServerTimestamp = (x: any): boolean => x instanceof FieldValue;
 
 // DocumentSnapshot.prototype.exists is a function for "firebase/firestore" and
 // a boolean for "firebase-admin/firestore".
-export const snapshotExists = (snapshot: DocumentSnapshot) => snapshot.exists;
+export const snapshotExists = (snapshot: DocumentSnapshot): boolean =>
+  snapshot.exists;
 
 export const addDoc = <T>(
   ref: CollectionReference<T>,

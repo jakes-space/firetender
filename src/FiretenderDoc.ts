@@ -409,7 +409,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       const listener = (
         newSnapshot: DocumentSnapshot,
         initialResolve: (ns: DocumentSnapshot) => void
-      ) => {
+      ): void => {
         if (!this.detachListener) {
           initialResolve(newSnapshot);
           return;
@@ -476,7 +476,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /**
    * Stops listening to the remote doc for changes.
    */
-  stopListening() {
+  stopListening(): void {
     if (this.detachListener) {
       this.detachListener();
       this.detachListener = undefined;
@@ -613,7 +613,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   //////////////////////////////////////////////////////////////////////////////
   // Private functions
 
-  private throwIfReadonly() {
+  private throwIfReadonly(): void {
     if (this.isReadonly) {
       throw new FiretenderUsageError(
         `An attempt was made to modify or write a read-only doc: ${this.docID}`
@@ -626,7 +626,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * not called from a listener, the patched data may be written to Firestore
    * after a delay.
    */
-  private loadFromSnapshot(snapshot: DocumentSnapshot, isListener = false) {
+  private loadFromSnapshot(
+    snapshot: DocumentSnapshot,
+    isListener = false
+  ): boolean {
     const data = snapshot.data();
     if (!data) {
       // I'm not sure why this ever happens given that the snapshot claims to

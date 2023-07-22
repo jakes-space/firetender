@@ -37,7 +37,7 @@ export function futureTimestamp(interval: {
   minutes?: number;
   seconds?: number;
   millis?: number;
-}) {
+}): Timestamp {
   let utcMillis = Date.now();
   if (interval.days) utcMillis += interval.days * 24 * 60 * 60 * 1000;
   if (interval.hours) utcMillis += interval.hours * 60 * 60 * 1000;
