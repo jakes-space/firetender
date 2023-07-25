@@ -1,9 +1,10 @@
-/** @type {import('ts-jest').JestConfigWithTsJest} */
-module.exports = {
+import type { Config } from "jest";
+
+const config: Config = {
   preset: "ts-jest",
   testEnvironment: "node",
   rootDir: ".",
-  testRegex: "(\\.|/)(test|spec)\\.[jt]sx?$",
+  testRegex: "\\.spec\\.ts$",
   collectCoverage: true,
   coverageDirectory: "coverage",
   coverageProvider: "v8",
@@ -18,3 +19,5 @@ module.exports = {
   ],
   globalSetup: "./src/__tests__/firestore-emulator.ts",
 };
+
+export default config;
