@@ -41,7 +41,7 @@ const testDataSchema = z.object({
         rating: z.number(),
         tags: z.array(z.string()).default([]),
         favoriteColor: z.string().optional(),
-      })
+      }),
     )
     .default({}),
   nestedRecords: z.record(z.record(z.number())).default({}),
@@ -51,7 +51,7 @@ const testDataSchema = z.object({
         name: z.string(),
         entries: z.record(z.number()).default({}),
         favoriteColor: z.string().optional(),
-      })
+      }),
     )
     .default([]),
   arrayOfDiscUnions: z
@@ -60,7 +60,7 @@ const testDataSchema = z.object({
         z.object({ type: z.literal("A"), someNumber: z.number() }),
         z.object({ type: z.literal("B"), someString: z.string() }),
         z.object({ type: z.literal("C"), someBoolean: z.boolean() }),
-      ])
+      ]),
     )
     .optional(),
   unreadable: z.boolean().optional(),
@@ -79,7 +79,7 @@ afterAll(cleanupFirestoreEmulator);
 
 async function createAndLoadDoc(
   data: Record<string, unknown>,
-  options: FiretenderDocOptions = {}
+  options: FiretenderDocOptions = {},
 ): Promise<FiretenderDoc<typeof testDataSchema>> {
   const docRef = await addDoc(testCollection, data);
   return new FiretenderDoc(testDataSchema, docRef, options).load();
@@ -89,21 +89,21 @@ describe("load", () => {
   it("must be called before referencing the accessors.", async () => {
     const testDoc = new FiretenderDoc(
       testDataSchema,
-      doc(testCollection, "foo")
+      doc(testCollection, "foo"),
     );
     expect(testDoc.isLoaded).toBe(false);
     expect(() => testDoc.r.email).toThrowError(
-      "load() must be called before reading the document."
+      "load() must be called before reading the document.",
     );
     expect(() => testDoc.w.email).toThrowError(
-      "load() must be called before updating the document."
+      "load() must be called before updating the document.",
     );
   });
 
   it("throws for a non-existent doc.", async () => {
     const testDoc = new FiretenderDoc(
       testDataSchema,
-      doc(testCollection, "foo")
+      doc(testCollection, "foo"),
     );
     await expect(testDoc.load()).rejects.toThrowError("does not exist");
   });
@@ -124,7 +124,7 @@ describe("load", () => {
       email: "bob@example.com",
     });
     await expect(testDoc.load()).rejects.toThrowError(
-      "should not be called for new documents."
+      "should not be called for new documents.",
     );
   });
 
@@ -335,7 +335,7 @@ describe("writable accessor (.w)", () => {
     });
     // Converting an Array to a string gets its Symbol.toStringTag property.
     expect(String(testDoc.w.arrayOfObjects)).toBe(
-      "[object Object],[object Object]"
+      "[object Object],[object Object]",
     );
   });
 
@@ -427,7 +427,7 @@ describe("writable accessor (.w)", () => {
       {
         email: "bob@example.com",
       },
-      { readonly: true }
+      { readonly: true },
     );
     expect(testDoc.isReadonly).toBeTruthy();
     expect(() => {
@@ -511,10 +511,10 @@ describe("write", () => {
       {
         email: "bob@example.com",
       },
-      { readonly: true }
+      { readonly: true },
     );
     await expect(testDoc.write()).rejects.toThrowError(
-      "An attempt was made to modify or write a read-only doc"
+      "An attempt was made to modify or write a read-only doc",
     );
   });
 });
@@ -543,15 +543,15 @@ describe("update", () => {
       {
         email: "bob@example.com",
       },
-      { readonly: true }
+      { readonly: true },
     );
     expect(testDoc.isReadonly).toBeTruthy();
     await expect(
       testDoc.update((data) => {
         data.email = "alice@example.com";
-      })
+      }),
     ).rejects.toThrowError(
-      "An attempt was made to modify or write a read-only doc"
+      "An attempt was made to modify or write a read-only doc",
     );
   });
 
@@ -1126,11 +1126,11 @@ describe("createNewDoc", () => {
     const testDoc = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
-      initialState
+      initialState,
     );
     expect(() => testDoc.id).toThrowError("id can only be accessed after");
     expect(() => testDoc.docRef).toThrowError(
-      "docRef can only be accessed after"
+      "docRef can only be accessed after",
     );
   });
 
@@ -1138,7 +1138,7 @@ describe("createNewDoc", () => {
     const testDoc = await FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
-      initialState
+      initialState,
     ).write();
     expect(testDoc.id).toMatch(/^[A-Za-z0-9]{12,}$/);
     expect(testDoc.docRef).toBeDefined();
@@ -1159,7 +1159,7 @@ describe("createNewDoc", () => {
     const testDoc = await FiretenderDoc.createNewDoc(
       testDataSchema,
       doc(testCollection, docID),
-      initialState
+      initialState,
     ).write();
     expect(testDoc.id).toBe(docID);
     const result = (await getDoc(testDoc.docRef)).data();
@@ -1176,7 +1176,7 @@ describe("createNewDoc", () => {
     const testDoc = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
-      initialState
+      initialState,
     );
     testDoc.w.recordOfObjects.x = { rating: 5, tags: ["hi"] };
     expect(testDoc.isNew).toBe(true);
@@ -1225,7 +1225,7 @@ describe("copy", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
-      initialState
+      initialState,
     );
     const testDoc2 = testDoc1.copy();
     const iceCream = testDoc2.w.recordOfObjects["ice cream"];
@@ -1278,7 +1278,7 @@ describe("copy", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
-      initialState
+      initialState,
     );
     const testDoc2 = testDoc1.copy(testCollection);
     await Promise.all([testDoc1.write(), testDoc2.write()]);
@@ -1305,7 +1305,7 @@ describe("copy", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
-      initialState
+      initialState,
     );
     const testDoc2 = testDoc1.copy(doc(testCollection, "copy-with-doc-ref"));
     await Promise.all([testDoc1.write(), testDoc2.write()]);
@@ -1333,7 +1333,7 @@ describe("copy", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       doc(testCollection, "copy-original"),
-      initialState
+      initialState,
     );
     const testDoc2 = testDoc1.copy("copy-with-id-string");
     await Promise.all([testDoc1.write(), testDoc2.write()]);
@@ -1361,11 +1361,11 @@ describe("copy", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1"),
-      initialState
+      initialState,
     );
     const testDoc2 = testDoc1.copy(["id-B", "copy-with-doc-ids"]);
     expect(testDoc2.docRef.path).toBe(
-      "doctests/id-B/subcol-1/copy-with-doc-ids"
+      "doctests/id-B/subcol-1/copy-with-doc-ids",
     );
   });
 
@@ -1373,7 +1373,7 @@ describe("copy", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1"),
-      initialState
+      initialState,
     );
     const testDoc2 = await testDoc1.copy(["id-B"]).write();
     expect(testDoc2.docRef.path).toMatch(/^doctests\/id-B\/subcol-1\/[^/]+$/);
@@ -1383,7 +1383,7 @@ describe("copy", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1"),
-      initialState
+      initialState,
     );
     await testDoc1.write();
     const testDoc2 = await testDoc1.copy(["id-B"]).write();
@@ -1394,7 +1394,7 @@ describe("copy", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1", "id-B", "subcol-2"),
-      initialState
+      initialState,
     );
     expect(() => testDoc1.copy(["A"])).toThrowError();
     expect(() => testDoc1.copy(["A", "B", "C", "D"])).toThrowError();
@@ -1518,7 +1518,7 @@ describe("timestamps", () => {
       {
         email: "bob@example.com",
         ttl: Timestamp.fromDate(now),
-      }
+      },
     ).write();
     const doc = await getDoc(testDoc.docRef);
     expect(doc.data()?.ttl.toDate()).toEqual(now);
@@ -1540,7 +1540,7 @@ describe("timestamps", () => {
       {
         email: "bob@example.com",
         ttl: serverTimestamp(),
-      }
+      },
     ).write();
     const doc = await getDoc(testDoc.docRef);
     const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - Date.now());
@@ -1555,10 +1555,10 @@ describe("timestamps", () => {
       {
         email: "bob@example.com",
         ttl: Timestamp.fromDate(pastDate),
-      }
+      },
     ).write();
     expect((await getDoc(testDoc.docRef)).data()?.ttl.toDate()).toEqual(
-      pastDate
+      pastDate,
     );
     await testDoc.update((doc) => {
       doc.ttl = serverTimestamp();
@@ -1576,7 +1576,7 @@ describe("timestamps", () => {
       {
         email: "bob@example.com",
         ttl: serverTimestampWithClientTime(),
-      }
+      },
     );
 
     // Wait 100 ms before writing to avoid coincident timestamps.  The test
@@ -1597,9 +1597,9 @@ describe("timestamps", () => {
       tempTimestamp.isEqual(
         new Timestamp(
           tempTimestamp.seconds ?? (tempTimestamp as any)._seconds,
-          tempTimestamp.nanoseconds ?? (tempTimestamp as any)._nanoseconds
-        )
-      )
+          tempTimestamp.nanoseconds ?? (tempTimestamp as any)._nanoseconds,
+        ),
+      ),
     );
     expect(tempTimestamp.toDate().getTime() === tempTimestamp.toMillis());
     expect(tempTimestamp.toString().length > 0);
@@ -1623,7 +1623,7 @@ describe("timestamps", () => {
       {
         email: "bob@example.com",
         ttl: futureTimestamp({ days: 30 }),
-      }
+      },
     ).write();
     const doc = await getDoc(testDoc.docRef);
     const futureMillis = Date.now() + 30 * 86400e3;

@@ -52,7 +52,7 @@ export const snapshotExists = (snapshot: DocumentSnapshot): boolean =>
 
 export const addDoc = <T>(
   ref: CollectionReference<T>,
-  data: WithFieldValue<T>
+  data: WithFieldValue<T>,
 ): Promise<DocumentReference<T>> => ref.add(data);
 
 export const collection = (
@@ -63,16 +63,16 @@ export const collection = (
   firestoreOrRef instanceof Firestore
     ? firestoreOrRef.collection([path, ...pathSegments].join("/"))
     : firestoreOrRef.firestore.collection(
-        [firestoreOrRef.path, path, ...pathSegments].join("/")
+        [firestoreOrRef.path, path, ...pathSegments].join("/"),
       );
 
 export const collectionGroup = (
   firestore: Firestore,
-  collectionID: string
+  collectionID: string,
 ): CollectionGroup => firestore.collectionGroup(collectionID);
 
 export const deleteDoc = async (
-  ref: DocumentReference<unknown>
+  ref: DocumentReference<unknown>,
 ): Promise<void> => {
   await ref.delete();
 };
@@ -89,7 +89,7 @@ export const doc = (
     : firestoreOrRef.doc();
 
 export const getDoc = <T>(
-  ref: DocumentReference<T>
+  ref: DocumentReference<T>,
 ): Promise<DocumentSnapshot<T>> => ref.get();
 
 export const getDocs = <T>(query: Query<T>): Promise<QuerySnapshot<T>> =>
@@ -97,7 +97,7 @@ export const getDocs = <T>(query: Query<T>): Promise<QuerySnapshot<T>> =>
 
 export const onSnapshot = (
   ref: DocumentReference,
-  callback: (snapshot: DocumentSnapshot) => void
+  callback: (snapshot: DocumentSnapshot) => void,
 ): Unsubscribe => {
   return ref.onSnapshot(callback);
 };
@@ -114,14 +114,14 @@ export const query = <T>(
 
 export const setDoc = async <T>(
   ref: DocumentReference<T>,
-  data: WithFieldValue<T>
+  data: WithFieldValue<T>,
 ): Promise<void> => {
   await ref.set(data);
 };
 
 export const updateDoc = async <T>(
   ref: DocumentReference<T>,
-  data: UpdateData<T>
+  data: UpdateData<T>,
 ): Promise<void> => {
   await ref.update(data);
 };

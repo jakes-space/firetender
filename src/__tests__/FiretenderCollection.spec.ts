@@ -35,7 +35,7 @@ describe("newDoc", () => {
       testSchema,
       firestore,
       collectionName,
-      { foo: "hello" }
+      { foo: "hello" },
     );
     const testDoc = testCollection.newDoc("111");
     expect(testDoc.id).toBe("111");
@@ -47,7 +47,7 @@ describe("newDoc", () => {
       testSchema,
       firestore,
       collectionName,
-      { foo: "hello" }
+      { foo: "hello" },
     );
     const testDoc = testCollection.newDoc();
     expect(() => testDoc.id).toThrowError();
@@ -59,7 +59,7 @@ describe("newDoc", () => {
       testSchema,
       firestore,
       [collectionName, "subcollection"],
-      { foo: "hello" }
+      { foo: "hello" },
     );
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const testDoc = testCollection.newDoc(["abc", "xyz"]);
@@ -72,7 +72,7 @@ describe("newDoc", () => {
       testSchema,
       firestore,
       [collectionName, "subcollection"],
-      { foo: "hello" }
+      { foo: "hello" },
     );
     expect(() => testCollection.newDoc()).toThrowError("requires an ID");
   });
@@ -82,7 +82,7 @@ describe("newDoc", () => {
       testSchema,
       firestore,
       collectionName,
-      { foo: "hello" }
+      { foo: "hello" },
     );
     const testDoc = testCollection.newDoc(undefined, { bar: 123 });
     expect(testDoc.r).toEqual({ foo: "hello", bar: 123 });
@@ -93,7 +93,7 @@ describe("newDoc", () => {
       testSchema,
       firestore,
       collectionName,
-      () => ({ foo: "hello" })
+      () => ({ foo: "hello" }),
     );
     const testDoc = testCollection.newDoc(undefined, { bar: 123 });
     expect(testDoc.r).toEqual({ foo: "hello", bar: 123 });
@@ -105,10 +105,10 @@ describe("newDoc", () => {
       firestore,
       collectionName,
       { foo: "hello" },
-      { readonly: true }
+      { readonly: true },
     );
     expect(() => testCollection.newDoc()).toThrowError(
-      "Cannot create new docs in readonly mode."
+      "Cannot create new docs in readonly mode.",
     );
   });
 });
@@ -119,7 +119,7 @@ describe("existingDoc", () => {
       testSchema,
       firestore,
       collectionName,
-      { foo: "hello" }
+      { foo: "hello" },
     );
     const testDoc = testCollection.existingDoc("xyz");
     expect(testDoc.id).toBe("xyz");
@@ -130,7 +130,7 @@ describe("existingDoc", () => {
       testSchema,
       firestore,
       [collectionName, "subcollection"],
-      { foo: "hello" }
+      { foo: "hello" },
     );
     const testDoc = testCollection.existingDoc(["abc", "xyz"]);
     expect(testDoc.id).toBe("xyz");
@@ -142,10 +142,10 @@ describe("existingDoc", () => {
       testSchema,
       firestore,
       [collectionName, "subcollection"],
-      { foo: "hello" }
+      { foo: "hello" },
     );
     expect(() => testCollection.existingDoc("abc")).toThrowError(
-      "requires a full ID path"
+      "requires a full ID path",
     );
   });
 });
@@ -258,13 +258,13 @@ describe("query functions", () => {
       citySchema,
       firestore,
       "cities",
-      {}
+      {},
     );
     cityLandmarkCollection = new FiretenderCollection(
       cityLandmarkSchema,
       firestore,
       ["cities", "landmarks"],
-      {}
+      {},
     );
   });
 
@@ -292,7 +292,7 @@ describe("query functions", () => {
 
     it("fails when called on a subcollection without parent ID.", async () => {
       await expect(cityLandmarkCollection.getAllDocs()).rejects.toThrowError(
-        "requires the IDs of all parent collections"
+        "requires the IDs of all parent collections",
       );
     });
 
@@ -300,7 +300,7 @@ describe("query functions", () => {
       const nonexistentCollection = new FiretenderCollection(
         testSchema,
         firestore,
-        "no-collection-here"
+        "no-collection-here",
       );
       // Admin can read anywhere, so this test does not throw an error.
       if (FIRESTORE_DEPS_TYPE === "admin") return;
@@ -329,7 +329,7 @@ describe("query functions", () => {
     it("performs a compound query on a collection.", async () => {
       const docs = await cityCollection.query(
         where("population", ">=", 1e6),
-        where("regions", "array-contains", "west_coast")
+        where("regions", "array-contains", "west_coast"),
       );
       expect(docs.map((d) => d.r.name).sort()).toEqual(["Los Angeles"]);
     });
@@ -337,7 +337,7 @@ describe("query functions", () => {
     it("performs a simple query on a subcollection.", async () => {
       const docs = await cityLandmarkCollection.query(
         "LA",
-        where("type", "==", "park")
+        where("type", "==", "park"),
       );
       expect(docs.map((d) => d.r.name).sort()).toEqual(["Griffith Park"]);
     });
@@ -345,7 +345,7 @@ describe("query functions", () => {
     it("takes an array for the ID path.", async () => {
       const docs = await cityLandmarkCollection.query(
         ["BJ"],
-        where("type", "==", "museum")
+        where("type", "==", "museum"),
       );
       expect(docs.map((d) => d.r.name).sort()).toEqual([
         "Beijing Ancient Observatory",
@@ -354,7 +354,7 @@ describe("query functions", () => {
 
     it("performs a simple query across a subcollection group.", async () => {
       const docs = await cityLandmarkCollection.query(
-        where("type", "==", "museum")
+        where("type", "==", "museum"),
       );
       expect(docs.map((d) => d.r.name).sort()).toEqual([
         "Beijing Ancient Observatory",
@@ -371,11 +371,11 @@ describe("query functions", () => {
       const nonexistentCollection = new FiretenderCollection(
         testSchema,
         firestore,
-        "no-collection-here"
+        "no-collection-here",
       );
       const whereClause = where("not-an-actual-field", "==", "foo");
       await expect(
-        nonexistentCollection.query(whereClause)
+        nonexistentCollection.query(whereClause),
       ).rejects.toThrowError();
       try {
         await nonexistentCollection.query(whereClause);
@@ -394,11 +394,11 @@ describe("delete", () => {
       testSchema,
       firestore,
       collectionName,
-      { foo: "delete-doc-in-collection" }
+      { foo: "delete-doc-in-collection" },
     );
     const testDoc = await testCollection.newDoc().write();
     const docsBeforeDelete = await testCollection.query(
-      where("foo", "==", "delete-doc-in-collection")
+      where("foo", "==", "delete-doc-in-collection"),
     );
     expect(docsBeforeDelete.map((d) => d.r.foo).sort()).toEqual([
       "delete-doc-in-collection",
@@ -406,7 +406,7 @@ describe("delete", () => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await testCollection.delete(testDoc.id);
     const docsAfterDelete = await testCollection.query(
-      where("foo", "==", "delete-doc-in-collection")
+      where("foo", "==", "delete-doc-in-collection"),
     );
     expect(docsAfterDelete.map((d) => d.r.foo).sort()).toEqual([]);
   });
@@ -421,7 +421,7 @@ describe("makeCollectionRef", () => {
     ]);
     expect(() => testCollection.makeCollectionRef(["123"])).toThrowError();
     expect(() =>
-      testCollection.makeCollectionRef(["123", "456", "789"])
+      testCollection.makeCollectionRef(["123", "456", "789"]),
     ).toThrowError();
   });
 
@@ -453,7 +453,7 @@ describe("makeDocRef", () => {
     ]);
     expect(() => testCollection.makeDocRef(["123", "456"])).toThrowError();
     expect(() =>
-      testCollection.makeDocRef(["123", "456", "789", "abc"])
+      testCollection.makeDocRef(["123", "456", "789", "abc"]),
     ).toThrowError();
   });
 

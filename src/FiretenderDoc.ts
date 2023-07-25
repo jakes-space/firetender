@@ -169,7 +169,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   constructor(
     schema: SchemaType,
     ref: DocumentReference | CollectionReference,
-    options: AllFiretenderDocOptions = {}
+    options: AllFiretenderDocOptions = {},
   ) {
     this.schema = schema;
     this.ref = ref;
@@ -177,7 +177,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     this.isNewDoc = options.createDoc ?? false;
     if (this.isReadonly && this.isNewDoc) {
       throw new FiretenderUsageError(
-        "Cannot create new docs in readonly mode."
+        "Cannot create new docs in readonly mode.",
       );
     }
     this.isSettingNewContents = this.isNewDoc;
@@ -185,7 +185,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       this.data = schema.parse(options.initialData);
     } else if (this.isNewDoc) {
       throw new FiretenderUsageError(
-        "Initial data must be given when creating a new doc."
+        "Initial data must be given when creating a new doc.",
       );
     }
     this.patchers = options.patchers;
@@ -194,7 +194,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       this.docID = this.ref.path.split("/").pop();
     } else if (!this.isNewDoc) {
       throw TypeError(
-        "FiretenderDoc can only take a collection reference when creating a new document.  Use .createNewDoc() if this is your intent."
+        "FiretenderDoc can only take a collection reference when creating a new document.  Use .createNewDoc() if this is your intent.",
       );
     }
   }
@@ -218,7 +218,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     schema: SchemaType1,
     ref: DocumentReference | CollectionReference,
     initialData: z.input<SchemaType1>,
-    options: FiretenderDocOptions = {}
+    options: FiretenderDocOptions = {},
   ): FiretenderDoc<SchemaType1> {
     const mergedOptions: AllFiretenderDocOptions = {
       ...options,
@@ -260,11 +260,11 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       | string
       | string[]
       | undefined = undefined,
-    options: AllFiretenderDocOptions = {}
+    options: AllFiretenderDocOptions = {},
   ): FiretenderDoc<SchemaType> {
     if (!this.data) {
       throw new FiretenderUsageError(
-        "You must call load() before making a copy."
+        "You must call load() before making a copy.",
       );
     }
     let ref: DocumentReference | CollectionReference;
@@ -283,7 +283,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       const collectionDepth = (path.length + 1) / 2;
       if (dest.length < collectionDepth - 1 || dest.length > collectionDepth) {
         throw new FiretenderUsageError(
-          "copy() with a path array requires an ID for all collections and subcollections, except optionally the last."
+          "copy() with a path array requires an ID for all collections and subcollections, except optionally the last.",
         );
       }
       dest.forEach((id, index) => {
@@ -319,7 +319,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   get id(): string {
     if (!this.docID) {
       throw new FiretenderUsageError(
-        "id can only be accessed after the new doc has been written."
+        "id can only be accessed after the new doc has been written.",
       );
     }
     return this.docID;
@@ -333,7 +333,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   get docRef(): DocumentReference {
     if (!(this.ref instanceof DocumentReference)) {
       throw new FiretenderUsageError(
-        "docRef can only be accessed after the new doc has been written."
+        "docRef can only be accessed after the new doc has been written.",
       );
     }
     return this.ref;
@@ -375,11 +375,11 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    *   {@link LoadOptions} for details.
    */
   async load(
-    options: LoadOptions<FiretenderDoc<SchemaType>> = {}
+    options: LoadOptions<FiretenderDoc<SchemaType>> = {},
   ): Promise<this> {
     if (this.isNewDoc || this.ref instanceof CollectionReference) {
       throw new FiretenderUsageError(
-        "load() should not be called for new documents."
+        "load() should not be called for new documents.",
       );
     }
     if (
@@ -408,7 +408,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         typeof options.listen === "function" ? options.listen : undefined;
       const listener = (
         newSnapshot: DocumentSnapshot,
-        initialResolve: (ns: DocumentSnapshot) => void
+        initialResolve: (ns: DocumentSnapshot) => void,
       ): void => {
         if (!this.detachListener) {
           initialResolve(newSnapshot);
@@ -436,7 +436,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       snapshot = await new Promise((resolve) => {
         try {
           detach = onSnapshot(this.ref as DocumentReference, (newSnapshot) =>
-            listener(newSnapshot, resolve)
+            listener(newSnapshot, resolve),
           );
         } catch (error) {
           addContextToError(error, "onSnapshot", this.ref);
@@ -462,7 +462,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     }
     if (!snapshot || !snapshotExists(snapshot)) {
       const error = new FiretenderIOError(
-        `Document does not exist or insufficient permissions: "${this.ref.path}"`
+        `Document does not exist or insufficient permissions: "${this.ref.path}"`,
       );
       this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
       throw error;
@@ -489,7 +489,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   get r(): DeepReadonly<z.infer<SchemaType>> {
     if (!this.data) {
       throw new FiretenderUsageError(
-        "load() must be called before reading the document."
+        "load() must be called before reading the document.",
       );
     }
     return this.data as DeepReadonly<z.infer<SchemaType>>;
@@ -511,14 +511,14 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       if (!this.data) {
         // TODO #23: Consider being able to update a doc without loading it.
         throw new FiretenderUsageError(
-          "load() must be called before updating the document."
+          "load() must be called before updating the document.",
         );
       }
       this.dataProxy = watchForChanges(
         [],
         this.schema,
         this.data,
-        this.addToUpdateList.bind(this)
+        this.addToUpdateList.bind(this),
       );
     }
     return this.dataProxy as z.infer<SchemaType>;
@@ -573,7 +573,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       if (!(this.ref instanceof DocumentReference)) {
         // We should never get here.
         throw new FiretenderInternalError(
-          "Internal error.  Firetender object should always reference a document when updating an existing doc."
+          "Internal error.  Firetender object should always reference a document when updating an existing doc.",
         );
       }
       if (this.updates.size > 0) {
@@ -616,7 +616,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   private throwIfReadonly(): void {
     if (this.isReadonly) {
       throw new FiretenderUsageError(
-        `An attempt was made to modify or write a read-only doc: ${this.docID}`
+        `An attempt was made to modify or write a read-only doc: ${this.docID}`,
       );
     }
   }
@@ -628,7 +628,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   private loadFromSnapshot(
     snapshot: DocumentSnapshot,
-    isListener = false
+    isListener = false,
   ): boolean {
     const data = snapshot.data();
     if (!data) {
@@ -640,7 +640,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     if (this.patchers) {
       const wasPatched = this.patchers.reduce(
         (wasPatched, patcher) => patcher(data) || wasPatched,
-        false
+        false,
       );
       this.isSettingNewContents = true;
       if (wasPatched) {
@@ -682,7 +682,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   private addToUpdateList<FieldSchemaType extends z.ZodTypeAny>(
     fieldPath: string[],
-    newValue: z.infer<FieldSchemaType>
+    newValue: z.infer<FieldSchemaType>,
   ): void {
     let pathString = "";
     if (this.updates.size > 0) {

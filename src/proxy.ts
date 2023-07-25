@@ -44,7 +44,7 @@ export function watchForChanges<
   fieldSchema: FieldSchemaType,
   field: z.infer<FieldSchemaType>,
   addToUpdateList: (path: string[], newValue: any) => void,
-  arrayAncestor: ArrayElementType[] | undefined = undefined
+  arrayAncestor: ArrayElementType[] | undefined = undefined,
 ): z.infer<FieldSchemaType> {
   return new Proxy(field, {
     get(target, propertyKey): any {
@@ -93,7 +93,7 @@ export function watchForChanges<
           getPropertySchema(field, fieldSchema, propertyKey),
           property,
           addToUpdateList,
-          nextArrayAncestor
+          nextArrayAncestor,
         );
       }
       // Otherwise we must be getting a primitive.  No need to wrap it.
@@ -109,7 +109,7 @@ export function watchForChanges<
       if ((target as any) instanceof Array && propertyKey === "length") {
         if (typeof value !== "number") {
           throw TypeError(
-            `Failed to set array length to ${value} (type: ${typeof value}).`
+            `Failed to set array length to ${value} (type: ${typeof value}).`,
           );
         }
         if (target.length > value) {
@@ -159,7 +159,7 @@ export function watchForChanges<
         // not set, and which is generally not what we want.  Hence splice.
         if (!propertyKey.match(/^\d+$/)) {
           throw TypeError(
-            `Failed to delete an invalid array index: "${propertyKey}".`
+            `Failed to delete an invalid array index: "${propertyKey}".`,
           );
         }
         const index = Number(propertyKey);
@@ -187,7 +187,7 @@ export function watchForChanges<
 function getPropertySchema(
   parent: any,
   parentSchema: z.ZodTypeAny,
-  propertyKey: string
+  propertyKey: string,
 ): z.ZodTypeAny {
   let schema: any = parentSchema;
   // eslint-disable-next-line no-constant-condition
@@ -211,7 +211,7 @@ function getPropertySchema(
           schema.keySchema._def.typeName !== z.ZodFirstPartyTypeKind.ZodString
         ) {
           throw TypeError(
-            `The ZodRecord for property ${propertyKey} has keys of type ${schema.keySchema._def.typeName}.  Only strings are supported.`
+            `The ZodRecord for property ${propertyKey} has keys of type ${schema.keySchema._def.typeName}.  Only strings are supported.`,
           );
         }
         return schema.valueSchema;
@@ -221,7 +221,7 @@ function getPropertySchema(
         return schema.shape[propertyKey];
       case z.ZodFirstPartyTypeKind.ZodDiscriminatedUnion:
         schema = (schema as any).optionsMap.get(
-          parent[(schema as any).discriminator]
+          parent[(schema as any).discriminator],
         );
         continue;
       // If the parent is of type ZodAny, so are its properties.
@@ -229,7 +229,7 @@ function getPropertySchema(
         return z.any();
       default:
         throw TypeError(
-          `Unsupported schema type for property "${propertyKey}": ${schema._def.typeName}`
+          `Unsupported schema type for property "${propertyKey}": ${schema._def.typeName}`,
         );
     }
   }
@@ -258,6 +258,6 @@ function pruneUndefinedFields<T>(obj: T): T {
   return Object.fromEntries(
     Object.entries(obj as Record<string | number | symbol, unknown>)
       .filter(([_k, v]) => v !== undefined)
-      .map(([k, v]) => [k, pruneUndefinedFields(v)])
+      .map(([k, v]) => [k, pruneUndefinedFields(v)]),
   ) as T;
 }

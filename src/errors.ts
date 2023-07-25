@@ -41,7 +41,7 @@ export function addContextToError(
   error: any,
   call: string,
   ref?: DocumentReference | CollectionReference,
-  data?: any
+  data?: any,
 ): void {
   if (typeof error !== "object") {
     return;
