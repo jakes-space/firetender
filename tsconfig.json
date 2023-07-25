@@ -19,9 +19,7 @@
     ]
   },
   "include": [
-    "src/**/*.ts",
-    ".eslintrc.cjs",
-    "jest.config.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules"

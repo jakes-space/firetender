@@ -84,4 +84,8 @@ module.exports = {
       typescript: {},
     },
   },
+  ignorePatterns: [
+    ".eslintrc.cjs",
+    "jest.config.ts",
+  ]
 };
