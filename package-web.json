@@ -15,7 +15,6 @@
     "typescript",
     "schema"
   ],
-  "type": "module",
   "types": "./dist/cjs/index.d.ts",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -50,7 +49,7 @@
     "test:manual": "./src/__tests__/run-tests.sh",
     "prepare": "husky install",
     "clean": "rm -rf dist/*",
-    "build": "npm run clean && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && rm -rf dist/*/__tests__",
+    "build": "npm run clean && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./finish-build.sh",
     "prepublishOnly": "npm run check && npm run test && npm run build"
   },
   "dependencies": {
