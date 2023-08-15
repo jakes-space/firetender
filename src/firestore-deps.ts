@@ -6,7 +6,6 @@
 
 import { DocumentSnapshot } from "firebase/firestore";
 
-export { FirebaseError } from "firebase/app";
 export type { Unsubscribe } from "firebase/firestore";
 export {
   addDoc,
@@ -19,7 +18,6 @@ export {
   DocumentReference,
   DocumentSnapshot,
   Firestore,
-  FirestoreError,
   getDoc,
   getDocs,
   onSnapshot,

@@ -5,7 +5,6 @@
  * compatible with the v9 modular calls used by the web version.
  */
 
-import { FirebaseError } from "@firebase/util";
 import {
   CollectionGroup,
   CollectionReference,
@@ -20,7 +19,6 @@ import {
   UpdateData,
   WithFieldValue,
 } from "@google-cloud/firestore";
-import { FirestoreError } from "firebase/firestore";
 
 export const FIRESTORE_DEPS_TYPE: "web" | "admin" = "admin";
 
@@ -28,9 +26,7 @@ export {
   CollectionReference,
   DocumentReference,
   DocumentSnapshot,
-  FirebaseError,
   Firestore,
-  FirestoreError,
   Query,
   QuerySnapshot,
   Timestamp,

@@ -14,8 +14,6 @@ import {
   doc,
   DocumentReference,
   DocumentSnapshot,
-  FirebaseError,
-  FirestoreError,
   getDoc,
   onSnapshot,
   setDoc,
@@ -447,17 +445,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     } else {
       try {
         snapshot = await getDoc(this.ref);
-      } catch (error) {
-        if (
-          (error instanceof FirestoreError || error instanceof FirebaseError) &&
-          (error.code === "not-found" || error.code === "permission-denied")
-        ) {
-          // Not found and permission errors are handled below; snapshot is left
-          // undefined.
-        } else {
+      } catch (error: any) {
+        if (error.code !== "not-found" && error.code !== "permission-denied") {
           addContextToError(error, "getDoc", this.ref);
           throw error;
         }
+        // Not found and permission errors are handled below; snapshot is left
+        // undefined.
       }
     }
     if (!snapshot || !snapshotExists(snapshot)) {
