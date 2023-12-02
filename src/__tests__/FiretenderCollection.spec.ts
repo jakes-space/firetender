@@ -314,6 +314,24 @@ describe("query functions", () => {
         });
       }
     });
+
+    it("applies patches to the data.", async () => {
+      cityCollection.patch((data) => {
+        if (data.name === "Los Angeles") {
+          data.regions?.push("home");
+        }
+      });
+      cityCollection.patch((data) => {
+        // Second patcher should run after the first.
+        if (data.name === "Los Angeles") {
+          data.regions?.sort();
+        }
+      });
+      const docs = await cityCollection.getAllDocs();
+      const iLA = docs.findIndex((d) => d.id === "LA");
+      expect(iLA).toBeGreaterThan(-1);
+      expect(docs[iLA].r.regions).toEqual(["home", "socal", "west_coast"]);
+    });
   });
 
   describe("query", () => {
@@ -384,6 +402,20 @@ describe("query functions", () => {
           call: "getDocs",
         });
       }
+    });
+
+    it("applies patches to the data.", async () => {
+      cityLandmarkCollection.patch((data) => {
+        if (data.name === "The Getty") {
+          data.name = "The Getty Center";
+        }
+        return false;
+      });
+      const docs = await cityLandmarkCollection.query(
+        "LA",
+        where("type", "==", "museum"),
+      );
+      expect(docs.map((d) => d.r.name).sort()).toEqual(["The Getty Center"]);
     });
   });
 });

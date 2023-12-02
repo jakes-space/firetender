@@ -25,11 +25,9 @@ import { watchForChanges } from "./proxy";
 import { DeepReadonly } from "./ts-helpers";
 
 /*
- * Patcher functions serially modify the data from Firestore before it is parsed by Zod.
- * If any of these functions returns true, the data is asynchronously updated
- * on Firestore half a second later, if it hasn't already been written back.
+ * Patcher functions modify the data from Firestore before it is parsed by Zod.
  */
-export type Patcher = (data: any) => boolean;
+export type Patcher = (data: Record<string, any>) => boolean | void;
 
 /**
  * Public options for initializing a FiretenderDoc object.
@@ -43,11 +41,13 @@ export type FiretenderDocOptions = {
 
   /**
    * Functions that modify the data from Firestore before it is parsed by Zod.
-   * If any of these functions returns true, the data is asynchronously updated
-   * on Firestore half a second later, if it hasn't already been written back.
-   *
    * The patchers are applied to the data in the order given, each receiving the
    * output of the previous.  The output of the last is fed to Zod.
+   *
+   * If any of these functions returns true, the data is asynchronously updated
+   * on Firestore after a delay of `savePatchAfterDelay`, if it hasn't already
+   * been written back.  Only return true if the Firestore rules allow updating
+   * all patched fields; otherwise all subsequent writes will fail.
    */
   patchers?: Patcher[] | undefined;
 
@@ -76,7 +76,14 @@ export type AllFiretenderDocOptions = FiretenderDocOptions & {
    * The document's initial data, which must define a valid instance of the
    * document according to its schema.
    */
-  initialData?: Record<string, any>;
+  initialData?: DeepReadonly<Record<string, unknown>>;
+
+  /**
+   * The document's raw data, as it would be read from Firestore.  Unlike
+   * `initialData`, this data is patched before parsing.  The patched data must
+   * must define a valid instance of the document according to its schema.
+   */
+  rawData?: DeepReadonly<Record<string, unknown>>;
 };
 
 /**
@@ -179,15 +186,19 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       );
     }
     this.isSettingNewContents = this.isNewDoc;
+    this.patchers = options.patchers;
+    this.savePatchAfterDelay = options.savePatchAfterDelay ?? 500;
     if (options.initialData) {
       this.data = schema.parse(options.initialData);
+    } else if (options.rawData) {
+      const data = structuredClone(options.rawData);
+      this.patchData(data);
+      this.data = schema.parse(data);
     } else if (this.isNewDoc) {
       throw new FiretenderUsageError(
         "Initial data must be given when creating a new doc.",
       );
     }
-    this.patchers = options.patchers;
-    this.savePatchAfterDelay = options.savePatchAfterDelay ?? 500;
     if (this.ref instanceof DocumentReference) {
       this.docID = this.ref.path.split("/").pop();
     } else if (!this.isNewDoc) {
@@ -631,24 +642,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       // duplicate in test.  Not much we can do but ignore it.
       return false;
     }
-    if (this.patchers) {
-      const wasPatched = this.patchers.reduce(
-        (wasPatched, patcher) => patcher(data) || wasPatched,
-        false,
-      );
-      this.isSettingNewContents = true;
-      if (wasPatched) {
-        // Listeners don't update the data on Firestore, as that would cause an
-        // infinite loop of updates if a patcher always returns true.
-        if (
-          !isListener &&
-          !this.isReadonly &&
-          this.savePatchAfterDelay !== false
-        ) {
-          setTimeout(() => this.write(), this.savePatchAfterDelay);
-        }
-      }
-    }
+    this.patchData(data, isListener);
     let parsedData: z.infer<SchemaType>;
     try {
       parsedData = this.schema.parse(data);
@@ -667,6 +661,26 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     // Dereference the old proxy to force a recapture of data.
     this.dataProxy = undefined;
     return true;
+  }
+
+  /**
+   * Applies the patches to the given data.  Writes the updates to Firestore if
+   * `noUpdate` is not set and any patcher returns true.
+   */
+  private patchData(data: Record<string, unknown>, noUpdate = false): void {
+    if (!this.patchers) return;
+    const wasPatched = this.patchers.reduce(
+      (wasPatched, patcher) => patcher(data) || wasPatched,
+      false,
+    );
+    this.isSettingNewContents = true;
+    if (wasPatched) {
+      // Listeners don't update the data on Firestore, as that would cause an
+      // infinite loop of updates if a patcher always returns true.
+      if (!noUpdate && !this.isReadonly && this.savePatchAfterDelay !== false) {
+        setTimeout(() => this.write(), this.savePatchAfterDelay);
+      }
+    }
   }
 
   /**

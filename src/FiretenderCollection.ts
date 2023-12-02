@@ -15,7 +15,7 @@ import {
   QueryConstraint,
   QuerySnapshot,
 } from "./firestore-deps";
-import { FiretenderDoc, FiretenderDocOptions } from "./FiretenderDoc";
+import { FiretenderDoc, FiretenderDocOptions, Patcher } from "./FiretenderDoc";
 import { DeepPartial } from "./ts-helpers";
 
 /**
@@ -273,7 +273,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
    * collection's documents.  Patchers can also be passed in the options
    * argument of this class's constructor.
    */
-  patch(patcher: (data: DeepPartial<z.input<SchemaType>>) => boolean): void {
+  patch(patcher: Patcher): void {
     if (!this.defaultDocOptions.patchers) {
       this.defaultDocOptions.patchers = [patcher];
     } else {
@@ -331,7 +331,8 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     return querySnapshot.docs.map(
       (queryDoc) =>
         new FiretenderDoc(this.schema, queryDoc.ref, {
-          initialData: queryDoc.data(),
+          ...this.defaultDocOptions,
+          rawData: queryDoc.data(),
         }),
     );
   }
