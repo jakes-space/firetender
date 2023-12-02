@@ -6,10 +6,13 @@ import {
   doc,
   Firestore,
   FIRESTORE_DEPS_TYPE,
+  getDoc,
+  serverTimestamp,
   setDoc,
   where,
 } from "../firestore-deps";
 import { FiretenderCollection } from "../FiretenderCollection";
+import { timestampSchema } from "../timestamps";
 import {
   cleanupFirestoreEmulator,
   getFirestoreEmulator,
@@ -18,6 +21,7 @@ import {
 const testSchema = z.object({
   foo: z.string(),
   bar: z.number().optional(),
+  ttl: timestampSchema.optional(),
 });
 
 const collectionName = "coltests";
@@ -416,6 +420,41 @@ describe("query functions", () => {
         where("type", "==", "museum"),
       );
       expect(docs.map((d) => d.r.name).sort()).toEqual(["The Getty Center"]);
+    });
+
+    it("works with timestamps.", async () => {
+      // Write doc with a server timestamp.  Confirm timestamp is set.
+      const uniqueFoo = `foo-${Date.now()}`;
+      const docRef = (
+        await new FiretenderCollection(testSchema, firestore, collectionName)
+          .newDoc(undefined, { foo: uniqueFoo, bar: 1, ttl: serverTimestamp() })
+          .write()
+      ).docRef;
+      const doc = await getDoc(docRef);
+      const serverTimestampMillis = doc.data()?.ttl.toMillis();
+      const millisDiff = Math.abs(serverTimestampMillis - Date.now());
+      expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
+      // Load doc via a collection with a patcher.  Confirm the patcher works and
+      // the timestamp remains.
+      const collection = new FiretenderCollection(
+        testSchema,
+        firestore,
+        collectionName,
+        undefined,
+        {
+          patchers: [
+            (data: any) => {
+              data.bar = 2;
+            },
+          ],
+        },
+      );
+      const results = await collection.query(where("foo", "==", uniqueFoo));
+      expect(results.length).toBe(1);
+      const testDoc = results[0];
+      expect(testDoc.r.foo).toBe(uniqueFoo);
+      expect(testDoc.r.bar).toBe(2);
+      expect(testDoc.r.ttl?.toMillis()).toBe(serverTimestampMillis);
     });
   });
 });

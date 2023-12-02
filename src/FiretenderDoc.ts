@@ -80,10 +80,9 @@ export type AllFiretenderDocOptions = FiretenderDocOptions & {
 
   /**
    * The document's raw data, as it would be read from Firestore.  Unlike
-   * `initialData`, this data is patched before parsing.  The patched data must
-   * must define a valid instance of the document according to its schema.
+   * `initialData`, the given record is patched in place prior to parsing.
    */
-  rawData?: DeepReadonly<Record<string, unknown>>;
+  rawData?: Record<string, unknown>;
 };
 
 /**
@@ -191,9 +190,8 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     if (options.initialData) {
       this.data = schema.parse(options.initialData);
     } else if (options.rawData) {
-      const data = structuredClone(options.rawData);
-      this.patchData(data);
-      this.data = schema.parse(data);
+      this.patchData(options.rawData);
+      this.data = schema.parse(options.rawData);
     } else if (this.isNewDoc) {
       throw new FiretenderUsageError(
         "Initial data must be given when creating a new doc.",
@@ -668,7 +666,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * `noUpdate` is not set and any patcher returns true.
    */
   private patchData(data: Record<string, unknown>, noUpdate = false): void {
-    if (!this.patchers) return;
+    if (!this.patchers || this.patchers.length === 0) return;
     const wasPatched = this.patchers.reduce(
       (wasPatched, patcher) => patcher(data) || wasPatched,
       false,
