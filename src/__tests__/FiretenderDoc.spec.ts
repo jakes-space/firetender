@@ -252,8 +252,8 @@ describe("listener", () => {
     await testDoc.update((doc) => {
       doc.ttl = serverTimestamp();
     });
-    // Wait a second for the timestamp to be set by the server.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Wait a moment for the timestamp to be set by the server.
+    await new Promise((resolve) => setTimeout(resolve, 100));
     expect(callbackCount).toEqual(1);
     const doc = await getDoc(testDoc.docRef);
     const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - nowMillis);
@@ -274,7 +274,7 @@ describe("patch", () => {
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "alice@example.com",
