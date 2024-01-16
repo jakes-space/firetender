@@ -1,5 +1,5 @@
 /**
- * Start before testing: firebase emulators:start --project=firetender
+ * Start before testing: npm run start-emulator
  *
  * TODO: #5 zod effects and preprocessing, but disallowing transforms
  */

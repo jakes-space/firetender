@@ -1,3 +1,4 @@
+import { writeBatch } from "firebase/firestore";
 import { z } from "zod";
 
 import { addContextToError, FiretenderUsageError } from "./errors";
@@ -16,7 +17,7 @@ import {
   QuerySnapshot,
 } from "./firestore-deps";
 import { FiretenderDoc, FiretenderDocOptions, Patcher } from "./FiretenderDoc";
-import { DeepPartial } from "./ts-helpers";
+import { DeepPartial, DeepReadonly } from "./ts-helpers";
 
 /**
  * A representation of a Firestore collection or subcollection.
@@ -227,6 +228,68 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
       await deleteDoc(ref);
     } catch (error) {
       addContextToError(error, "deleteDoc", ref);
+      throw error;
+    }
+  }
+
+  /**
+   * Adds a list of documents to this collection.
+   *
+   * @param entries a list of document data records, or [id, data] tuples.  If
+   *   the document ID is omitted, Firestore will generate a random one.
+   *
+   * @returns a list of `FiretenderDoc` objects for the new entries.
+   */
+  async createBatch(
+    entries: [string | string[], DeepReadonly<z.input<SchemaType>>][],
+  ): Promise<FiretenderDoc<SchemaType>[]> {
+    const batch = writeBatch(this.firestore);
+    const docs = entries.map(([id, initialData]) => {
+      const ref = this.makeDocRefInternal([id].flat());
+      if (!ref) {
+        throw new FiretenderUsageError(
+          `createBatch() received an incomplete ID: "/${[id]
+            .flat()
+            .join("/")}".  IDs must fully specify a document path.`,
+        );
+      }
+      const doc = new FiretenderDoc(this.schema, ref, {
+        ...this.defaultDocOptions,
+        initialData,
+      });
+      batch.set(ref, doc.r);
+      return doc;
+    });
+    try {
+      await batch.commit();
+    } catch (error) {
+      addContextToError(error, "createBatch");
+      throw error;
+    }
+    return docs;
+  }
+
+  /**
+   * Deletes the specified documents from this collection.
+   */
+  async deleteBatch(idList: (string[] | string)[]): Promise<void> {
+    const batch = writeBatch(this.firestore);
+    idList.forEach((id) => {
+      const ref = this.makeDocRefInternal([id].flat());
+      if (!ref) {
+        throw new FiretenderUsageError(
+          `deleteBatch() received an incomplete ID: "/${[id]
+            .flat()
+            .join("/")}".  IDs must fully specify a document path.`,
+        );
+      }
+      batch.delete(ref);
+    });
+    try {
+      await batch.commit();
+    } catch (error) {
+      addContextToError(error, "deleteBatch");
+      throw error;
     }
   }
 

@@ -20,7 +20,7 @@ import {
 
 const testSchema = z.object({
   foo: z.string(),
-  bar: z.number().optional(),
+  bar: z.number().min(0).optional(),
   ttl: timestampSchema.optional(),
 });
 
@@ -536,5 +536,106 @@ describe("makeDocRef", () => {
     ]);
     const ref = testCollection.makeDocRef(["123", "456", "789"]);
     expect(ref.path).toBe("coltests/123/subcol-A/456/subcol-B/789");
+  });
+});
+
+describe("createBatch", () => {
+  it("creates a batch of docs", async () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      collectionName,
+    );
+    const docs = await testCollection.createBatch([
+      ["create-batch-doc0", { foo: "hello" }],
+      ["create-batch-doc1", { foo: "world" }],
+    ]);
+    expect(docs[0].id).toBe("create-batch-doc0");
+    expect(docs[0].r).toEqual({ foo: "hello" });
+    expect(docs[1].id).toBe("create-batch-doc1");
+    expect(docs[1].r).toEqual({ foo: "world" });
+    expect((await getDoc(docs[0].docRef)).data()).toEqual({ foo: "hello" });
+    expect((await getDoc(docs[1].docRef)).data()).toEqual({ foo: "world" });
+  });
+
+  it("throws for incomplete doc IDs", async () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      collectionName,
+    );
+    await expect(
+      testCollection.createBatch([[[], { foo: "hello" }]]),
+    ).rejects.toThrowError("incomplete ID");
+  });
+
+  it("throws for parsing errors", async () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      collectionName,
+    );
+    await expect(
+      testCollection.createBatch([["bad-data", { foo: "xyz", bar: -1 }]]),
+    ).rejects.toThrowError();
+  });
+
+  it("throws for failed commits", async () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      "bad-collection-name",
+    );
+    await expect(
+      testCollection.createBatch([["some-id", { foo: "xyz" }]]),
+    ).rejects.toThrowError("PERMISSION_DENIED");
+  });
+});
+
+describe("deleteBatch", () => {
+  it("deletes a batch of docs", async () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      collectionName,
+    );
+    await testCollection.createBatch([
+      ["delete-batch-doc0", { foo: "delete-batch-test" }],
+      ["delete-batch-doc1", { foo: "delete-batch-test" }],
+    ]);
+    expect(
+      (await testCollection.query(where("foo", "==", "delete-batch-test")))
+        .length,
+    ).toBe(2);
+    await testCollection.deleteBatch([
+      "delete-batch-doc0",
+      "delete-batch-doc1",
+    ]);
+    expect(
+      (await testCollection.query(where("foo", "==", "delete-batch-test")))
+        .length,
+    ).toBe(0);
+  });
+
+  it("throws for incomplete doc IDs", async () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      collectionName,
+    );
+    await expect(testCollection.deleteBatch([[]])).rejects.toThrowError(
+      "incomplete ID",
+    );
+  });
+
+  it("throws for failed commits", async () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      "bad-collection-name",
+    );
+    await expect(testCollection.deleteBatch(["some-id"])).rejects.toThrowError(
+      "PERMISSION_DENIED",
+    );
   });
 });
