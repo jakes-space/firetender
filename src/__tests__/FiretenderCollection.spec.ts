@@ -481,6 +481,29 @@ describe("delete", () => {
     );
     expect(docsAfterDelete.map((d) => d.r.foo).sort()).toEqual([]);
   });
+
+  it("throws for an incomplete doc ID", async () => {
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      collectionName,
+    );
+    await expect(testCollection.delete([])).rejects.toThrowError(
+      "requires the full ID path",
+    );
+  });
+
+  it("throws for failed delete", async () => {
+    if (FIRESTORE_DEPS_TYPE === "admin") return; // Admin can delete anywhere.
+    const testCollection = new FiretenderCollection(
+      testSchema,
+      firestore,
+      "bad-collection-name",
+    );
+    await expect(testCollection.delete("some-id")).rejects.toThrowError(
+      "PERMISSION_DENIED",
+    );
+  });
 });
 
 describe("makeCollectionRef", () => {

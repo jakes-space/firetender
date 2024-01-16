@@ -161,8 +161,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   async getAllDocs(
     id: string[] | string | undefined = undefined,
   ): Promise<FiretenderDoc<SchemaType>[]> {
-    const ids = id instanceof Array ? id : id ? [id] : [];
-    const collectionRef = this.makeCollectionRefInternal(ids);
+    const collectionRef = this.makeCollectionRefInternal([id ?? []].flat());
     if (!collectionRef) {
       throw new FiretenderUsageError(
         "When querying a subcollection, getAllDocs() requires the IDs of all parent collections.",
