@@ -89,13 +89,13 @@ describe("constructor", () => {
   it("throws when creating a new doc without initial data.", async () => {
     expect(() => {
       new FiretenderDoc(testDataSchema, testCollection, { createDoc: true });
-    }).toThrowError("Initial data must be given when creating a new doc.");
+    }).toThrow("Initial data must be given when creating a new doc.");
   });
 
   it("throws if given a collection ref without createDoc.", async () => {
     expect(() => {
       new FiretenderDoc(testDataSchema, testCollection);
-    }).toThrowError(
+    }).toThrow(
       "can only take a collection reference when creating a new document.",
     );
   });
@@ -108,10 +108,10 @@ describe("load", () => {
       doc(testCollection, "foo"),
     );
     expect(testDoc.isLoaded).toBe(false);
-    expect(() => testDoc.r.email).toThrowError(
+    expect(() => testDoc.r.email).toThrow(
       "load() must be called before reading the document.",
     );
-    expect(() => testDoc.w.email).toThrowError(
+    expect(() => testDoc.w.email).toThrow(
       "load() must be called before updating the document.",
     );
   });
@@ -121,7 +121,7 @@ describe("load", () => {
       testDataSchema,
       doc(testCollection, "foo"),
     );
-    await expect(testDoc.load()).rejects.toThrowError("does not exist");
+    await expect(testDoc.load()).rejects.toThrow("does not exist");
   });
 
   it("throws for a doc blocked by Firestore rules.", async () => {
@@ -132,14 +132,14 @@ describe("load", () => {
       unreadable: true,
     });
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
-    await expect(testDoc.load()).rejects.toThrowError(FiretenderIOError);
+    await expect(testDoc.load()).rejects.toThrow(FiretenderIOError);
   });
 
   it("throws for a created but not yet written doc.", async () => {
     const testDoc = FiretenderDoc.createNewDoc(testDataSchema, testCollection, {
       email: "bob@example.com",
     });
-    await expect(testDoc.load()).rejects.toThrowError(
+    await expect(testDoc.load()).rejects.toThrow(
       "should not be called for new documents.",
     );
   });
@@ -147,7 +147,7 @@ describe("load", () => {
   it("throws for an invalid doc.", async () => {
     const docRef = await addDoc(testCollection, {}); // Missing email.
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
-    await expect(testDoc.load()).rejects.toThrowError('"message": "Required"');
+    await expect(testDoc.load()).rejects.toThrow('"message": "Required"');
   });
 
   it("always reads from Firestore if force is set.", async () => {
@@ -325,7 +325,7 @@ describe("writable accessor (.w)", () => {
     });
     expect(() => {
       testDoc.w.email = "not a valid email";
-    }).toThrowError("Invalid email");
+    }).toThrow("Invalid email");
   });
 
   it("allows symbol properties to pass through objects.", async () => {
@@ -448,7 +448,7 @@ describe("writable accessor (.w)", () => {
     expect(testDoc.isReadonly).toBeTruthy();
     expect(() => {
       testDoc.w.email = "alice@example.com";
-    }).toThrowError("An attempt was made to modify or write a read-only doc");
+    }).toThrow("An attempt was made to modify or write a read-only doc");
   });
 });
 
@@ -486,7 +486,7 @@ describe("write", () => {
     const badDoc = FiretenderDoc.createNewDoc(testDataSchema, badRef, {
       email: "bob@example.com",
     });
-    await expect(badDoc.write()).rejects.toThrowError();
+    await expect(badDoc.write()).rejects.toThrow();
     try {
       await badDoc.write();
     } catch (error: any) {
@@ -510,7 +510,7 @@ describe("write", () => {
     });
     await deleteDoc(testDoc.docRef);
     testDoc.w.email = "alice@example.com";
-    await expect(testDoc.write()).rejects.toThrowError();
+    await expect(testDoc.write()).rejects.toThrow();
     try {
       await testDoc.write();
     } catch (error: any) {
@@ -529,7 +529,7 @@ describe("write", () => {
       },
       { readonly: true },
     );
-    await expect(testDoc.write()).rejects.toThrowError(
+    await expect(testDoc.write()).rejects.toThrow(
       "An attempt was made to modify or write a read-only doc",
     );
   });
@@ -540,7 +540,7 @@ describe("write", () => {
     const testDoc = FiretenderDoc.createNewDoc(testDataSchema, collectionRef, {
       email: "bob@example.com",
     });
-    await expect(testDoc.write()).rejects.toThrowError("PERMISSION_DENIED");
+    await expect(testDoc.write()).rejects.toThrow("PERMISSION_DENIED");
   });
 
   it("throws if adding a doc without a given ID fails.", async () => {
@@ -549,7 +549,7 @@ describe("write", () => {
     const testDoc = FiretenderDoc.createNewDoc(testDataSchema, collectionRef, {
       email: "bob@example.com",
     });
-    await expect(testDoc.write()).rejects.toThrowError("PERMISSION_DENIED");
+    await expect(testDoc.write()).rejects.toThrow("PERMISSION_DENIED");
   });
 });
 
@@ -584,9 +584,7 @@ describe("update", () => {
       testDoc.update((data) => {
         data.email = "alice@example.com";
       }),
-    ).rejects.toThrowError(
-      "An attempt was made to modify or write a read-only doc",
-    );
+    ).rejects.toThrow("An attempt was made to modify or write a read-only doc");
   });
 
   it("updates a new doc.", async () => {
@@ -1162,10 +1160,8 @@ describe("createNewDoc", () => {
       testCollection,
       initialState,
     );
-    expect(() => testDoc.id).toThrowError("id can only be accessed after");
-    expect(() => testDoc.docRef).toThrowError(
-      "docRef can only be accessed after",
-    );
+    expect(() => testDoc.id).toThrow("id can only be accessed after");
+    expect(() => testDoc.docRef).toThrow("docRef can only be accessed after");
   });
 
   it("adds a document without a specified ID.", async () => {
@@ -1305,7 +1301,7 @@ describe("copy", () => {
   it("throws if the copied doc exists but was not loaded.", async () => {
     const docRef = await addDoc(testCollection, initialState);
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
-    expect(() => testDoc.copy()).toThrowError();
+    expect(() => testDoc.copy()).toThrow();
   });
 
   it("can copy into a specified collection.", async () => {
@@ -1430,8 +1426,8 @@ describe("copy", () => {
       collection(testCollection, "id-A", "subcol-1", "id-B", "subcol-2"),
       initialState,
     );
-    expect(() => testDoc1.copy(["A"])).toThrowError();
-    expect(() => testDoc1.copy(["A", "B", "C", "D"])).toThrowError();
+    expect(() => testDoc1.copy(["A"])).toThrow();
+    expect(() => testDoc1.copy(["A", "B", "C", "D"])).toThrow();
   });
 });
 

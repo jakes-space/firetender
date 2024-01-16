@@ -54,7 +54,7 @@ describe("newDoc", () => {
       { foo: "hello" },
     );
     const testDoc = testCollection.newDoc();
-    expect(() => testDoc.id).toThrowError();
+    expect(() => testDoc.id).toThrow();
     expect(testDoc.r).toEqual({ foo: "hello" });
   });
 
@@ -78,7 +78,7 @@ describe("newDoc", () => {
       [collectionName, "subcollection"],
       { foo: "hello" },
     );
-    expect(() => testCollection.newDoc()).toThrowError("requires an ID");
+    expect(() => testCollection.newDoc()).toThrow("requires an ID");
   });
 
   it("merges given initial field values into the defaults.", () => {
@@ -111,7 +111,7 @@ describe("newDoc", () => {
       { foo: "hello" },
       { readonly: true },
     );
-    expect(() => testCollection.newDoc()).toThrowError(
+    expect(() => testCollection.newDoc()).toThrow(
       "Cannot create new docs in readonly mode.",
     );
   });
@@ -148,7 +148,7 @@ describe("existingDoc", () => {
       [collectionName, "subcollection"],
       { foo: "hello" },
     );
-    expect(() => testCollection.existingDoc("abc")).toThrowError(
+    expect(() => testCollection.existingDoc("abc")).toThrow(
       "requires a full ID path",
     );
   });
@@ -295,7 +295,7 @@ describe("query functions", () => {
     });
 
     it("fails when called on a subcollection without parent ID.", async () => {
-      await expect(cityLandmarkCollection.getAllDocs()).rejects.toThrowError(
+      await expect(cityLandmarkCollection.getAllDocs()).rejects.toThrow(
         "requires the IDs of all parent collections",
       );
     });
@@ -308,7 +308,7 @@ describe("query functions", () => {
       );
       // Admin can read anywhere, so this test does not throw an error.
       if (FIRESTORE_DEPS_TYPE === "admin") return;
-      await expect(nonexistentCollection.getAllDocs()).rejects.toThrowError();
+      await expect(nonexistentCollection.getAllDocs()).rejects.toThrow();
       try {
         await nonexistentCollection.getAllDocs();
       } catch (error: any) {
@@ -396,9 +396,7 @@ describe("query functions", () => {
         "no-collection-here",
       );
       const whereClause = where("not-an-actual-field", "==", "foo");
-      await expect(
-        nonexistentCollection.query(whereClause),
-      ).rejects.toThrowError();
+      await expect(nonexistentCollection.query(whereClause)).rejects.toThrow();
       try {
         await nonexistentCollection.query(whereClause);
       } catch (error: any) {
@@ -488,7 +486,7 @@ describe("delete", () => {
       firestore,
       collectionName,
     );
-    await expect(testCollection.delete([])).rejects.toThrowError(
+    await expect(testCollection.delete([])).rejects.toThrow(
       "requires the full ID path",
     );
   });
@@ -500,7 +498,7 @@ describe("delete", () => {
       firestore,
       "bad-collection-name",
     );
-    await expect(testCollection.delete("some-id")).rejects.toThrowError(
+    await expect(testCollection.delete("some-id")).rejects.toThrow(
       "PERMISSION_DENIED",
     );
   });
@@ -513,10 +511,10 @@ describe("makeCollectionRef", () => {
       "subcol-A",
       "subcol-B",
     ]);
-    expect(() => testCollection.makeCollectionRef(["123"])).toThrowError();
+    expect(() => testCollection.makeCollectionRef(["123"])).toThrow();
     expect(() =>
       testCollection.makeCollectionRef(["123", "456", "789"]),
-    ).toThrowError();
+    ).toThrow();
   });
 
   it("returns a correct subcollection ref", async () => {
@@ -545,10 +543,10 @@ describe("makeDocRef", () => {
       "subcol-A",
       "subcol-B",
     ]);
-    expect(() => testCollection.makeDocRef(["123", "456"])).toThrowError();
+    expect(() => testCollection.makeDocRef(["123", "456"])).toThrow();
     expect(() =>
       testCollection.makeDocRef(["123", "456", "789", "abc"]),
-    ).toThrowError();
+    ).toThrow();
   });
 
   it("returns an appropriate doc ref", async () => {
@@ -589,7 +587,7 @@ describe("createBatch", () => {
     );
     await expect(
       testCollection.createBatch([[[], { foo: "hello" }]]),
-    ).rejects.toThrowError("incomplete ID");
+    ).rejects.toThrow("incomplete ID");
   });
 
   it("throws for parsing errors", async () => {
@@ -600,7 +598,7 @@ describe("createBatch", () => {
     );
     await expect(
       testCollection.createBatch([["bad-data", { foo: "xyz", bar: -1 }]]),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("throws for failed commits", async () => {
@@ -612,7 +610,7 @@ describe("createBatch", () => {
     );
     await expect(
       testCollection.createBatch([["some-id", { foo: "xyz" }]]),
-    ).rejects.toThrowError("PERMISSION_DENIED");
+    ).rejects.toThrow("PERMISSION_DENIED");
   });
 });
 
@@ -647,7 +645,7 @@ describe("deleteBatch", () => {
       firestore,
       collectionName,
     );
-    await expect(testCollection.deleteBatch([[]])).rejects.toThrowError(
+    await expect(testCollection.deleteBatch([[]])).rejects.toThrow(
       "incomplete ID",
     );
   });
@@ -659,7 +657,7 @@ describe("deleteBatch", () => {
       firestore,
       "bad-collection-name",
     );
-    await expect(testCollection.deleteBatch(["some-id"])).rejects.toThrowError(
+    await expect(testCollection.deleteBatch(["some-id"])).rejects.toThrow(
       "PERMISSION_DENIED",
     );
   });
