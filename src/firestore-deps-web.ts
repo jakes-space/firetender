@@ -30,6 +30,7 @@ export {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 
 export const FIRESTORE_DEPS_TYPE: "web" | "admin" = "web";

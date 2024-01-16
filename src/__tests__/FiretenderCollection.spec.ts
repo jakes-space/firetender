@@ -581,6 +581,7 @@ describe("createBatch", () => {
   });
 
   it("throws for failed commits", async () => {
+    if (FIRESTORE_DEPS_TYPE === "admin") return; // Admin can create anywhere.
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -629,6 +630,7 @@ describe("deleteBatch", () => {
   });
 
   it("throws for failed commits", async () => {
+    if (FIRESTORE_DEPS_TYPE === "admin") return; // Admin can delete anywhere.
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,

@@ -18,6 +18,7 @@ import {
   Timestamp,
   UpdateData,
   WithFieldValue,
+  WriteBatch,
 } from "@google-cloud/firestore";
 
 export const FIRESTORE_DEPS_TYPE: "web" | "admin" = "admin";
@@ -121,3 +122,6 @@ export const updateDoc = async <T>(
 ): Promise<void> => {
   await ref.update(data);
 };
+
+export const writeBatch = (firestore: Firestore): WriteBatch =>
+  firestore.batch();

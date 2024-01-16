@@ -1,4 +1,3 @@
-import { writeBatch } from "firebase/firestore";
 import { z } from "zod";
 
 import { addContextToError, FiretenderUsageError } from "./errors";
@@ -15,6 +14,7 @@ import {
   query,
   QueryConstraint,
   QuerySnapshot,
+  writeBatch,
 } from "./firestore-deps";
 import { FiretenderDoc, FiretenderDocOptions, Patcher } from "./FiretenderDoc";
 import { DeepPartial, DeepReadonly } from "./ts-helpers";
