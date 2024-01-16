@@ -85,6 +85,22 @@ async function createAndLoadDoc(
   return new FiretenderDoc(testDataSchema, docRef, options).load();
 }
 
+describe("constructor", () => {
+  it("throws when creating a new doc without initial data.", async () => {
+    expect(() => {
+      new FiretenderDoc(testDataSchema, testCollection, { createDoc: true });
+    }).toThrowError("Initial data must be given when creating a new doc.");
+  });
+
+  it("throws if given a collection ref without createDoc.", async () => {
+    expect(() => {
+      new FiretenderDoc(testDataSchema, testCollection);
+    }).toThrowError(
+      "can only take a collection reference when creating a new document.",
+    );
+  });
+});
+
 describe("load", () => {
   it("must be called before referencing the accessors.", async () => {
     const testDoc = new FiretenderDoc(
@@ -516,6 +532,22 @@ describe("write", () => {
     await expect(testDoc.write()).rejects.toThrowError(
       "An attempt was made to modify or write a read-only doc",
     );
+  });
+
+  it("throws if adding a doc with a given ID fails.", async () => {
+    const collectionRef = doc(firestore, "not-in-access-rules", "some-id");
+    const testDoc = FiretenderDoc.createNewDoc(testDataSchema, collectionRef, {
+      email: "bob@example.com",
+    });
+    await expect(testDoc.write()).rejects.toThrowError("PERMISSION_DENIED");
+  });
+
+  it("throws if adding a doc without a given ID fails.", async () => {
+    const collectionRef = collection(firestore, "not-in-access-rules");
+    const testDoc = FiretenderDoc.createNewDoc(testDataSchema, collectionRef, {
+      email: "bob@example.com",
+    });
+    await expect(testDoc.write()).rejects.toThrowError("PERMISSION_DENIED");
   });
 });
 

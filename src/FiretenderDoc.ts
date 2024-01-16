@@ -545,17 +545,15 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     // For new docs, this.data should contain its initial state.
     if (this.isSettingNewContents) {
       if (!this.data) {
-        throw Error("New documents must be given data before calling write().");
+        // We should never get here: the constructor should have checked this.
+        throw new FiretenderInternalError(
+          "Internal error.  New documents should always have data before calling write().",
+        );
       }
-      const wasNewDoc = this.isNewDoc;
-      this.isSettingNewContents = false;
-      this.isNewDoc = false;
       if (this.ref instanceof DocumentReference) {
         try {
           await setDoc(this.ref, this.data);
         } catch (error) {
-          this.isSettingNewContents = true; // Assume the write didn't happen.
-          this.isNewDoc = wasNewDoc;
           addContextToError(error, "setDoc", this.ref, this.data);
           throw error;
         }
@@ -563,13 +561,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         try {
           this.ref = await addDoc(this.ref, this.data);
         } catch (error: any) {
-          this.isSettingNewContents = true; // Assume the write didn't happen.
-          this.isNewDoc = wasNewDoc;
           addContextToError(error, "addDoc", this.ref, this.data);
           throw error;
         }
         this.docID = this.ref.path.split("/").pop(); // ID is last part of path.
       }
+      this.isSettingNewContents = false;
+      this.isNewDoc = false;
     }
     // For existing docs, this.updates should contain a list of changes.
     else {
