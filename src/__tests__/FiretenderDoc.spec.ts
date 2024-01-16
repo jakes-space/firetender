@@ -535,6 +535,7 @@ describe("write", () => {
   });
 
   it("throws if adding a doc with a given ID fails.", async () => {
+    if (FIRESTORE_DEPS_TYPE === "admin") return; // Admin can write anywhere.
     const collectionRef = doc(firestore, "not-in-access-rules", "some-id");
     const testDoc = FiretenderDoc.createNewDoc(testDataSchema, collectionRef, {
       email: "bob@example.com",
@@ -543,6 +544,7 @@ describe("write", () => {
   });
 
   it("throws if adding a doc without a given ID fails.", async () => {
+    if (FIRESTORE_DEPS_TYPE === "admin") return; // Admin can write anywhere.
     const collectionRef = collection(firestore, "not-in-access-rules");
     const testDoc = FiretenderDoc.createNewDoc(testDataSchema, collectionRef, {
       email: "bob@example.com",
