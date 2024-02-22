@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-import { NullTimestampError } from "./errors";
+import { NullTimestampError } from "./errors.js";
 import {
   isServerTimestamp,
   serverTimestamp as firestoreServerTimestamp,
   Timestamp,
-} from "./firestore-deps";
+} from "./firestore-deps.js";
 
 /**
  * Timestamp representation used by Firestore: seconds and nanoseconds since the

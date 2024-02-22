@@ -41,6 +41,16 @@ module.exports = {
     "prettier/prettier": "warn",
     "simple-import-sort/imports": "error",
     "simple-import-sort/exports": "error",
+    "@typescript-eslint/ban-ts-comment": [
+      "warn",
+      {
+        'ts-expect-error': 'allow-with-description',
+        'ts-ignore': 'allow-with-description',
+        'ts-nocheck': true,
+        'ts-check': false,
+        minimumDescriptionLength: 3,
+      },
+    ],
     "@typescript-eslint/explicit-function-return-type": [
       "warn",
       { allowExpressions: true, allowIIFEs: true },

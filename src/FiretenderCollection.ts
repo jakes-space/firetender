@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { addContextToError, FiretenderUsageError } from "./errors";
+import { addContextToError, FiretenderUsageError } from "./errors.js";
 import {
   collection,
   collectionGroup,
@@ -15,9 +15,13 @@ import {
   QueryConstraint,
   QuerySnapshot,
   writeBatch,
-} from "./firestore-deps";
-import { FiretenderDoc, FiretenderDocOptions, Patcher } from "./FiretenderDoc";
-import { DeepPartial, DeepReadonly } from "./ts-helpers";
+} from "./firestore-deps.js";
+import {
+  FiretenderDoc,
+  FiretenderDocOptions,
+  Patcher,
+} from "./FiretenderDoc.js";
+import { DeepPartial, DeepReadonly } from "./ts-helpers.js";
 
 /**
  * A representation of a Firestore collection or subcollection.

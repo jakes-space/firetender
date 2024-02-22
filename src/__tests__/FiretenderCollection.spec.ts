@@ -10,13 +10,13 @@ import {
   serverTimestamp,
   setDoc,
   where,
-} from "../firestore-deps";
-import { FiretenderCollection } from "../FiretenderCollection";
-import { timestampSchema } from "../timestamps";
+} from "../firestore-deps.js";
+import { FiretenderCollection } from "../FiretenderCollection.js";
+import { timestampSchema } from "../timestamps.js";
 import {
   cleanupFirestoreEmulator,
   getFirestoreEmulator,
-} from "./firestore-emulator";
+} from "./firestore-emulator.js";
 
 const testSchema = z.object({
   foo: z.string(),

@@ -6,7 +6,7 @@ import {
   FiretenderIOError,
   FiretenderUsageError,
   NullTimestampError,
-} from "./errors";
+} from "./errors.js";
 import {
   addDoc,
   collection,
@@ -20,9 +20,9 @@ import {
   snapshotExists,
   Unsubscribe,
   updateDoc,
-} from "./firestore-deps";
-import { watchForChanges } from "./proxy";
-import { DeepReadonly } from "./ts-helpers";
+} from "./firestore-deps.js";
+import { watchForChanges } from "./proxy.js";
+import { DeepReadonly } from "./ts-helpers.js";
 
 /*
  * Patcher functions modify the data from Firestore before it is parsed by Zod.

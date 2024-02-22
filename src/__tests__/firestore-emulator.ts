@@ -5,6 +5,7 @@ import {
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
+// @ts-ignore: Jest fails to remove a ".js" extension here.  I don't know why.
 import { Firestore, FIRESTORE_DEPS_TYPE } from "../firestore-deps";
 
 const EMULATOR_HOST = "127.0.0.1";

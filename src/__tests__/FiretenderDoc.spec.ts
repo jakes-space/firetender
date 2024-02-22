@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 
-import { FiretenderIOError } from "../errors";
+import { FiretenderIOError } from "../errors.js";
 import {
   addDoc,
   collection,
@@ -18,18 +18,22 @@ import {
   getDoc,
   Timestamp,
   updateDoc,
-} from "../firestore-deps";
-import { FiretenderDoc, FiretenderDocOptions, Patcher } from "../FiretenderDoc";
+} from "../firestore-deps.js";
+import {
+  FiretenderDoc,
+  FiretenderDocOptions,
+  Patcher,
+} from "../FiretenderDoc.js";
 import {
   futureTimestamp,
   serverTimestamp,
   serverTimestampWithClientTime,
   timestampSchema,
-} from "../timestamps";
+} from "../timestamps.js";
 import {
   cleanupFirestoreEmulator,
   getFirestoreEmulator,
-} from "./firestore-emulator";
+} from "./firestore-emulator.js";
 
 const testDataSchema = z.object({
   email: z.string().email(),

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { deleteField, isServerTimestamp, Timestamp } from "./firestore-deps";
+import { deleteField, isServerTimestamp, Timestamp } from "./firestore-deps.js";
 
 /**
  * Getting this symbol from one of our proxies returns the proxy's target.

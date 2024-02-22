@@ -1,6 +1,6 @@
-import type { Config } from "jest";
+import type { JestConfigWithTsJest } from 'ts-jest'
 
-const config: Config = {
+const config: JestConfigWithTsJest = {
   preset: "ts-jest",
   testEnvironment: "node",
   rootDir: ".",
@@ -18,6 +18,9 @@ const config: Config = {
     "/src/ts-helpers.ts",
   ],
   globalSetup: "./src/__tests__/firestore-emulator.ts",
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+  },
 };
 
 export default config;
