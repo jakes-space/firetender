@@ -15,15 +15,10 @@
     "typescript",
     "schema"
   ],
-  "module": "./dist/esm/index.js",
-  "main": "./dist/cjs/index.js",
-  "types": "./dist/cjs/index.d.ts",
+  "type": "module",
+  "module": "./dist/index.js",
   "exports": {
-    ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "types": "./dist/cjs/index.d.ts"
-    }
+    ".": "./dist/index.js"
   },
   "files": [
     "./dist/*",
@@ -33,18 +28,17 @@
     "use-web-firestore": "cp package-web.json package.json && cp src/firestore-deps-web.ts src/firestore-deps.ts && npm install",
     "use-admin-firestore": "echo Already using admin firestore.",
     "diff-web-admin": "diff package-web.json package-admin.json",
-    "lint:check": "eslint src --ext .ts",
+    "lint": "eslint src --ext .ts",
     "lint:fix": "eslint --fix src --ext .ts",
-    "prettier:check": "prettier --check src/*.ts src/**/*.ts",
-    "prettier:fix": "prettier --write src/*.ts src/**/*.ts",
-    "check": "npm run lint:check && npm run prettier:check",
-    "fix": "npm run lint:fix && npm run prettier:fix",
+    "style": "prettier --check src/*.ts src/**/*.ts",
+    "style:fix": "prettier --write src/*.ts src/**/*.ts",
+    "check": "npm run lint && npm run style",
     "start-emulator": "firebase --config=./src/__tests__/firebase.json --project=firetender --only=firestore emulators:start",
     "test": "firebase --config=./src/__tests__/firebase.json --project=firetender --only=firestore emulators:exec ./src/__tests__/run-tests.sh",
     "test:manual": "./src/__tests__/run-tests.sh",
     "prepare": "husky install",
     "clean": "rm -rf dist/*",
-    "build": "npm run clean && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./finish-build.sh",
+    "build": "npm run clean && tsc",
     "prepublishOnly": "npm run check && npm run test && npm run build"
   },
   "dependencies": {
