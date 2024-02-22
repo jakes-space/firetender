@@ -12,8 +12,7 @@ cannot simply use `npm version` followed by `npm publish`.  Instead:
    and `package-admin.json`.
 1. Run `npm i`.
 1. Commit the change.  The name of the commit should be the new version number
-   and nothing else (e.g., `0.10.4`).
-1. Run `npm run use-admin-firestore`.
-1. Run `npm publish`.
-1. Run `npm run use-web-firestore`.
-1. Run `npm publish`.
+   and nothing else (e.g., `0.10.4`).  Versioning series start at zero (e.g., a
+   minor version upgrade of `0.10.4` is `0.11.0`).
+1. Run `npm run use-admin-firestore && npm publish`.
+1. Run `npm run use-web-firestore && npm publish`.
