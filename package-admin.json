@@ -2,7 +2,7 @@
   "name": "firetender-admin",
   "displayName": "Firetender (for firebase-admin/firestore)",
   "description": "Typescript wrapper for Firestore documents",
-  "version": "0.14.2",
+  "version": "0.15.0",
   "author": "Jake Hartman",
   "license": "MIT",
   "homepage": "https://github.com/jakes-space/firetender",
