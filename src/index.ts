@@ -1,32 +1,15 @@
-import {
+export {
   FiretenderError,
   FiretenderInternalError,
   FiretenderIOError,
   FiretenderUsageError,
 } from "./errors";
-import { Timestamp, where } from "./firestore-deps";
-import { FiretenderCollection } from "./FiretenderCollection";
-import type { FiretenderDocOptions } from "./FiretenderDoc";
-import { FiretenderDoc } from "./FiretenderDoc";
-import {
+export { Timestamp, where } from "./firestore-deps";
+export { FiretenderCollection } from "./FiretenderCollection";
+export { FiretenderDoc, type FiretenderDocOptions } from "./FiretenderDoc";
+export {
   futureTimestamp,
   serverTimestamp,
   serverTimestampWithClientTime,
   timestampSchema,
 } from "./timestamps";
-
-export {
-  FiretenderCollection,
-  FiretenderDoc,
-  FiretenderDocOptions,
-  FiretenderError,
-  FiretenderInternalError,
-  FiretenderIOError,
-  FiretenderUsageError,
-  futureTimestamp,
-  serverTimestamp,
-  serverTimestampWithClientTime,
-  Timestamp,
-  timestampSchema,
-  where,
-};
