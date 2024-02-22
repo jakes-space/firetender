@@ -1,27 +1,31 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ES2020",
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strict": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "moduleResolution": "node",
     "isolatedModules": true,
-    "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
     "sourceMap": true,
     "declaration": true,
-    "baseUrl": ".",
+    "declarationMap": true,
+    "rootDir": "src",
     "outDir": "dist/esm",
-    "types": [
-      "jest"
-    ]
   },
   "include": [
     "src/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
+  "overrides": [
+    {
+      "include": [
+        "**/__tests__/*.ts"
+      ],
+      "compilerOptions": {
+        "types": [
+          "jest"
+        ]
+      },
+    }
   ]
 }
