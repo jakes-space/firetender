@@ -8,6 +8,7 @@
 import {
   CollectionGroup,
   CollectionReference,
+  DocumentData,
   DocumentReference,
   DocumentSnapshot,
   FieldValue,
@@ -47,7 +48,7 @@ export const isServerTimestamp = (x: any): boolean => x instanceof FieldValue;
 export const snapshotExists = (snapshot: DocumentSnapshot): boolean =>
   snapshot.exists;
 
-export const addDoc = <T>(
+export const addDoc = <T extends DocumentData>(
   ref: CollectionReference<T>,
   data: WithFieldValue<T>,
 ): Promise<DocumentReference<T>> => ref.add(data);
@@ -82,10 +83,10 @@ export const doc = (
   firestoreOrRef instanceof Firestore
     ? firestoreOrRef.doc([path, ...pathSegments].join("/"))
     : path
-    ? firestoreOrRef.doc([path, ...pathSegments].join("/"))
-    : firestoreOrRef.doc();
+      ? firestoreOrRef.doc([path, ...pathSegments].join("/"))
+      : firestoreOrRef.doc();
 
-export const getDoc = <T>(
+export const getDoc = <T extends DocumentData>(
   ref: DocumentReference<T>,
 ): Promise<DocumentSnapshot<T>> => ref.get();
 
@@ -99,24 +100,24 @@ export const onSnapshot = (
   return ref.onSnapshot(callback);
 };
 
-export const query = <T>(
+export const query = <T extends DocumentData>(
   ref: Query<T>,
   ...queryConstraints: QueryConstraint[]
 ): Query<T> =>
   queryConstraints.length === 0
     ? ref
     : queryConstraints.length === 1
-    ? ref.where(queryConstraints[0])
-    : ref.where(Filter.and(...queryConstraints));
+      ? ref.where(queryConstraints[0])
+      : ref.where(Filter.and(...queryConstraints));
 
-export const setDoc = async <T>(
+export const setDoc = async <T extends DocumentData>(
   ref: DocumentReference<T>,
   data: WithFieldValue<T>,
 ): Promise<void> => {
   await ref.set(data);
 };
 
-export const updateDoc = async <T>(
+export const updateDoc = async <T extends DocumentData>(
   ref: DocumentReference<T>,
   data: UpdateData<T>,
 ): Promise<void> => {
