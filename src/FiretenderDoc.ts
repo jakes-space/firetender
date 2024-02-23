@@ -32,12 +32,19 @@ export type Patcher = (data: Record<string, any>) => boolean | void;
 /**
  * Public options for initializing a FiretenderDoc object.
  */
-export type FiretenderDocOptions = {
+export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
   /**
    * If set, using the `.w` accessor or `.update()` method will throw an error
    * and any data patches will not be written.
    */
   readonly?: boolean;
+
+  /**
+   * Hook to modify the document before it is written to Firestore.
+   *
+   * For example, this hook could set a last-modified timestamp at every write.
+   */
+  beforeWrite?: (data: z.infer<SchemaType>) => void;
 
   /**
    * Functions that modify the data from Firestore before it is parsed by Zod.
@@ -49,7 +56,7 @@ export type FiretenderDocOptions = {
    * been written back.  Only return true if the Firestore rules allow updating
    * all patched fields; otherwise all subsequent writes will fail.
    */
-  patchers?: Patcher[] | undefined;
+  patchers?: Patcher[];
 
   /**
    * If false, don't write the data back to Firestore, even if a patcher returns
@@ -66,24 +73,25 @@ export type FiretenderDocOptions = {
  * This type includes options meant for internal use (createDoc, initialData)
  * as well as the options in FiretenderDocOptions.
  */
-export type AllFiretenderDocOptions = FiretenderDocOptions & {
-  /**
-   * Does this FiretenderDoc represent a new document in Firestore?
-   */
-  createDoc?: true;
+export type AllFiretenderDocOptions<SchemaType extends z.SomeZodObject> =
+  FiretenderDocOptions<SchemaType> & {
+    /**
+     * Does this FiretenderDoc represent a new document in Firestore?
+     */
+    createDoc?: true;
 
-  /**
-   * The document's initial data, which must define a valid instance of the
-   * document according to its schema.
-   */
-  initialData?: DeepReadonly<Record<string, unknown>>;
+    /**
+     * The document's initial data, which must define a valid instance of the
+     * document according to its schema.
+     */
+    initialData?: DeepReadonly<Record<string, unknown>>;
 
-  /**
-   * The document's raw data, as it would be read from Firestore.  Unlike
-   * `initialData`, the given record is patched in place prior to parsing.
-   */
-  rawData?: Record<string, unknown>;
-};
+    /**
+     * The document's raw data, as it would be read from Firestore.  Unlike
+     * `initialData`, the given record is patched in place prior to parsing.
+     */
+    rawData?: Record<string, unknown>;
+  };
 
 /**
  * Options for loading an existing document.
@@ -136,6 +144,11 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /** Use addDoc or setDoc to write all the data?  If not, use updateDoc. */
   private isSettingNewContents: boolean;
 
+  /** Hook to modify the document before writing it to Firestore. */
+  private readonly beforeWrite:
+    | ((data: z.infer<SchemaType>) => void)
+    | undefined;
+
   /** Patcher functions given in options; applied to the raw data in order. */
   private readonly patchers: Patcher[] | undefined;
 
@@ -173,7 +186,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   constructor(
     schema: SchemaType,
     ref: DocumentReference | CollectionReference,
-    options: AllFiretenderDocOptions = {},
+    options: AllFiretenderDocOptions<SchemaType> = {},
   ) {
     this.schema = schema;
     this.ref = ref;
@@ -185,6 +198,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       );
     }
     this.isSettingNewContents = this.isNewDoc;
+    this.beforeWrite = options.beforeWrite;
     this.patchers = options.patchers;
     this.savePatchAfterDelay = options.savePatchAfterDelay ?? 500;
     if (options.initialData) {
@@ -225,9 +239,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     schema: SchemaType1,
     ref: DocumentReference | CollectionReference,
     initialData: z.input<SchemaType1>,
-    options: FiretenderDocOptions = {},
+    options: FiretenderDocOptions<SchemaType1> = {},
   ): FiretenderDoc<SchemaType1> {
-    const mergedOptions: AllFiretenderDocOptions = {
+    const mergedOptions: AllFiretenderDocOptions<SchemaType1> = {
       ...options,
       createDoc: true,
       initialData,
@@ -267,7 +281,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       | string
       | string[]
       | undefined = undefined,
-    options: AllFiretenderDocOptions = {},
+    options: AllFiretenderDocOptions<SchemaType> = {},
   ): FiretenderDoc<SchemaType> {
     if (!this.data) {
       throw new FiretenderUsageError(
@@ -310,7 +324,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         ref = collectionRef;
       }
     }
-    const mergedOptions: AllFiretenderDocOptions = {
+    const mergedOptions: AllFiretenderDocOptions<SchemaType> = {
       ...options,
       createDoc: true,
       initialData: this.data,
@@ -550,6 +564,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           "Internal error.  New documents should always have data before calling write().",
         );
       }
+      this.beforeWrite?.(this.w);
       if (this.ref instanceof DocumentReference) {
         try {
           await setDoc(this.ref, this.data);
@@ -578,6 +593,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         );
       }
       if (this.updates.size > 0) {
+        this.beforeWrite?.(this.w);
         const updateData = Object.fromEntries(this.updates);
         this.updates.clear();
         try {

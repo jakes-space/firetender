@@ -46,7 +46,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     | undefined;
 
   /** Default options to send to docs in this collection. */
-  private readonly defaultDocOptions: FiretenderDocOptions;
+  private readonly defaultDocOptions: FiretenderDocOptions<SchemaType>;
 
   /**
    * @param schema the Zod object schema describing the documents in this
@@ -68,7 +68,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
       | (() => DeepPartial<z.input<SchemaType>>)
       | DeepPartial<z.input<SchemaType>>
       | undefined = undefined,
-    options: FiretenderDocOptions = {},
+    options: FiretenderDocOptions<SchemaType> = {},
   ) {
     this.schema = schema;
     this.firestore = firestore;
@@ -100,7 +100,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   newDoc(
     id: string[] | string | undefined = undefined,
     initialData: DeepPartial<z.input<SchemaType>> | undefined = undefined,
-    options: FiretenderDocOptions = {},
+    options: FiretenderDocOptions<SchemaType> = {},
   ): FiretenderDoc<SchemaType> {
     const ids = id instanceof Array ? id : id ? [id] : [];
     let ref: DocumentReference | CollectionReference | undefined =
@@ -139,7 +139,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
    */
   existingDoc(
     id: string[] | string,
-    options: FiretenderDocOptions = {},
+    options: FiretenderDocOptions<SchemaType> = {},
   ): FiretenderDoc<SchemaType> {
     const ref = this.makeDocRefInternal([id].flat());
     if (!ref) {

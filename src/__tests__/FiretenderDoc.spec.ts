@@ -83,7 +83,7 @@ afterAll(cleanupFirestoreEmulator);
 
 async function createAndLoadDoc(
   data: Record<string, unknown>,
-  options: FiretenderDocOptions = {},
+  options: FiretenderDocOptions<typeof testDataSchema> = {},
 ): Promise<FiretenderDoc<typeof testDataSchema>> {
   const docRef = await addDoc(testCollection, data);
   return new FiretenderDoc(testDataSchema, docRef, options).load();
@@ -610,6 +610,48 @@ describe("update", () => {
       recordOfObjects: {},
       arrayOfObjects: [],
     });
+  });
+});
+
+describe("beforeWrite hook", () => {
+  it("modifies a new doc", async () => {
+    const testDoc = new FiretenderDoc(testDataSchema, testCollection, {
+      createDoc: true,
+      initialData: {
+        email: "bob@example.com",
+      },
+      beforeWrite: (data) => {
+        data.ttl = serverTimestamp();
+      },
+    });
+    expect(testDoc.isNew).toBeTruthy();
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toBeDefined();
+    expect(result?.email).toBe("bob@example.com");
+    const millisDiff = Math.abs(result?.ttl.toMillis() - Date.now());
+    expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
+  });
+  it("modifies an existing doc", async () => {
+    const testDoc = await createAndLoadDoc(
+      {
+        email: "bob@example.com",
+      },
+      {
+        beforeWrite: (data) => {
+          data.ttl = serverTimestamp();
+        },
+      },
+    );
+    expect(testDoc.r.ttl).toBeUndefined();
+    await testDoc.update((data) => {
+      data.email = "alice@example.com";
+    });
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toBeDefined();
+    expect(result?.email).toBe("alice@example.com");
+    const millisDiff = Math.abs(result?.ttl.toMillis() - Date.now());
+    expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
 });
 
