@@ -122,6 +122,19 @@ export type LoadOptions<FiretenderDocType> = {
     | ((doc: FiretenderDocType, snapshot: DocumentSnapshot) => void);
 };
 
+type InternalLoadOptions<FiretenderDocType> = LoadOptions<FiretenderDocType> & {
+  /**
+   * Set if load() is being called recursively to retry a failed load due to a
+   * recoverable condition (e.g., an empty or incomplete snapshot).
+   *
+   * If retryNumber reaches {@link NUM_LOAD_RETRIES} and the load still fails,
+   * a FiretenderIOError is thrown.
+   */
+  retryNumber?: number;
+};
+
+const NUM_LOAD_RETRIES = 3;
+
 /**
  * A local representation of a Firestore document.
  */
@@ -396,7 +409,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    *   {@link LoadOptions} for details.
    */
   async load(
-    options: LoadOptions<FiretenderDoc<SchemaType>> = {},
+    options: InternalLoadOptions<FiretenderDoc<SchemaType>> = {},
   ): Promise<this> {
     if (this.isNewDoc || this.ref instanceof CollectionReference) {
       throw new FiretenderUsageError(
@@ -411,7 +424,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       // We're already loaded, and we're listening if that was requested.
       return this;
     }
-    if (this.resolvesWaitingForLoad !== undefined) {
+    if (this.resolvesWaitingForLoad !== undefined && !options.retryNumber) {
       // Loading is already in progress.  Add this call to the waiting queue.
       await new Promise<void>((resolve, reject) => {
         this.resolvesWaitingForLoad!.push({ resolve, reject });
@@ -484,7 +497,22 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
       throw error;
     }
-    this.loadFromSnapshot(snapshot, false);
+    if (!this.loadFromSnapshot(snapshot, false)) {
+      this.stopListening();
+      const retryNumber = (options.retryNumber ?? 0) + 1;
+      if (retryNumber <= NUM_LOAD_RETRIES) {
+        // If the snapshot is missing or there was a null timestamp, wait a
+        // moment then try again.
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return this.load({ ...options, retryNumber });
+      } else {
+        const error = new FiretenderIOError(
+          `Document is missing data: "${this.ref.path}"`,
+        );
+        this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
+        throw error;
+      }
+    }
     this.resolvesWaitingForLoad.forEach((wait) => wait.resolve());
     this.resolvesWaitingForLoad = undefined;
     return this;
@@ -642,6 +670,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * Given a snapshot, patch it, parse it, and save it as this doc's data.  If
    * not called from a listener, the patched data may be written to Firestore
    * after a delay.
+   *
+   * @returns true if the document's data was updated, false if the snapshot is
+   *   missing data and was ignored.
    */
   private loadFromSnapshot(
     snapshot: DocumentSnapshot,
@@ -649,9 +680,8 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   ): boolean {
     const data = snapshot.data();
     if (!data) {
-      // I'm not sure why this ever happens given that the snapshot claims to
-      // exists, but I've seen it in listeners in real-world use.  I can't
-      // duplicate in test.  Not much we can do but ignore it.
+      // This seems to happen when the document is read while a write is in
+      // progress.  Reject it without updating the doc.
       return false;
     }
     this.patchData(data, isListener);

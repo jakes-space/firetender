@@ -179,6 +179,15 @@ describe("load", () => {
     expect(testDoc.isLoaded).toBeTruthy();
     expect(testDoc.r.email).toBe("bob@example.com");
   });
+
+  it("retries on snapshot issues.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "bob@example.com",
+      ttl: null, // Simulate a missing server timestamp.
+    });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    await expect(testDoc.load()).rejects.toThrow("Document is missing data");
+  });
 });
 
 describe("listener", () => {
