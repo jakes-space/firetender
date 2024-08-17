@@ -393,12 +393,12 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
       );
       throw error;
     }
-    return querySnapshot.docs.map(
-      (queryDoc) =>
+    return Promise.all(
+      querySnapshot.docs.map((queryDoc) =>
         new FiretenderDoc(this.schema, queryDoc.ref, {
           ...this.defaultDocOptions,
-          rawData: queryDoc.data(),
-        }),
+        }).loadRawData(queryDoc.data()),
+      ),
     );
   }
 }

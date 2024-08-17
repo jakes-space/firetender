@@ -317,6 +317,34 @@ describe("patch", () => {
       arrayOfObjects: [],
     });
   });
+
+  it("applies asynchronous patches.", async () => {
+    const docRef = await addDoc(testCollection, {});
+    const patcher1: Patcher = async (data: any) => {
+      data.email = "alice";
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return true;
+    };
+    const patcher2: Patcher = (data: any) => {
+      data.email += "@example.com";
+      return true;
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      patchers: [patcher1, patcher2],
+      savePatchAfterDelay: 0, // Save at next opportunity.
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "alice@example.com",
+      recordOfPrimitives: {},
+      recordOfObjects: {},
+      nestedRecords: {},
+      arrayOfObjects: [],
+    });
+  });
 });
 
 describe("read-only accessor (.r)", () => {

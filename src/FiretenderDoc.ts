@@ -27,7 +27,9 @@ import { DeepReadonly } from "./ts-helpers.js";
 /*
  * Patcher functions modify the data from Firestore before it is parsed by Zod.
  */
-export type Patcher = (data: Record<string, any>) => boolean | void;
+export type Patcher = (
+  data: Record<string, any>,
+) => boolean | void | Promise<boolean> | Promise<void>;
 
 /**
  * Public options for initializing a FiretenderDoc object.
@@ -83,14 +85,11 @@ export type AllFiretenderDocOptions<SchemaType extends z.SomeZodObject> =
     /**
      * The document's initial data, which must define a valid instance of the
      * document according to its schema.
+     *
+     * This data is not patched.  To iniitialize the document with data to be
+     * patched, use {@link loadRawData} instead.
      */
     initialData?: DeepReadonly<Record<string, unknown>>;
-
-    /**
-     * The document's raw data, as it would be read from Firestore.  Unlike
-     * `initialData`, the given record is patched in place prior to parsing.
-     */
-    rawData?: Record<string, unknown>;
   };
 
 /**
@@ -216,9 +215,6 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     this.savePatchAfterDelay = options.savePatchAfterDelay ?? 500;
     if (options.initialData) {
       this.data = schema.parse(options.initialData);
-    } else if (options.rawData) {
-      this.patchData(options.rawData);
-      this.data = schema.parse(options.rawData);
     } else if (this.isNewDoc) {
       throw new FiretenderUsageError(
         "Initial data must be given when creating a new doc.",
@@ -403,6 +399,18 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   }
 
   /**
+   * Loads raw data, as read from Firestore, into the document.
+   *
+   * @param rawData the data to be loaded.  It will be patched in place if any
+   *   patchers apply.
+   */
+  async loadRawData(rawData: Record<string, unknown>): Promise<this> {
+    await this.patchData(rawData);
+    this.data = this.schema.parse(rawData);
+    return this;
+  }
+
+  /**
    * Loads this document's data from Firestore.
    *
    * @param options options for forcing the load or listening for changes.  See
@@ -440,10 +448,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     if (options.listen) {
       const callback =
         typeof options.listen === "function" ? options.listen : undefined;
-      const listener = (
+      const listener = async (
         newSnapshot: DocumentSnapshot,
         initialResolve: (ns: DocumentSnapshot) => void,
-      ): void => {
+      ): Promise<void> => {
         if (!this.detachListener) {
           initialResolve(newSnapshot);
           return;
@@ -463,7 +471,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           callback?.(this, newSnapshot);
           return;
         }
-        if (!this.loadFromSnapshot(newSnapshot, true)) return;
+        if (!(await this.loadFromSnapshot(newSnapshot, true))) {
+          return;
+        }
         callback?.(this, newSnapshot);
       };
       let detach: Unsubscribe | undefined;
@@ -497,7 +507,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       this.resolvesWaitingForLoad.forEach((wait) => wait.reject(error));
       throw error;
     }
-    if (!this.loadFromSnapshot(snapshot, false)) {
+    if (!(await this.loadFromSnapshot(snapshot, false))) {
       this.stopListening();
       const retryNumber = (options.retryNumber ?? 0) + 1;
       if (retryNumber <= NUM_LOAD_RETRIES) {
@@ -550,7 +560,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     this.throwIfReadonly();
     if (this.isSettingNewContents) {
       // No need to monitor changes if we're setting rather than updating.
-      return this.data as z.infer<SchemaType>;
+      return this.data!;
     }
     if (!this.dataProxy) {
       if (!this.data) {
@@ -674,17 +684,17 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * @returns true if the document's data was updated, false if the snapshot is
    *   missing data and was ignored.
    */
-  private loadFromSnapshot(
+  private async loadFromSnapshot(
     snapshot: DocumentSnapshot,
     isListener = false,
-  ): boolean {
+  ): Promise<boolean> {
     const data = snapshot.data();
     if (!data) {
       // This seems to happen when the document is read while a write is in
       // progress.  Reject it without updating the doc.
       return false;
     }
-    this.patchData(data, isListener);
+    await this.patchData(data, isListener);
     let parsedData: z.infer<SchemaType>;
     try {
       parsedData = this.schema.parse(data);
@@ -707,19 +717,28 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
 
   /**
    * Applies the patches to the given data.  Writes the updates to Firestore if
-   * `noUpdate` is not set and any patcher returns true.
+   * `isListener` is not set and any patcher returns true.
    */
-  private patchData(data: Record<string, unknown>, noUpdate = false): void {
+  private async patchData(
+    data: Record<string, unknown>,
+    isListener = false,
+  ): Promise<void> {
     if (!this.patchers || this.patchers.length === 0) return;
-    const wasPatched = this.patchers.reduce(
-      (wasPatched, patcher) => patcher(data) || wasPatched,
-      false,
-    );
+    let isPatched = false;
+    for (const patcher of this.patchers) {
+      if (await patcher(data)) {
+        isPatched = true;
+      }
+    }
     this.isSettingNewContents = true;
-    if (wasPatched) {
+    if (isPatched) {
       // Listeners don't update the data on Firestore, as that would cause an
       // infinite loop of updates if a patcher always returns true.
-      if (!noUpdate && !this.isReadonly && this.savePatchAfterDelay !== false) {
+      if (
+        !isListener &&
+        !this.isReadonly &&
+        this.savePatchAfterDelay !== false
+      ) {
         setTimeout(() => this.write(), this.savePatchAfterDelay);
       }
     }
