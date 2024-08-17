@@ -74,6 +74,10 @@ type TestDataInput = z.input<typeof testDataSchema>;
 let firestore: Firestore;
 let testCollection: CollectionReference;
 
+if (process.env.VSCODE_INSPECTOR_OPTIONS) {
+  jest.setTimeout(86400e3); // If debugging, set the test timeout to 24 hours.
+}
+
 beforeAll(async () => {
   firestore = await getFirestoreEmulator();
   testCollection = collection(firestore, "doctests");

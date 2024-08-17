@@ -27,6 +27,10 @@ const testSchema = z.object({
 const collectionName = "coltests";
 let firestore: Firestore;
 
+if (process.env.VSCODE_INSPECTOR_OPTIONS) {
+  jest.setTimeout(86400e3); // If debugging, set the test timeout to 24 hours.
+}
+
 beforeAll(async () => {
   firestore = await getFirestoreEmulator();
 });
