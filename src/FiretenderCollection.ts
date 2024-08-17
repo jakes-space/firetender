@@ -238,16 +238,15 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   /**
    * Adds a list of documents to this collection.
    *
-   * @param entries a list of document data records, or [id, data] tuples.  If
-   *   the document ID is omitted, Firestore will generate a random one.
+   * @param entries a list of [id, data] tuples.
    *
    * @returns a list of `FiretenderDoc` objects for the new entries.
    */
   async createBatch(
-    entries: [string | string[], DeepReadonly<z.input<SchemaType>>][],
+    entries: [string[] | string, DeepReadonly<z.input<SchemaType>>][],
   ): Promise<FiretenderDoc<SchemaType>[]> {
     const batch = writeBatch(this.firestore);
-    const docs = entries.map(([id, initialData]) => {
+    const docs = entries.map(([id, initialData]: [string[] | string, any]) => {
       const ref = this.makeDocRefInternal([id].flat());
       if (!ref) {
         throw new FiretenderUsageError(
