@@ -7,8 +7,10 @@ service cloud.firestore {
       allow read, write: if true;
     }
     match /doctests/{document=**} {
-      allow read: if !('unreadable' in resource.data) || !resource.data.unreadable;
-      allow write: if true;
+      allow read: if !('unreadable' in resource.data && resource.data.unreadable);
+      allow create: if true;
+      allow update: if !('constantField' in request.resource.data);
+      allow delete: if true;
     }
     match /cities/{document=**} {
       allow read, write: if true;

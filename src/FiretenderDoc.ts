@@ -29,7 +29,13 @@ import { DeepReadonly } from "./ts-helpers.js";
  */
 export type Patcher = (
   data: Record<string, any>,
-) => boolean | void | Promise<boolean> | Promise<void>;
+) =>
+  | void
+  | boolean
+  | "write-after-delay"
+  | "write-soon"
+  | "write-now"
+  | Promise<void | boolean | "write-after-delay" | "write-soon" | "write-now">;
 
 /**
  * Public options for initializing a FiretenderDoc object.
@@ -53,20 +59,35 @@ export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
    * The patchers are applied to the data in the order given, each receiving the
    * output of the previous.  The output of the last is fed to Zod.
    *
-   * If any of these functions returns true, the data is asynchronously updated
-   * on Firestore after a delay of `savePatchAfterDelay`, if it hasn't already
-   * been written back.  Only return true if the Firestore rules allow updating
-   * all patched fields; otherwise all subsequent writes will fail.
+   * @returns A value indicating if/when the patched data should be written:
+   * - `false` or `undefined` - no changes that should be written were made.
+   * - `true` - the full document should be written if/when the next write
+   *   occurs.
+   * - `"write-after-delay"` - write the full document after a delay, depending
+   *   on the value of `writePatchAfterDelay`.  (Default: write after 500 ms.)
+   * - `"write-soon"` - write the full document at the next opportunity.  This
+   *   write is asynchronous; it does not delay the document's availability.
+   * - `"write-now"` - write the full document immediately.  This write is
+   *   synchronous; `load()` does not return until it has completed.
+   *
+   * The highest write priority is used.
+   *
+   * If a patcher returns `true` or `"write-*"`, the full document will be set
+   * in Firestore.  Only return `true` if the Firestore rules allow updating all
+   * defined fields.
    */
   patchers?: Patcher[];
 
   /**
-   * If false, don't write the data back to Firestore, even if a patcher returns
-   * true.  Otherwise, the delay in milliseconds before patching.  This delay
-   * avoids an extra write in the case of a quick read/modify/write cycle.
-   * Defaults to 500, for a half-second delay.
+   * Whether and when to write the patched data back to Firestore:
+   * - `false` - don't write the data back to Firestore.
+   * - `true` - write the changes after 500 ms.  This is the default.
+   * - a number - the delay in milliseconds; set it to 0 for no delay.
+   *
+   * This delay avoids an extra write in the case of a quick read/modify/write
+   * cycle.  Defaults to `true`, for a half-second delay.
    */
-  savePatchAfterDelay?: false | number;
+  writePatchAfterDelay?: boolean | number;
 };
 
 /**
@@ -164,8 +185,8 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /** Patcher functions given in options; applied to the raw data in order. */
   private readonly patchers: Patcher[] | undefined;
 
-  /** Don't save patches if false; delay in milliseconds if set. */
-  private readonly savePatchAfterDelay: false | number;
+  /** Don't write patches if false; delay in milliseconds if set. */
+  private readonly writePatchAfterDelay: false | number;
 
   /** Local copy of the document data, parsed into the Zod type */
   private data: z.infer<SchemaType> | undefined = undefined;
@@ -212,7 +233,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     this.isSettingNewContents = this.isNewDoc;
     this.beforeWrite = options.beforeWrite;
     this.patchers = options.patchers;
-    this.savePatchAfterDelay = options.savePatchAfterDelay ?? 500;
+    this.writePatchAfterDelay =
+      options.writePatchAfterDelay === true ||
+      options.writePatchAfterDelay === undefined
+        ? 500
+        : options.writePatchAfterDelay === false
+          ? false
+          : options.writePatchAfterDelay;
     if (options.initialData) {
       this.data = schema.parse(options.initialData);
     } else if (this.isNewDoc) {
@@ -405,8 +432,11 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    *   patchers apply.
    */
   async loadRawData(rawData: Record<string, unknown>): Promise<this> {
-    await this.patchData(rawData);
+    const isWriteNow = await this.patchData(rawData);
     this.data = this.schema.parse(rawData);
+    if (isWriteNow) {
+      await this.write();
+    }
     return this;
   }
 
@@ -694,7 +724,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       // progress.  Reject it without updating the doc.
       return false;
     }
-    await this.patchData(data, isListener);
+    const isWriteNow = await this.patchData(data, isListener);
     let parsedData: z.infer<SchemaType>;
     try {
       parsedData = this.schema.parse(data);
@@ -710,6 +740,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       throw error; // Rethrow otherwise.
     }
     this.data = parsedData;
+    if (isWriteNow) {
+      await this.write();
+    }
     // Dereference the old proxy to force a recapture of data.
     this.dataProxy = undefined;
     return true;
@@ -718,29 +751,48 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /**
    * Applies the patches to the given data.  Writes the updates to Firestore if
    * `isListener` is not set and any patcher returns true.
+   *
+   * @returns `true` if the patched data should be written to Firestore
+   * immediately and synchronously.
    */
   private async patchData(
     data: Record<string, unknown>,
     isListener = false,
-  ): Promise<void> {
-    if (!this.patchers || this.patchers.length === 0) return;
-    let isPatched = false;
+  ): Promise<boolean> {
+    if (!this.patchers || this.patchers.length === 0) {
+      return false;
+    }
+    let maxWriteLevel: 0 | 1 | 2 | 3 | 4 = 0;
     for (const patcher of this.patchers) {
-      if (await patcher(data)) {
-        isPatched = true;
+      const writeLevel = await patcher(data);
+      if (writeLevel === true && maxWriteLevel < 1) {
+        maxWriteLevel = 1;
+      } else if (writeLevel === "write-after-delay" && maxWriteLevel < 2) {
+        maxWriteLevel = 2;
+      } else if (writeLevel === "write-soon" && maxWriteLevel < 3) {
+        maxWriteLevel = 3;
+      } else if (writeLevel === "write-now") {
+        maxWriteLevel = 4;
       }
     }
-    this.isSettingNewContents = true;
-    if (isPatched) {
+    if (maxWriteLevel === 0 || isListener || this.isReadonly) {
       // Listeners don't update the data on Firestore, as that would cause an
       // infinite loop of updates if a patcher always returns true.
-      if (
-        !isListener &&
-        !this.isReadonly &&
-        this.savePatchAfterDelay !== false
-      ) {
-        setTimeout(() => this.write(), this.savePatchAfterDelay);
+      return false;
+    }
+    this.isSettingNewContents = true;
+    if (maxWriteLevel === 1 /* true */) {
+      return false;
+    } else if (maxWriteLevel === 2 /* write-after-delay */) {
+      if (this.writePatchAfterDelay !== false) {
+        setTimeout(() => this.write(), this.writePatchAfterDelay);
       }
+      return false;
+    } else if (maxWriteLevel === 3 /* write-soon */) {
+      setTimeout(() => this.write(), 0);
+      return false;
+    } else {
+      return true; // write-now
     }
   }
 
