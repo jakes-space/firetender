@@ -27,7 +27,7 @@ import { DeepReadonly } from "./ts-helpers.js";
 /*
  * Patcher functions modify the data from Firestore before it is parsed by Zod.
  */
-export type Patcher = (
+export type RawPatcher = (
   data: Record<string, any>,
 ) =>
   | void
@@ -76,7 +76,7 @@ export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
    * in Firestore.  Only return `true` if the Firestore rules allow updating all
    * defined fields.
    */
-  patchers?: Patcher[];
+  rawPatchers?: RawPatcher[];
 
   /**
    * Whether and when to write the patched data back to Firestore:
@@ -182,8 +182,8 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     | ((data: z.infer<SchemaType>) => void)
     | undefined;
 
-  /** Patcher functions given in options; applied to the raw data in order. */
-  private readonly patchers: Patcher[] | undefined;
+  /** Raw patcher functions from options; applied to the raw data in order. */
+  private readonly rawPatchers: RawPatcher[] | undefined;
 
   /** Don't write patches if false; delay in milliseconds if set. */
   private readonly writePatchAfterDelay: false | number;
@@ -232,7 +232,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     }
     this.isSettingNewContents = this.isNewDoc;
     this.beforeWrite = options.beforeWrite;
-    this.patchers = options.patchers;
+    this.rawPatchers = options.rawPatchers;
     this.writePatchAfterDelay =
       options.writePatchAfterDelay === true ||
       options.writePatchAfterDelay === undefined
@@ -759,11 +759,11 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     data: Record<string, unknown>,
     isListener = false,
   ): Promise<boolean> {
-    if (!this.patchers || this.patchers.length === 0) {
+    if (!this.rawPatchers || this.rawPatchers.length === 0) {
       return false;
     }
     let maxWriteLevel: 0 | 1 | 2 | 3 | 4 = 0;
-    for (const patcher of this.patchers) {
+    for (const patcher of this.rawPatchers) {
       const writeLevel = await patcher(data);
       if (writeLevel === true && maxWriteLevel < 1) {
         maxWriteLevel = 1;

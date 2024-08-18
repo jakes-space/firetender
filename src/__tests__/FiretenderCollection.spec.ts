@@ -324,12 +324,12 @@ describe("query functions", () => {
     });
 
     it("applies patches to the data.", async () => {
-      cityCollection.patch((data) => {
+      cityCollection.patchRawDoc((data) => {
         if (data.name === "Los Angeles") {
           data.regions?.push("home");
         }
       });
-      cityCollection.patch((data) => {
+      cityCollection.patchRawDoc((data) => {
         // Second patcher should run after the first.
         if (data.name === "Los Angeles") {
           data.regions?.sort();
@@ -411,7 +411,7 @@ describe("query functions", () => {
     });
 
     it("applies patches to the data.", async () => {
-      cityLandmarkCollection.patch((data) => {
+      cityLandmarkCollection.patchRawDoc((data) => {
         if (data.name === "The Getty") {
           data.name = "The Getty Center";
         }
@@ -444,7 +444,7 @@ describe("query functions", () => {
         collectionName,
         undefined,
         {
-          patchers: [
+          rawPatchers: [
             (data: any) => {
               data.bar = 2;
             },

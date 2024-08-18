@@ -22,7 +22,7 @@ import {
 import {
   FiretenderDoc,
   FiretenderDocOptions,
-  Patcher,
+  RawPatcher,
 } from "../FiretenderDoc.js";
 import {
   futureTimestamp,
@@ -298,12 +298,12 @@ describe("listener", () => {
 describe("patch", () => {
   it("writes change when other data written (returns true).", async () => {
     const docRef = await addDoc(testCollection, { email: "alice" });
-    const patcher: Patcher = (data: any) => {
+    const patcher: RawPatcher = (data: any) => {
       data.email += "@example.com";
       return true;
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      patchers: [patcher],
+      rawPatchers: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -329,12 +329,12 @@ describe("patch", () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
     });
-    const patcher: Patcher = (data: any) => {
+    const patcher: RawPatcher = (data: any) => {
       data.email += "@example.com";
       return false;
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      patchers: [patcher],
+      rawPatchers: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -358,12 +358,12 @@ describe("patch", () => {
       email: "alice",
       constantField: 1,
     });
-    const patcher: Patcher = (data: any) => {
+    const patcher: RawPatcher = (data: any) => {
       data.email += "@example.com";
       return false;
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      patchers: [patcher],
+      rawPatchers: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -385,12 +385,12 @@ describe("patch", () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
     });
-    const patcher: Patcher = (data: any) => {
+    const patcher: RawPatcher = (data: any) => {
       data.email += "@example.com";
       return "write-after-delay";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      patchers: [patcher],
+      rawPatchers: [patcher],
       writePatchAfterDelay: 50,
     });
     await testDoc.load();
@@ -414,12 +414,12 @@ describe("patch", () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
     });
-    const patcher: Patcher = (data: any) => {
+    const patcher: RawPatcher = (data: any) => {
       data.email += "@example.com";
       return "write-soon";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      patchers: [patcher],
+      rawPatchers: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -439,12 +439,12 @@ describe("patch", () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
     });
-    const patcher: Patcher = (data: any) => {
+    const patcher: RawPatcher = (data: any) => {
       data.email += "@example.com";
       return "write-now";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      patchers: [patcher],
+      rawPatchers: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -461,17 +461,17 @@ describe("patch", () => {
 
   it("applies asynchronous patches.", async () => {
     const docRef = await addDoc(testCollection, {});
-    const patcher1: Patcher = async (data: any): Promise<"write-now"> => {
+    const patcher1: RawPatcher = async (data: any): Promise<"write-now"> => {
       data.email = "alice";
       await new Promise((resolve) => setTimeout(resolve, 100));
       return "write-now";
     };
-    const patcher2: Patcher = (data: any) => {
+    const patcher2: RawPatcher = (data: any) => {
       data.email += "@example.com";
       return "write-now";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      patchers: [patcher1, patcher2],
+      rawPatchers: [patcher1, patcher2],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
