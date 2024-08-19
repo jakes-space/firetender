@@ -296,307 +296,6 @@ describe("listener", () => {
   });
 });
 
-describe("raw patchers", () => {
-  it("writes changes with other data if true is returned.", async () => {
-    const docRef = await addDoc(testCollection, { email: "alice" });
-    const patcher: BeforeParse = (data: any) => {
-      data.email += "@example.com";
-      return true;
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      beforeParse: [patcher],
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("alice@example.com");
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
-    expect(resultBeforeUpdate).toEqual({
-      email: "alice",
-    });
-    await testDoc.update((data) => {
-      data.recordOfPrimitives.foo = "bar";
-    });
-    const resultAfterUpdate = (await getDoc(testDoc.docRef)).data();
-    expect(resultAfterUpdate).toEqual({
-      email: "alice@example.com",
-      recordOfPrimitives: { foo: "bar" },
-      recordOfObjects: {},
-      nestedRecords: {},
-      arrayOfObjects: [],
-    });
-  });
-
-  it("does not write changes if false is returned.", async () => {
-    const docRef = await addDoc(testCollection, {
-      email: "alice",
-      constantField: 1,
-    });
-    const patcher: BeforeParse = (data: any) => {
-      data.email += "@example.com";
-      data.constantField = 2;
-      return false;
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      beforeParse: [patcher],
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("alice@example.com");
-    expect(testDoc.r.constantField).toBe(2);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
-    expect(resultBeforeUpdate).toEqual({
-      email: "alice",
-      constantField: 1,
-    });
-    await testDoc.update((data) => {
-      data.recordOfPrimitives.foo = "bar";
-    });
-    const resultAfterUpdate = (await getDoc(testDoc.docRef)).data();
-    expect(resultAfterUpdate).toEqual({
-      email: "alice",
-      constantField: 1,
-      recordOfPrimitives: { foo: "bar" },
-    });
-  });
-
-  it("throws if an unwriteable field is modified.", async () => {
-    const docRef = await addDoc(testCollection, {
-      email: "alice",
-      constantField: 1,
-    });
-    const patcher: BeforeParse = (data: any) => {
-      data.email += "@example.com";
-      data.constantField = 2;
-      return true;
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      beforeParse: [patcher],
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("alice@example.com");
-    expect(testDoc.r.constantField).toBe(2);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
-    expect(resultBeforeUpdate).toEqual({
-      email: "alice",
-      constantField: 1,
-    });
-    await expect(
-      testDoc.update((data) => {
-        data.recordOfPrimitives.foo = "bar";
-      }),
-    ).rejects.toThrow("PERMISSION_DENIED");
-  });
-
-  it("writes after a delay.", async () => {
-    const docRef = await addDoc(testCollection, {
-      email: "alice",
-    });
-    const patcher: BeforeParse = (data: any) => {
-      data.email += "@example.com";
-      return "write-soon";
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      beforeParse: [patcher],
-      writeSoonDelay: 25,
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("alice@example.com");
-    const resultBeforeDelay = (await getDoc(testDoc.docRef)).data();
-    expect(resultBeforeDelay).toEqual({
-      email: "alice",
-    });
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const resultAfterDelay = (await getDoc(testDoc.docRef)).data();
-    expect(resultAfterDelay).toEqual({
-      email: "alice@example.com",
-      recordOfPrimitives: {},
-      recordOfObjects: {},
-      nestedRecords: {},
-      arrayOfObjects: [],
-    });
-  });
-
-  it("writes immediately.", async () => {
-    const docRef = await addDoc(testCollection, {
-      email: "alice",
-    });
-    const patcher: BeforeParse = (data: any) => {
-      data.email += "@example.com";
-      return "write-now";
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      beforeParse: [patcher],
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("alice@example.com");
-    expect(testDoc.isPendingWrite).toBeFalsy();
-    const result = (await getDoc(testDoc.docRef)).data();
-    expect(result).toEqual({
-      email: "alice@example.com",
-      recordOfPrimitives: {},
-      recordOfObjects: {},
-      nestedRecords: {},
-      arrayOfObjects: [],
-    });
-  });
-
-  it("applies asynchronous patches.", async () => {
-    const docRef = await addDoc(testCollection, {});
-    const patcher1: BeforeParse = async (data: any): Promise<"write-now"> => {
-      data.email = "alice";
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      return "write-now";
-    };
-    const patcher2: BeforeParse = (data: any) => {
-      data.email += "@example.com";
-      return "write-now";
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      beforeParse: [patcher1, patcher2],
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("alice@example.com");
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const result = (await getDoc(testDoc.docRef)).data();
-    expect(result).toEqual({
-      email: "alice@example.com",
-      recordOfPrimitives: {},
-      recordOfObjects: {},
-      nestedRecords: {},
-      arrayOfObjects: [],
-    });
-  });
-});
-
-describe("afterParse", () => {
-  it("writes changes with other data if true is returned.", async () => {
-    const docRef = await addDoc(testCollection, { email: "alice@example.com" });
-    const patcher: AfterParse<typeof testDataSchema> = (data) => {
-      data.email = data.email.replace("alice", "bob");
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      afterParse: [patcher],
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("bob@example.com");
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
-    expect(resultBeforeUpdate).toEqual({
-      email: "alice@example.com",
-    });
-    await testDoc.update((data) => {
-      data.recordOfPrimitives.foo = "bar";
-    });
-    const resultAfterUpdate = (await getDoc(testDoc.docRef)).data();
-    expect(resultAfterUpdate).toEqual({
-      email: "bob@example.com",
-      recordOfPrimitives: { foo: "bar" },
-    });
-  });
-
-  it("is OK if an unwriteable field is defined.", async () => {
-    const docRef = await addDoc(testCollection, {
-      email: "alice@example.com",
-      constantField: 1,
-    });
-    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
-      data.email = data.email.replace("alice", "bob");
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      afterParse: [patcher],
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("bob@example.com");
-    expect(testDoc.r.constantField).toBe(1);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
-    expect(resultBeforeUpdate).toEqual({
-      email: "alice@example.com",
-      constantField: 1,
-    });
-    await testDoc.update((data) => {
-      data.recordOfPrimitives.foo = "bar";
-    });
-    const resultAfterUpdate = (await getDoc(testDoc.docRef)).data();
-    expect(resultAfterUpdate).toEqual({
-      email: "bob@example.com",
-      constantField: 1,
-      recordOfPrimitives: { foo: "bar" },
-    });
-  });
-
-  it("writes after a delay.", async () => {
-    const docRef = await addDoc(testCollection, {
-      email: "alice@example.com",
-    });
-    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
-      data.email = data.email.replace("alice", "bob");
-      return "write-soon";
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      afterParse: [patcher],
-      writeSoonDelay: 25,
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("bob@example.com");
-    const resultBeforeDelay = (await getDoc(testDoc.docRef)).data();
-    expect(resultBeforeDelay).toEqual({
-      email: "alice@example.com",
-    });
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const resultAfterDelay = (await getDoc(testDoc.docRef)).data();
-    expect(resultAfterDelay).toEqual({
-      email: "bob@example.com",
-    });
-  });
-
-  it("writes synchronously.", async () => {
-    const docRef = await addDoc(testCollection, {
-      email: "alice@example.com",
-    });
-    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
-      data.email = data.email.replace("alice", "bob");
-      return "write-now";
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      afterParse: [patcher],
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("bob@example.com");
-    expect(testDoc.isPendingWrite).toBeFalsy();
-    const result = (await getDoc(testDoc.docRef)).data();
-    expect(result).toEqual({
-      email: "bob@example.com",
-    });
-  });
-
-  it("applies asynchronous patches.", async () => {
-    const docRef = await addDoc(testCollection, {
-      email: "alice@example.com",
-    });
-    const patcher1: AfterParse<typeof testDataSchema> = async (data) => {
-      data.email = data.email.replace("alice", "bob");
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      return "write-now" as const;
-    };
-    const patcher2: AfterParse<typeof testDataSchema> = (data) => {
-      data.email = data.email.replace("bob", "robert");
-      return "write-now";
-    };
-    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      afterParse: [patcher1, patcher2],
-    });
-    await testDoc.load();
-    expect(testDoc.r.email).toBe("robert@example.com");
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const result = (await getDoc(testDoc.docRef)).data();
-    expect(result).toEqual({
-      email: "robert@example.com",
-    });
-  });
-});
-
 describe("read-only accessor (.r)", () => {
   it("reads a primitive field.", async () => {
     const testDoc = await createAndLoadDoc({
@@ -904,6 +603,309 @@ describe("update", () => {
   });
 });
 
+describe("beforeParse", () => {
+  it("writes changes with other data if true is returned.", async () => {
+    const docRef = await addDoc(testCollection, { email: "alice" });
+    const patcher: BeforeParse = (data, path) => {
+      expect(path).toEqual(["doctests", docRef.id]);
+      data.email += "@example.com";
+      return true;
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      beforeParse: [patcher],
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
+    expect(resultBeforeUpdate).toEqual({
+      email: "alice",
+    });
+    await testDoc.update((data) => {
+      data.recordOfPrimitives.foo = "bar";
+    });
+    const resultAfterUpdate = (await getDoc(testDoc.docRef)).data();
+    expect(resultAfterUpdate).toEqual({
+      email: "alice@example.com",
+      recordOfPrimitives: { foo: "bar" },
+      recordOfObjects: {},
+      nestedRecords: {},
+      arrayOfObjects: [],
+    });
+  });
+
+  it("does not write changes if false is returned.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice",
+      constantField: 1,
+    });
+    const patcher: BeforeParse = (data: any) => {
+      data.email += "@example.com";
+      data.constantField = 2;
+      return false;
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      beforeParse: [patcher],
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    expect(testDoc.r.constantField).toBe(2);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
+    expect(resultBeforeUpdate).toEqual({
+      email: "alice",
+      constantField: 1,
+    });
+    await testDoc.update((data) => {
+      data.recordOfPrimitives.foo = "bar";
+    });
+    const resultAfterUpdate = (await getDoc(testDoc.docRef)).data();
+    expect(resultAfterUpdate).toEqual({
+      email: "alice",
+      constantField: 1,
+      recordOfPrimitives: { foo: "bar" },
+    });
+  });
+
+  it("throws if an unwriteable field is modified.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice",
+      constantField: 1,
+    });
+    const patcher: BeforeParse = (data: any) => {
+      data.email += "@example.com";
+      data.constantField = 2;
+      return true;
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      beforeParse: [patcher],
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    expect(testDoc.r.constantField).toBe(2);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
+    expect(resultBeforeUpdate).toEqual({
+      email: "alice",
+      constantField: 1,
+    });
+    await expect(
+      testDoc.update((data) => {
+        data.recordOfPrimitives.foo = "bar";
+      }),
+    ).rejects.toThrow("PERMISSION_DENIED");
+  });
+
+  it("writes after a delay.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice",
+    });
+    const patcher: BeforeParse = (data: any) => {
+      data.email += "@example.com";
+      return "write-soon";
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      beforeParse: [patcher],
+      writeSoonDelay: 25,
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    const resultBeforeDelay = (await getDoc(testDoc.docRef)).data();
+    expect(resultBeforeDelay).toEqual({
+      email: "alice",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const resultAfterDelay = (await getDoc(testDoc.docRef)).data();
+    expect(resultAfterDelay).toEqual({
+      email: "alice@example.com",
+      recordOfPrimitives: {},
+      recordOfObjects: {},
+      nestedRecords: {},
+      arrayOfObjects: [],
+    });
+  });
+
+  it("writes immediately.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice",
+    });
+    const patcher: BeforeParse = (data: any) => {
+      data.email += "@example.com";
+      return "write-now";
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      beforeParse: [patcher],
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    expect(testDoc.isPendingWrite).toBeFalsy();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "alice@example.com",
+      recordOfPrimitives: {},
+      recordOfObjects: {},
+      nestedRecords: {},
+      arrayOfObjects: [],
+    });
+  });
+
+  it("applies asynchronous patches.", async () => {
+    const docRef = await addDoc(testCollection, {});
+    const patcher1: BeforeParse = async (data: any): Promise<"write-now"> => {
+      data.email = "alice";
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return "write-now";
+    };
+    const patcher2: BeforeParse = (data: any) => {
+      data.email += "@example.com";
+      return "write-now";
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      beforeParse: [patcher1, patcher2],
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "alice@example.com",
+      recordOfPrimitives: {},
+      recordOfObjects: {},
+      nestedRecords: {},
+      arrayOfObjects: [],
+    });
+  });
+});
+
+describe("afterParse", () => {
+  it("writes changes with other data if true is returned.", async () => {
+    const docRef = await addDoc(testCollection, { email: "alice@example.com" });
+    const patcher: AfterParse<typeof testDataSchema> = (data, path) => {
+      expect(path).toEqual(["doctests", docRef.id]);
+      data.email = data.email.replace("alice", "bob");
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      afterParse: [patcher],
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("bob@example.com");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
+    expect(resultBeforeUpdate).toEqual({
+      email: "alice@example.com",
+    });
+    await testDoc.update((data) => {
+      data.recordOfPrimitives.foo = "bar";
+    });
+    const resultAfterUpdate = (await getDoc(testDoc.docRef)).data();
+    expect(resultAfterUpdate).toEqual({
+      email: "bob@example.com",
+      recordOfPrimitives: { foo: "bar" },
+    });
+  });
+
+  it("is OK if an unwriteable field is defined.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice@example.com",
+      constantField: 1,
+    });
+    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
+      data.email = data.email.replace("alice", "bob");
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      afterParse: [patcher],
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("bob@example.com");
+    expect(testDoc.r.constantField).toBe(1);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const resultBeforeUpdate = (await getDoc(testDoc.docRef)).data();
+    expect(resultBeforeUpdate).toEqual({
+      email: "alice@example.com",
+      constantField: 1,
+    });
+    await testDoc.update((data) => {
+      data.recordOfPrimitives.foo = "bar";
+    });
+    const resultAfterUpdate = (await getDoc(testDoc.docRef)).data();
+    expect(resultAfterUpdate).toEqual({
+      email: "bob@example.com",
+      constantField: 1,
+      recordOfPrimitives: { foo: "bar" },
+    });
+  });
+
+  it("writes after a delay.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice@example.com",
+    });
+    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
+      data.email = data.email.replace("alice", "bob");
+      return "write-soon";
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      afterParse: [patcher],
+      writeSoonDelay: 25,
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("bob@example.com");
+    const resultBeforeDelay = (await getDoc(testDoc.docRef)).data();
+    expect(resultBeforeDelay).toEqual({
+      email: "alice@example.com",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const resultAfterDelay = (await getDoc(testDoc.docRef)).data();
+    expect(resultAfterDelay).toEqual({
+      email: "bob@example.com",
+    });
+  });
+
+  it("writes synchronously.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice@example.com",
+    });
+    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
+      data.email = data.email.replace("alice", "bob");
+      return "write-now";
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      afterParse: [patcher],
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("bob@example.com");
+    expect(testDoc.isPendingWrite).toBeFalsy();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+    });
+  });
+
+  it("applies asynchronous patches.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice@example.com",
+    });
+    const patcher1: AfterParse<typeof testDataSchema> = async (data) => {
+      data.email = data.email.replace("alice", "bob");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return "write-now" as const;
+    };
+    const patcher2: AfterParse<typeof testDataSchema> = (data) => {
+      data.email = data.email.replace("bob", "robert");
+      return "write-now";
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      afterParse: [patcher1, patcher2],
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("robert@example.com");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "robert@example.com",
+    });
+  });
+});
+
 describe("beforeWrite", () => {
   it("modifies a new doc", async () => {
     const testDoc = new FiretenderDoc(testDataSchema, testCollection, {
@@ -912,7 +914,8 @@ describe("beforeWrite", () => {
         email: "bob@example.com",
       },
       beforeWrite: [
-        (data) => {
+        (data, path) => {
+          expect(path).toEqual(["doctests"]);
           data.ttl = serverTimestamp();
         },
       ],
@@ -927,18 +930,17 @@ describe("beforeWrite", () => {
   });
 
   it("modifies an existing doc", async () => {
-    const testDoc = await createAndLoadDoc(
-      {
-        email: "bob@example.com",
-      },
-      {
-        beforeWrite: [
-          (data) => {
-            data.ttl = serverTimestamp();
-          },
-        ],
-      },
-    );
+    const docRef = await addDoc(testCollection, {
+      email: "bob@example.com",
+    });
+    const testDoc = await new FiretenderDoc(testDataSchema, docRef, {
+      beforeWrite: [
+        (data, path) => {
+          expect(path).toEqual(["doctests", docRef.id]);
+          data.ttl = serverTimestamp();
+        },
+      ],
+    }).load();
     expect(testDoc.r.ttl).toBeUndefined();
     await testDoc.update((data) => {
       data.email = "alice@example.com";

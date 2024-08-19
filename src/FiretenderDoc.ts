@@ -33,6 +33,7 @@ import type {
  */
 export type BeforeParse = (
   data: Record<string, any>,
+  docPath: string[],
 ) => AsyncOrSync<void | boolean | "write-soon" | "write-now">;
 
 type HookReturnCode = AsyncOrSyncType<ReturnType<BeforeParse>>;
@@ -42,6 +43,7 @@ type HookReturnCode = AsyncOrSyncType<ReturnType<BeforeParse>>;
  */
 export type AfterParse<SchemaType extends z.SomeZodObject> = (
   data: z.infer<SchemaType>,
+  docPath: string[],
 ) => AsyncOrSync<void | "write-soon" | "write-now">;
 
 /*
@@ -49,6 +51,7 @@ export type AfterParse<SchemaType extends z.SomeZodObject> = (
  */
 export type BeforeWrite<SchemaType extends z.SomeZodObject> = (
   data: z.infer<SchemaType>,
+  docPath: string[],
 ) => void;
 
 /**
@@ -212,13 +215,16 @@ const NUM_LOAD_RETRIES = 3;
  * A local representation of a Firestore document.
  */
 export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
-  /** Zod schema used to parse and validate the document's data */
+  /** Zod schema used to parse and validate the document's data. */
   readonly schema: SchemaType;
 
-  /** Firestore reference to this doc, or collection in which to create it */
+  /** Firestore reference to this doc, or collection in which to create it. */
   private ref: DocumentReference | CollectionReference;
 
-  /** Firestore document ID; undefined for new docs not yet on Firestore */
+  /**
+   * Firestore document ID, which is the last part of the document path.
+   * Undefined for new docs not yet on Firestore.
+   */
   private docID: string | undefined = undefined;
 
   /** If set, writes will throw and patches will not be written. */
@@ -245,10 +251,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /** Local copy of the document data, parsed into the Zod type */
   private data: z.infer<SchemaType> | undefined = undefined;
 
-  /** Proxy to intercept write (.w) access to the data and track the changes */
+  /** Proxy to intercept write (.w) access to the data and track the changes. */
   private dataProxy: ProxyHandler<z.infer<SchemaType>> | undefined = undefined;
 
-  /** Map from the dot-delimited field path (per updateDoc()) to new value */
+  /** Map from the dot-delimited field path (per updateDoc()) to new value. */
   private updates = new Map<string, any>();
 
   /** Function to unsubscribe from changes to the doc, if we're listening. */
@@ -297,7 +303,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       );
     }
     if (this.ref instanceof DocumentReference) {
-      this.docID = this.ref.path.split("/").pop();
+      this.docID = this.ref.path.split("/").at(-1);
     } else if (!this.isNewDoc) {
       throw TypeError(
         "FiretenderDoc can only take a collection reference when creating a new document.  Use .createNewDoc() if this is your intent.",
@@ -418,7 +424,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   }
 
   /**
-   * The document's ID string.
+   * The document's ID string, which is the last part of the document path.
    *
    * @throws Throws an error if the document does not yet have an ID.
    */
@@ -695,7 +701,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           addContextToError(error, "addDoc", this.ref, this.data);
           throw error;
         }
-        this.docID = this.ref.path.split("/").pop(); // ID is last part of path.
+        this.docID = this.ref.path.split("/").at(-1);
       }
       this.isSettingNewContents = false;
       this.isNewDoc = false;
@@ -808,8 +814,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     data: Record<string, unknown>,
   ): Promise<PatchPriority> {
     let maxWritePriority: PatchPriority = PatchPriority.NO_WRITE;
-    for (const patcher of this.beforeParse) {
-      const priority = convertPatcherReturnCodeToPriority(await patcher(data));
+    const docPath = this.ref.path.split("/");
+    for (const hook of this.beforeParse) {
+      const returnCode = await hook(data, docPath);
+      const priority = convertPatcherReturnCodeToPriority(returnCode);
       maxWritePriority = Math.max(maxWritePriority, priority);
     }
     if (maxWritePriority > PatchPriority.NO_WRITE) {
@@ -826,10 +834,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   private async runAfterParseHooks(): Promise<PatchPriority> {
     let maxWritePriority: PatchPriority = PatchPriority.NO_WRITE;
-    for (const patcher of this.afterParse) {
-      const priority = convertPatcherReturnCodeToPriority(
-        await patcher(this.w),
-      );
+    const docPath = this.ref.path.split("/");
+    for (const hook of this.afterParse) {
+      const returnCode = await hook(this.w, docPath);
+      const priority = convertPatcherReturnCodeToPriority(returnCode);
       maxWritePriority = Math.max(maxWritePriority, priority);
     }
     return maxWritePriority;
@@ -854,8 +862,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * track changes, making it safe for documents with protected fields.
    */
   private runBeforeWriteHooks(): void {
+    const docPath = this.ref.path.split("/");
     for (const hook of this.beforeWrite) {
-      hook(this.w);
+      hook(this.w, docPath);
     }
   }
 
