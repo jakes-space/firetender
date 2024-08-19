@@ -22,20 +22,50 @@ import {
   updateDoc,
 } from "./firestore-deps.js";
 import { watchForChanges } from "./proxy.js";
-import { DeepReadonly } from "./ts-helpers.js";
+import type {
+  AsyncOrSync,
+  AsyncOrSyncType,
+  DeepReadonly,
+} from "./ts-helpers.js";
 
 /*
  * Patcher functions modify the data from Firestore before it is parsed by Zod.
  */
 export type RawPatcher = (
   data: Record<string, any>,
-) =>
-  | void
-  | boolean
-  | "write-after-delay"
-  | "write-soon"
-  | "write-now"
-  | Promise<void | boolean | "write-after-delay" | "write-soon" | "write-now">;
+) => AsyncOrSync<void | boolean | "write-soon" | "write-now">;
+
+/*
+ * Patcher functions modify the data from Firestore after it is parsed by Zod.
+ */
+export type ParsedPatcher<SchemaType extends z.SomeZodObject> = (
+  data: z.infer<SchemaType>,
+) => AsyncOrSync<void | boolean | "write-soon" | "write-now">;
+
+type PatcherReturnCode = AsyncOrSyncType<ReturnType<RawPatcher>>;
+
+/** Internal priority for writing changes made by patchers. */
+enum PatchPriority {
+  NO_WRITE,
+  WRITE_MANUALLY,
+  WRITE_SOON,
+  WRITE_NOW,
+}
+
+const convertPatcherReturnCodeToPriority = (
+  code: PatcherReturnCode,
+): PatchPriority => {
+  switch (code) {
+    case true:
+      return PatchPriority.WRITE_MANUALLY;
+    case "write-soon":
+      return PatchPriority.WRITE_SOON;
+    case "write-now":
+      return PatchPriority.WRITE_NOW;
+    default:
+      return PatchPriority.NO_WRITE;
+  }
+};
 
 /**
  * Public options for initializing a FiretenderDoc object.
@@ -63,10 +93,8 @@ export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
    * - `false` or `undefined` - no changes that should be written were made.
    * - `true` - the full document should be written if/when the next write
    *   occurs.
-   * - `"write-after-delay"` - write the full document after a delay, depending
-   *   on the value of `writePatchAfterDelay`.  (Default: write after 500 ms.)
-   * - `"write-soon"` - write the full document at the next opportunity.  This
-   *   write is asynchronous; it does not delay the document's availability.
+   * - `"write-soon"` - write the full document after a delay, depending on the
+   *   value of `patcherWriteSoonDelay`.  (Default: write after 100 ms.)
    * - `"write-now"` - write the full document immediately.  This write is
    *   synchronous; `load()` does not return until it has completed.
    *
@@ -79,15 +107,34 @@ export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
   rawPatchers?: RawPatcher[];
 
   /**
-   * Whether and when to write the patched data back to Firestore:
-   * - `false` - don't write the data back to Firestore.
-   * - `true` - write the changes after 500 ms.  This is the default.
-   * - a number - the delay in milliseconds; set it to 0 for no delay.
+   * Functions that update the document after it has been parsed by Zod.  The
+   * patchers are applied to the data in the order given, each receiving the
+   * output of the previous.
+   *
+   * @returns A value indicating if/when the patched data should be written:
+   * - `false` or `undefined` - no changes that should be written were made.
+   * - `true` - the document should be updated if/when the next write occurs.
+   * - `"write-soon"` - update the document after a delay, depending on the
+   *   value of `patcherWriteSoonDelay`.  (Default: write after 100 ms.)
+   * - `"write-now"` - update document immediately.  This write is synchronous;
+   *   `load()` does not return until it has completed.
+   *
+   * The highest write priority is used.
+   *
+   * If a patcher returns `true` or `"write-*"`, the modified fields will be
+   * updated in Firestore.  Only return `true` if the Firestore rules allow
+   * updating the modified fields.
+   */
+  parsedPatchers?: ParsedPatcher<SchemaType>[];
+
+  /**
+   * Delay in milliseconds before writing patched data back to Firestore if the
+   * patchers return `"write-soon"`.  Defaults to 100 ms.
    *
    * This delay avoids an extra write in the case of a quick read/modify/write
-   * cycle.  Defaults to `true`, for a half-second delay.
+   * cycle.
    */
-  writePatchAfterDelay?: boolean | number;
+  patcherWriteSoonDelay?: number;
 };
 
 /**
@@ -185,8 +232,11 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /** Raw patcher functions from options; applied to the raw data in order. */
   private readonly rawPatchers: RawPatcher[] | undefined;
 
-  /** Don't write patches if false; delay in milliseconds if set. */
-  private readonly writePatchAfterDelay: false | number;
+  /** Parsed patcher functions from options; applied to the doc in order. */
+  private readonly parsedPatchers: ParsedPatcher<SchemaType>[] | undefined;
+
+  /** Delay before writing patches with `"write-soon"`.  Default is 100 ms. */
+  private readonly patcherWriteSoonDelay: number;
 
   /** Local copy of the document data, parsed into the Zod type */
   private data: z.infer<SchemaType> | undefined = undefined;
@@ -233,13 +283,8 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     this.isSettingNewContents = this.isNewDoc;
     this.beforeWrite = options.beforeWrite;
     this.rawPatchers = options.rawPatchers;
-    this.writePatchAfterDelay =
-      options.writePatchAfterDelay === true ||
-      options.writePatchAfterDelay === undefined
-        ? 500
-        : options.writePatchAfterDelay === false
-          ? false
-          : options.writePatchAfterDelay;
+    this.parsedPatchers = options.parsedPatchers;
+    this.patcherWriteSoonDelay = options.patcherWriteSoonDelay ?? 100;
     if (options.initialData) {
       this.data = schema.parse(options.initialData);
     } else if (this.isNewDoc) {
@@ -432,11 +477,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    *   patchers apply.
    */
   async loadRawData(rawData: Record<string, unknown>): Promise<this> {
-    const isWriteNow = await this.patchData(rawData);
+    const patchRawPriority = await this.patchRawData(rawData);
     this.data = this.schema.parse(rawData);
-    if (isWriteNow) {
-      await this.write();
-    }
+    const patchParsedPriority = await this.patchParsedData();
+    await this.writePatches(Math.max(patchRawPriority, patchParsedPriority));
     return this;
   }
 
@@ -724,7 +768,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       // progress.  Reject it without updating the doc.
       return false;
     }
-    const isWriteNow = await this.patchData(data, isListener);
+    const patchRawPriority = await this.patchRawData(data);
     let parsedData: z.infer<SchemaType>;
     try {
       parsedData = this.schema.parse(data);
@@ -740,8 +784,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       throw error; // Rethrow otherwise.
     }
     this.data = parsedData;
-    if (isWriteNow) {
-      await this.write();
+    const patchParsedPriority = await this.patchParsedData();
+    if (!isListener) {
+      // Listeners do not write patches to avoid a feedback loop.
+      await this.writePatches(Math.max(patchRawPriority, patchParsedPriority));
     }
     // Dereference the old proxy to force a recapture of data.
     this.dataProxy = undefined;
@@ -749,50 +795,59 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   }
 
   /**
-   * Applies the patches to the given data.  Writes the updates to Firestore if
-   * `isListener` is not set and any patcher returns true.
+   * Applies patches to the given raw data.  Marks the entire document for
+   * writing if any patcher returns a truthy value.
    *
-   * @returns `true` if the patched data should be written to Firestore
-   * immediately and synchronously.
+   * @returns the priority for writing the revised document.
    */
-  private async patchData(
+  private async patchRawData(
     data: Record<string, unknown>,
-    isListener = false,
-  ): Promise<boolean> {
+  ): Promise<PatchPriority> {
     if (!this.rawPatchers || this.rawPatchers.length === 0) {
-      return false;
+      return PatchPriority.NO_WRITE;
     }
-    let maxWriteLevel: 0 | 1 | 2 | 3 | 4 = 0;
+    let maxWritePriority: PatchPriority = PatchPriority.NO_WRITE;
     for (const patcher of this.rawPatchers) {
-      const writeLevel = await patcher(data);
-      if (writeLevel === true && maxWriteLevel < 1) {
-        maxWriteLevel = 1;
-      } else if (writeLevel === "write-after-delay" && maxWriteLevel < 2) {
-        maxWriteLevel = 2;
-      } else if (writeLevel === "write-soon" && maxWriteLevel < 3) {
-        maxWriteLevel = 3;
-      } else if (writeLevel === "write-now") {
-        maxWriteLevel = 4;
-      }
+      const priority = convertPatcherReturnCodeToPriority(await patcher(data));
+      maxWritePriority = Math.max(maxWritePriority, priority);
     }
-    if (maxWriteLevel === 0 || isListener || this.isReadonly) {
-      // Listeners don't update the data on Firestore, as that would cause an
-      // infinite loop of updates if a patcher always returns true.
-      return false;
+    if (maxWritePriority > PatchPriority.NO_WRITE) {
+      this.isSettingNewContents = true;
     }
-    this.isSettingNewContents = true;
-    if (maxWriteLevel === 1 /* true */) {
-      return false;
-    } else if (maxWriteLevel === 2 /* write-after-delay */) {
-      if (this.writePatchAfterDelay !== false) {
-        setTimeout(() => this.write(), this.writePatchAfterDelay);
-      }
-      return false;
-    } else if (maxWriteLevel === 3 /* write-soon */) {
-      setTimeout(() => this.write(), 0);
-      return false;
-    } else {
-      return true; // write-now
+    return maxWritePriority;
+  }
+
+  /**
+   * Applies patches to the parsed document.  The .w proxy is used to track
+   * changes, making it safe for documents with protected fields.
+   *
+   * @returns the priority for writing the updates.
+   */
+  private async patchParsedData(): Promise<PatchPriority> {
+    if (!this.parsedPatchers || this.parsedPatchers.length === 0) {
+      return PatchPriority.NO_WRITE;
+    }
+    let maxWritePriority: PatchPriority = PatchPriority.NO_WRITE;
+    for (const patcher of this.parsedPatchers) {
+      const priority = convertPatcherReturnCodeToPriority(
+        await patcher(this.w),
+      );
+      maxWritePriority = Math.max(maxWritePriority, priority);
+    }
+    return maxWritePriority;
+  }
+
+  /**
+   * Depending on the priority, does nothing, schedules a write, or writes the
+   * document immediately.
+   */
+  private async writePatches(priority: PatchPriority): Promise<void> {
+    if (priority <= PatchPriority.WRITE_MANUALLY || this.isReadonly) {
+      return;
+    } else if (priority === PatchPriority.WRITE_SOON) {
+      setTimeout(() => this.write(), this.patcherWriteSoonDelay);
+    } else if (priority === PatchPriority.WRITE_NOW) {
+      await this.write();
     }
   }
 

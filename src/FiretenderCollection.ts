@@ -19,6 +19,7 @@ import {
 import {
   FiretenderDoc,
   FiretenderDocOptions,
+  ParsedPatcher,
   RawPatcher,
 } from "./FiretenderDoc.js";
 import { DeepPartial, DeepReadonly } from "./ts-helpers.js";
@@ -334,15 +335,28 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   }
 
   /**
-   * Convenience method to provide a function to patch the raw data for this
-   * collection's documents.  Patchers can also be passed in the options
-   * argument of this class's constructor.
+   * Adds a patcher function for the raw data of this collection's documents.
+   * Patchers can also be passed in the options argument of this class's
+   * constructor.
    */
   patchRawDoc(patcher: RawPatcher): void {
     if (!this.defaultDocOptions.rawPatchers) {
       this.defaultDocOptions.rawPatchers = [patcher];
     } else {
       this.defaultDocOptions.rawPatchers.push(patcher);
+    }
+  }
+
+  /**
+   * Adds a patcher function for the parsed data of this collection's documents.
+   * Patchers can also be passed in the options argument of this class's
+   * constructor.
+   */
+  patchParsedDoc(patcher: ParsedPatcher<SchemaType>): void {
+    if (!this.defaultDocOptions.parsedPatchers) {
+      this.defaultDocOptions.parsedPatchers = [patcher];
+    } else {
+      this.defaultDocOptions.parsedPatchers.push(patcher);
     }
   }
 

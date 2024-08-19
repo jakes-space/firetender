@@ -323,7 +323,7 @@ describe("query functions", () => {
       }
     });
 
-    it("applies patches to the data.", async () => {
+    it("applies patches to the raw data.", async () => {
       cityCollection.patchRawDoc((data) => {
         if (data.name === "Los Angeles") {
           data.regions?.push("home");
@@ -339,6 +339,24 @@ describe("query functions", () => {
       const iLA = docs.findIndex((d) => d.id === "LA");
       expect(iLA).toBeGreaterThan(-1);
       expect(docs[iLA].r.regions).toEqual(["home", "socal", "west_coast"]);
+    });
+
+    it("applies patches to the parsed data.", async () => {
+      cityCollection.patchParsedDoc((data) => {
+        if (data.name === "Washington, D.C.") {
+          data.regions?.push("capital");
+        }
+      });
+      cityCollection.patchParsedDoc((data) => {
+        // Second patcher should run after the first.
+        if (data.name === "Washington, D.C.") {
+          data.regions?.sort();
+        }
+      });
+      const docs = await cityCollection.getAllDocs();
+      const iLA = docs.findIndex((d) => d.id === "DC");
+      expect(iLA).toBeGreaterThan(-1);
+      expect(docs[iLA].r.regions).toEqual(["capital", "east_coast"]);
     });
   });
 

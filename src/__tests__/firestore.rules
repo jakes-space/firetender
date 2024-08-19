@@ -3,13 +3,17 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function notUpdating(protectedFields) {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(protectedFields);
+    }
     match /coltests/{document=**} {
       allow read, write: if true;
     }
     match /doctests/{document=**} {
       allow read: if !('unreadable' in resource.data && resource.data.unreadable);
       allow create: if true;
-      allow update: if !('constantField' in request.resource.data);
+      allow update: if notUpdating(['constantField']);
       allow delete: if true;
     }
     match /cities/{document=**} {
