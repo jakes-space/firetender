@@ -667,7 +667,10 @@ describe("beforeParse", () => {
     });
   });
 
-  it("throws if an unwriteable field is modified.", async () => {
+  it("throws if an unwriteable field is modified (web only).", async () => {
+    if (FIRESTORE_DEPS_TYPE === "admin") {
+      return; // Admin can write anywhere.
+    }
     const docRef = await addDoc(testCollection, {
       email: "alice",
       constantField: 1,
