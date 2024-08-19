@@ -20,10 +20,10 @@ import {
   updateDoc,
 } from "../firestore-deps.js";
 import {
+  AfterParse,
+  BeforeParse,
   FiretenderDoc,
   FiretenderDocOptions,
-  ParsedPatcher,
-  RawPatcher,
 } from "../FiretenderDoc.js";
 import {
   futureTimestamp,
@@ -299,12 +299,12 @@ describe("listener", () => {
 describe("raw patchers", () => {
   it("writes changes with other data if true is returned.", async () => {
     const docRef = await addDoc(testCollection, { email: "alice" });
-    const patcher: RawPatcher = (data: any) => {
+    const patcher: BeforeParse = (data: any) => {
       data.email += "@example.com";
       return true;
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      rawPatchers: [patcher],
+      beforeParse: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -331,13 +331,13 @@ describe("raw patchers", () => {
       email: "alice",
       constantField: 1,
     });
-    const patcher: RawPatcher = (data: any) => {
+    const patcher: BeforeParse = (data: any) => {
       data.email += "@example.com";
       data.constantField = 2;
       return false;
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      rawPatchers: [patcher],
+      beforeParse: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -364,13 +364,13 @@ describe("raw patchers", () => {
       email: "alice",
       constantField: 1,
     });
-    const patcher: RawPatcher = (data: any) => {
+    const patcher: BeforeParse = (data: any) => {
       data.email += "@example.com";
       data.constantField = 2;
       return true;
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      rawPatchers: [patcher],
+      beforeParse: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -392,13 +392,13 @@ describe("raw patchers", () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
     });
-    const patcher: RawPatcher = (data: any) => {
+    const patcher: BeforeParse = (data: any) => {
       data.email += "@example.com";
       return "write-soon";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      rawPatchers: [patcher],
-      patcherWriteSoonDelay: 25,
+      beforeParse: [patcher],
+      writeSoonDelay: 25,
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -421,12 +421,12 @@ describe("raw patchers", () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
     });
-    const patcher: RawPatcher = (data: any) => {
+    const patcher: BeforeParse = (data: any) => {
       data.email += "@example.com";
       return "write-now";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      rawPatchers: [patcher],
+      beforeParse: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -443,17 +443,17 @@ describe("raw patchers", () => {
 
   it("applies asynchronous patches.", async () => {
     const docRef = await addDoc(testCollection, {});
-    const patcher1: RawPatcher = async (data: any): Promise<"write-now"> => {
+    const patcher1: BeforeParse = async (data: any): Promise<"write-now"> => {
       data.email = "alice";
       await new Promise((resolve) => setTimeout(resolve, 50));
       return "write-now";
     };
-    const patcher2: RawPatcher = (data: any) => {
+    const patcher2: BeforeParse = (data: any) => {
       data.email += "@example.com";
       return "write-now";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      rawPatchers: [patcher1, patcher2],
+      beforeParse: [patcher1, patcher2],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("alice@example.com");
@@ -469,15 +469,14 @@ describe("raw patchers", () => {
   });
 });
 
-describe("parsed patcher", () => {
+describe("afterParse", () => {
   it("writes changes with other data if true is returned.", async () => {
     const docRef = await addDoc(testCollection, { email: "alice@example.com" });
-    const patcher: ParsedPatcher<typeof testDataSchema> = (data) => {
+    const patcher: AfterParse<typeof testDataSchema> = (data) => {
       data.email = data.email.replace("alice", "bob");
-      return true;
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      parsedPatchers: [patcher],
+      afterParse: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("bob@example.com");
@@ -501,12 +500,11 @@ describe("parsed patcher", () => {
       email: "alice@example.com",
       constantField: 1,
     });
-    const patcher: ParsedPatcher<typeof testDataSchema> = (data: any) => {
+    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
       data.email = data.email.replace("alice", "bob");
-      return false;
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      parsedPatchers: [patcher],
+      afterParse: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("bob@example.com");
@@ -532,13 +530,13 @@ describe("parsed patcher", () => {
     const docRef = await addDoc(testCollection, {
       email: "alice@example.com",
     });
-    const patcher: ParsedPatcher<typeof testDataSchema> = (data: any) => {
+    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
       data.email = data.email.replace("alice", "bob");
       return "write-soon";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      parsedPatchers: [patcher],
-      patcherWriteSoonDelay: 25,
+      afterParse: [patcher],
+      writeSoonDelay: 25,
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("bob@example.com");
@@ -557,12 +555,12 @@ describe("parsed patcher", () => {
     const docRef = await addDoc(testCollection, {
       email: "alice@example.com",
     });
-    const patcher: ParsedPatcher<typeof testDataSchema> = (data: any) => {
+    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
       data.email = data.email.replace("alice", "bob");
       return "write-now";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      parsedPatchers: [patcher],
+      afterParse: [patcher],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("bob@example.com");
@@ -577,17 +575,17 @@ describe("parsed patcher", () => {
     const docRef = await addDoc(testCollection, {
       email: "alice@example.com",
     });
-    const patcher1: ParsedPatcher<typeof testDataSchema> = async (data) => {
+    const patcher1: AfterParse<typeof testDataSchema> = async (data) => {
       data.email = data.email.replace("alice", "bob");
       await new Promise((resolve) => setTimeout(resolve, 50));
       return "write-now" as const;
     };
-    const patcher2: ParsedPatcher<typeof testDataSchema> = (data) => {
+    const patcher2: AfterParse<typeof testDataSchema> = (data) => {
       data.email = data.email.replace("bob", "robert");
       return "write-now";
     };
     const testDoc = new FiretenderDoc(testDataSchema, docRef, {
-      parsedPatchers: [patcher1, patcher2],
+      afterParse: [patcher1, patcher2],
     });
     await testDoc.load();
     expect(testDoc.r.email).toBe("robert@example.com");
@@ -906,16 +904,18 @@ describe("update", () => {
   });
 });
 
-describe("beforeWrite hook", () => {
+describe("beforeWrite", () => {
   it("modifies a new doc", async () => {
     const testDoc = new FiretenderDoc(testDataSchema, testCollection, {
       createDoc: true,
       initialData: {
         email: "bob@example.com",
       },
-      beforeWrite: (data) => {
-        data.ttl = serverTimestamp();
-      },
+      beforeWrite: [
+        (data) => {
+          data.ttl = serverTimestamp();
+        },
+      ],
     });
     expect(testDoc.isNew).toBeTruthy();
     await testDoc.write();
@@ -925,15 +925,18 @@ describe("beforeWrite hook", () => {
     const millisDiff = Math.abs(result?.ttl.toMillis() - Date.now());
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
+
   it("modifies an existing doc", async () => {
     const testDoc = await createAndLoadDoc(
       {
         email: "bob@example.com",
       },
       {
-        beforeWrite: (data) => {
-          data.ttl = serverTimestamp();
-        },
+        beforeWrite: [
+          (data) => {
+            data.ttl = serverTimestamp();
+          },
+        ],
       },
     );
     expect(testDoc.r.ttl).toBeUndefined();

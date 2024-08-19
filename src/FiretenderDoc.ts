@@ -29,22 +29,32 @@ import type {
 } from "./ts-helpers.js";
 
 /*
- * Patcher functions modify the data from Firestore before it is parsed by Zod.
+ * Functions that can patch the data from Firestore before it is parsed by Zod.
  */
-export type RawPatcher = (
+export type BeforeParse = (
   data: Record<string, any>,
 ) => AsyncOrSync<void | boolean | "write-soon" | "write-now">;
 
+type HookReturnCode = AsyncOrSyncType<ReturnType<BeforeParse>>;
+
 /*
- * Patcher functions modify the data from Firestore after it is parsed by Zod.
+ * Functions that can update the document after it has been read and parsed.
  */
-export type ParsedPatcher<SchemaType extends z.SomeZodObject> = (
+export type AfterParse<SchemaType extends z.SomeZodObject> = (
   data: z.infer<SchemaType>,
-) => AsyncOrSync<void | boolean | "write-soon" | "write-now">;
+) => AsyncOrSync<void | "write-soon" | "write-now">;
 
-type PatcherReturnCode = AsyncOrSyncType<ReturnType<RawPatcher>>;
+/*
+ * Functions that can update the document before it is written.
+ */
+export type BeforeWrite<SchemaType extends z.SomeZodObject> = (
+  data: z.infer<SchemaType>,
+) => void;
 
-/** Internal priority for writing changes made by patchers. */
+/**
+ * Internally used priority for writing changes made by the before/after parse
+ * hooks.
+ */
 enum PatchPriority {
   NO_WRITE,
   WRITE_MANUALLY,
@@ -53,7 +63,7 @@ enum PatchPriority {
 }
 
 const convertPatcherReturnCodeToPriority = (
-  code: PatcherReturnCode,
+  code: HookReturnCode,
 ): PatchPriority => {
   switch (code) {
     case true:
@@ -73,68 +83,63 @@ const convertPatcherReturnCodeToPriority = (
 export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
   /**
    * If set, using the `.w` accessor or `.update()` method will throw an error
-   * and any data patches will not be written.
+   * and changes made by hooks will not be written.
    */
   readonly?: boolean;
 
   /**
-   * Hook to modify the document before it is written to Firestore.
+   * Functions to modify the data from Firestore before it is parsed by Zod.
+   * They are called in order, waiting for any asynchronous functions to
+   * complete before calling the next.
    *
-   * For example, this hook could set a last-modified timestamp at every write.
-   */
-  beforeWrite?: (data: z.infer<SchemaType>) => void;
-
-  /**
-   * Functions that modify the data from Firestore before it is parsed by Zod.
-   * The patchers are applied to the data in the order given, each receiving the
-   * output of the previous.  The output of the last is fed to Zod.
-   *
-   * @returns A value indicating if/when the patched data should be written:
+   * The function's return type indicates if/when changes should be written:
    * - `false` or `undefined` - no changes that should be written were made.
-   * - `true` - the full document should be written if/when the next write
-   *   occurs.
-   * - `"write-soon"` - write the full document after a delay, depending on the
-   *   value of `patcherWriteSoonDelay`.  (Default: write after 100 ms.)
+   * - `true` - write the full document if/when the next write occurs.
+   * - `"write-soon"` - write the full document after a delay of
+   *   `writeSoonDelay` (default: 100 ms).
    * - `"write-now"` - write the full document immediately.  This write is
    *   synchronous; `load()` does not return until it has completed.
    *
-   * The highest write priority is used.
+   * The highest write priority is used.  Writing occurs after all `beforeParse`
+   * and `afterParse` functions have been called.
    *
-   * If a patcher returns `true` or `"write-*"`, the full document will be set
-   * in Firestore.  Only return `true` if the Firestore rules allow updating all
-   * defined fields.
+   * CAUTION: If any `beforeParse` function is truthy, the entire document will
+   * be written.  If one function makes a change blocked by the Firestore rules
+   * and returns `false`, but another returns `true`, all writes will fail.
    */
-  rawPatchers?: RawPatcher[];
+  beforeParse?: BeforeParse[];
 
   /**
-   * Functions that update the document after it has been parsed by Zod.  The
-   * patchers are applied to the data in the order given, each receiving the
-   * output of the previous.
+   * Functions that can update the document after it has been read and parsed.
+   * They are called in order, waiting for any asynchronous functions to
+   * complete before calling the next.
    *
-   * @returns A value indicating if/when the patched data should be written:
-   * - `false` or `undefined` - no changes that should be written were made.
-   * - `true` - the document should be updated if/when the next write occurs.
-   * - `"write-soon"` - update the document after a delay, depending on the
-   *   value of `patcherWriteSoonDelay`.  (Default: write after 100 ms.)
+   * @returns A value indicating if/when any changes should be written:
+   * - `false` or `undefined` - apply updates (if any) at the next write.
+   * - `"write-soon"` - update the document after a delay of `writeSoonDelay`
+   *   (default: 100 ms).
    * - `"write-now"` - update document immediately.  This write is synchronous;
    *   `load()` does not return until it has completed.
    *
-   * The highest write priority is used.
-   *
-   * If a patcher returns `true` or `"write-*"`, the modified fields will be
-   * updated in Firestore.  Only return `true` if the Firestore rules allow
-   * updating the modified fields.
+   * The highest write priority is used.  Writing occurs after all the functions
+   * have been called.
    */
-  parsedPatchers?: ParsedPatcher<SchemaType>[];
+  afterParse?: AfterParse<SchemaType>[];
 
   /**
-   * Delay in milliseconds before writing patched data back to Firestore if the
-   * patchers return `"write-soon"`.  Defaults to 100 ms.
+   * Functions that can modify the document before it is written to Firestore.
    *
-   * This delay avoids an extra write in the case of a quick read/modify/write
-   * cycle.
+   * For example, this hook could set a last-modified timestamp at every write.
    */
-  patcherWriteSoonDelay?: number;
+  beforeWrite?: BeforeWrite<SchemaType>[];
+
+  /**
+   * Milliseconds before writing to Firestore for `"write-soon"`.  Defaults to
+   * 100 ms.
+   *
+   * This delay can help avoid extra writes for quick read/modify/write cycles.
+   */
+  writeSoonDelay?: number;
 };
 
 /**
@@ -154,8 +159,9 @@ export type AllFiretenderDocOptions<SchemaType extends z.SomeZodObject> =
      * The document's initial data, which must define a valid instance of the
      * document according to its schema.
      *
-     * This data is not patched.  To iniitialize the document with data to be
-     * patched, use {@link loadRawData} instead.
+     * The `beforeParse` and `afterParse` hooks are not called on this data.  To
+     * initialize the document with data to be patched, use {@link loadRawData}
+     * instead.
      */
     initialData?: DeepReadonly<Record<string, unknown>>;
   };
@@ -224,19 +230,17 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /** Use addDoc or setDoc to write all the data?  If not, use updateDoc. */
   private isSettingNewContents: boolean;
 
-  /** Hook to modify the document before writing it to Firestore. */
-  private readonly beforeWrite:
-    | ((data: z.infer<SchemaType>) => void)
-    | undefined;
+  /** Hooks to modify the raw data prior to parsing. */
+  private readonly beforeParse: BeforeParse[];
 
-  /** Raw patcher functions from options; applied to the raw data in order. */
-  private readonly rawPatchers: RawPatcher[] | undefined;
+  /** Hooks to update the document after reading and parsing. */
+  private readonly afterParse: AfterParse<SchemaType>[];
 
-  /** Parsed patcher functions from options; applied to the doc in order. */
-  private readonly parsedPatchers: ParsedPatcher<SchemaType>[] | undefined;
+  /** Hooks to update the document before writing it to Firestore. */
+  private readonly beforeWrite: BeforeWrite<SchemaType>[];
 
-  /** Delay before writing patches with `"write-soon"`.  Default is 100 ms. */
-  private readonly patcherWriteSoonDelay: number;
+  /** Delay before writing changes with `"write-soon"`.  Default is 100 ms. */
+  private readonly writeSoonDelay: number;
 
   /** Local copy of the document data, parsed into the Zod type */
   private data: z.infer<SchemaType> | undefined = undefined;
@@ -281,10 +285,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       );
     }
     this.isSettingNewContents = this.isNewDoc;
-    this.beforeWrite = options.beforeWrite;
-    this.rawPatchers = options.rawPatchers;
-    this.parsedPatchers = options.parsedPatchers;
-    this.patcherWriteSoonDelay = options.patcherWriteSoonDelay ?? 100;
+    this.beforeWrite = options.beforeWrite ?? [];
+    this.beforeParse = options.beforeParse ?? [];
+    this.afterParse = options.afterParse ?? [];
+    this.writeSoonDelay = options.writeSoonDelay ?? 100;
     if (options.initialData) {
       this.data = schema.parse(options.initialData);
     } else if (this.isNewDoc) {
@@ -473,13 +477,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /**
    * Loads raw data, as read from Firestore, into the document.
    *
-   * @param rawData the data to be loaded.  It will be patched in place if any
-   *   patchers apply.
+   * @param rawData the data to be loaded.  It may be modified in place by
+   *   `beforeParse` hooks.
    */
   async loadRawData(rawData: Record<string, unknown>): Promise<this> {
-    const patchRawPriority = await this.patchRawData(rawData);
+    const patchRawPriority = await this.runBeforeParseHooks(rawData);
     this.data = this.schema.parse(rawData);
-    const patchParsedPriority = await this.patchParsedData();
+    const patchParsedPriority = await this.runAfterParseHooks();
     await this.writePatches(Math.max(patchRawPriority, patchParsedPriority));
     return this;
   }
@@ -676,7 +680,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           "Internal error.  New documents should always have data before calling write().",
         );
       }
-      this.beforeWrite?.(this.w);
+      this.runBeforeWriteHooks();
       if (this.ref instanceof DocumentReference) {
         try {
           await setDoc(this.ref, this.data);
@@ -705,7 +709,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         );
       }
       if (this.updates.size > 0) {
-        this.beforeWrite?.(this.w);
+        this.runBeforeWriteHooks();
         const updateData = Object.fromEntries(this.updates);
         this.updates.clear();
         try {
@@ -768,7 +772,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       // progress.  Reject it without updating the doc.
       return false;
     }
-    const patchRawPriority = await this.patchRawData(data);
+    const patchRawPriority = await this.runBeforeParseHooks(data);
     let parsedData: z.infer<SchemaType>;
     try {
       parsedData = this.schema.parse(data);
@@ -784,7 +788,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       throw error; // Rethrow otherwise.
     }
     this.data = parsedData;
-    const patchParsedPriority = await this.patchParsedData();
+    const patchParsedPriority = await this.runAfterParseHooks();
     if (!isListener) {
       // Listeners do not write patches to avoid a feedback loop.
       await this.writePatches(Math.max(patchRawPriority, patchParsedPriority));
@@ -800,14 +804,11 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    *
    * @returns the priority for writing the revised document.
    */
-  private async patchRawData(
+  private async runBeforeParseHooks(
     data: Record<string, unknown>,
   ): Promise<PatchPriority> {
-    if (!this.rawPatchers || this.rawPatchers.length === 0) {
-      return PatchPriority.NO_WRITE;
-    }
     let maxWritePriority: PatchPriority = PatchPriority.NO_WRITE;
-    for (const patcher of this.rawPatchers) {
+    for (const patcher of this.beforeParse) {
       const priority = convertPatcherReturnCodeToPriority(await patcher(data));
       maxWritePriority = Math.max(maxWritePriority, priority);
     }
@@ -818,17 +819,14 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   }
 
   /**
-   * Applies patches to the parsed document.  The .w proxy is used to track
-   * changes, making it safe for documents with protected fields.
+   * Applies patches to the document after reading and parsing.  The .w proxy is
+   * used to track changes, so it's safe for documents with protected fields.
    *
    * @returns the priority for writing the updates.
    */
-  private async patchParsedData(): Promise<PatchPriority> {
-    if (!this.parsedPatchers || this.parsedPatchers.length === 0) {
-      return PatchPriority.NO_WRITE;
-    }
+  private async runAfterParseHooks(): Promise<PatchPriority> {
     let maxWritePriority: PatchPriority = PatchPriority.NO_WRITE;
-    for (const patcher of this.parsedPatchers) {
+    for (const patcher of this.afterParse) {
       const priority = convertPatcherReturnCodeToPriority(
         await patcher(this.w),
       );
@@ -845,9 +843,19 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     if (priority <= PatchPriority.WRITE_MANUALLY || this.isReadonly) {
       return;
     } else if (priority === PatchPriority.WRITE_SOON) {
-      setTimeout(() => this.write(), this.patcherWriteSoonDelay);
+      setTimeout(() => this.write(), this.writeSoonDelay);
     } else if (priority === PatchPriority.WRITE_NOW) {
       await this.write();
+    }
+  }
+
+  /**
+   * Applies the beforeWrite updates to the document.  The .w proxy is used to
+   * track changes, making it safe for documents with protected fields.
+   */
+  private runBeforeWriteHooks(): void {
+    for (const hook of this.beforeWrite) {
+      hook(this.w);
     }
   }
 

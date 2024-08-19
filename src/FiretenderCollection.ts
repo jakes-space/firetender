@@ -17,10 +17,11 @@ import {
   writeBatch,
 } from "./firestore-deps.js";
 import {
+  AfterParse,
+  BeforeParse,
+  BeforeWrite,
   FiretenderDoc,
   FiretenderDocOptions,
-  ParsedPatcher,
-  RawPatcher,
 } from "./FiretenderDoc.js";
 import { DeepPartial, DeepReadonly } from "./ts-helpers.js";
 
@@ -335,28 +336,50 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   }
 
   /**
-   * Adds a patcher function for the raw data of this collection's documents.
-   * Patchers can also be passed in the options argument of this class's
-   * constructor.
+   * Adds a function that can modify the raw data of this collection's documents
+   * prior to parsing.
+   *
+   * `beforeParse` hooks can also be given in the options argument of the class
+   * constructor.  They are executed first, followed by any hooks added with
+   * this method.
    */
-  patchRawDoc(patcher: RawPatcher): void {
-    if (!this.defaultDocOptions.rawPatchers) {
-      this.defaultDocOptions.rawPatchers = [patcher];
+  addBeforeParseHook(hook: BeforeParse): void {
+    if (!this.defaultDocOptions.beforeParse) {
+      this.defaultDocOptions.beforeParse = [hook];
     } else {
-      this.defaultDocOptions.rawPatchers.push(patcher);
+      this.defaultDocOptions.beforeParse.push(hook);
     }
   }
 
   /**
-   * Adds a patcher function for the parsed data of this collection's documents.
-   * Patchers can also be passed in the options argument of this class's
-   * constructor.
+   * Adds a function that can update the this collection's documents after they
+   * are read and parsed.
+   *
+   * `afterParse` hooks can also be given in the options argument of the class
+   * constructor.  They are executed first, followed by any hooks added with
+   * this method.
    */
-  patchParsedDoc(patcher: ParsedPatcher<SchemaType>): void {
-    if (!this.defaultDocOptions.parsedPatchers) {
-      this.defaultDocOptions.parsedPatchers = [patcher];
+  addAfterParseHook(hook: AfterParse<SchemaType>): void {
+    if (!this.defaultDocOptions.afterParse) {
+      this.defaultDocOptions.afterParse = [hook];
     } else {
-      this.defaultDocOptions.parsedPatchers.push(patcher);
+      this.defaultDocOptions.afterParse.push(hook);
+    }
+  }
+
+  /**
+   * Adds a function that can update the this collection's documents before they
+   * are written.
+   *
+   * `beforeWrite` hooks can also be given in the options argument of the class
+   * constructor.  They are executed first, followed by any hooks added with
+   * this method.
+   */
+  addBeforeWriteHook(hook: BeforeWrite<SchemaType>): void {
+    if (!this.defaultDocOptions.beforeWrite) {
+      this.defaultDocOptions.beforeWrite = [hook];
+    } else {
+      this.defaultDocOptions.beforeWrite.push(hook);
     }
   }
 
