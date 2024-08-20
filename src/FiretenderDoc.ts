@@ -44,7 +44,7 @@ type HookReturnCode = AsyncOrSyncType<ReturnType<BeforeParse>>;
 export type AfterParse<SchemaType extends z.SomeZodObject> = (
   data: z.infer<SchemaType>,
   docPath: string[],
-) => AsyncOrSync<void | "write-soon" | "write-now">;
+) => AsyncOrSync<void | false | "write-soon" | "write-now">;
 
 /*
  * Functions that can update the document before it is written.
