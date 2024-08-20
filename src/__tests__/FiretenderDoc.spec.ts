@@ -160,6 +160,26 @@ describe("load", () => {
     await expect(testDoc.load()).rejects.toThrow('"message": "Required"');
   });
 
+  it("does not throw for an invalid doc with parsing disabled.", async () => {
+    const docRef = await addDoc(testCollection, {
+      // Missing email.
+      nonexistentField: "foo",
+    });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      disableValidation: true,
+      beforeParse: [
+        (data) => {
+          data.ttl = "howdy";
+        },
+      ],
+    });
+    await testDoc.load();
+    expect(testDoc.r).toEqual({
+      nonexistentField: "foo",
+      ttl: "howdy",
+    });
+  });
+
   it("always reads from Firestore if force is set.", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",

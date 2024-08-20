@@ -143,6 +143,14 @@ export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
    * This delay can help avoid extra writes for quick read/modify/write cycles.
    */
   writeSoonDelay?: number;
+
+  /**
+   * Use the document's data as-is when it is loaded or provided; don't parse
+   * and validate it.
+   *
+   * The `beforeParse` and `afterParse` hooks will still be called.
+   */
+  disableValidation?: boolean;
 };
 
 /**
@@ -230,6 +238,9 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /** If set, writes will throw and patches will not be written. */
   readonly isReadonly: boolean;
 
+  /** If set, document data is copied rather than parsed and validated. */
+  readonly isParsingDisabled: boolean;
+
   /** Is this a doc we presume does not yet exist in Firestore? */
   private isNewDoc: boolean;
 
@@ -284,6 +295,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     this.schema = schema;
     this.ref = ref;
     this.isReadonly = options.readonly ?? false;
+    this.isParsingDisabled = options.disableValidation ?? false;
     this.isNewDoc = options.createDoc ?? false;
     if (this.isReadonly && this.isNewDoc) {
       throw new FiretenderUsageError(
@@ -296,7 +308,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     this.afterParse = options.afterParse ?? [];
     this.writeSoonDelay = options.writeSoonDelay ?? 100;
     if (options.initialData) {
-      this.data = schema.parse(options.initialData);
+      this.data = this.parseOrClone(options.initialData);
     } else if (this.isNewDoc) {
       throw new FiretenderUsageError(
         "Initial data must be given when creating a new doc.",
@@ -488,7 +500,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   async loadRawData(rawData: Record<string, unknown>): Promise<this> {
     const patchRawPriority = await this.runBeforeParseHooks(rawData);
-    this.data = this.schema.parse(rawData);
+    this.data = this.parseOrClone(rawData);
     const patchParsedPriority = await this.runAfterParseHooks();
     await this.writePatches(Math.max(patchRawPriority, patchParsedPriority));
     return this;
@@ -668,7 +680,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    */
   set w(newData: z.input<SchemaType>) {
     this.throwIfReadonly();
-    this.data = this.schema.parse(newData);
+    this.data = this.parseOrClone(newData);
     this.isSettingNewContents = true;
     this.dataProxy = undefined;
   }
@@ -760,6 +772,13 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     }
   }
 
+  /** Parses or clones the given data, depending on `isParsingDisabled`. */
+  private parseOrClone(data: Record<string, unknown>): z.infer<SchemaType> {
+    return this.isParsingDisabled
+      ? structuredClone(data)
+      : this.schema.parse(data);
+  }
+
   /**
    * Given a snapshot, patch it, parse it, and save it as this doc's data.  If
    * not called from a listener, the patched data may be written to Firestore
@@ -779,9 +798,8 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       return false;
     }
     const patchRawPriority = await this.runBeforeParseHooks(data);
-    let parsedData: z.infer<SchemaType>;
     try {
-      parsedData = this.schema.parse(data);
+      this.data = this.parseOrClone(data);
     } catch (error) {
       if (error instanceof NullTimestampError) {
         // We are almost certainly in a listener, receiving the first snapshot
@@ -793,7 +811,6 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       }
       throw error; // Rethrow otherwise.
     }
-    this.data = parsedData;
     const patchParsedPriority = await this.runAfterParseHooks();
     if (!isListener) {
       // Listeners do not write patches to avoid a feedback loop.
