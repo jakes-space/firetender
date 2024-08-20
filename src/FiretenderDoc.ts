@@ -149,6 +149,9 @@ export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
    * and validate it.
    *
    * The `beforeParse` and `afterParse` hooks will still be called.
+   *
+   * WARNING: This option breaks type safety.  It is intended for debugging and
+   * fixing incidents during schema migration.
    */
   disableValidation?: boolean;
 };
