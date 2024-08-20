@@ -5,6 +5,8 @@ Because of the hacky way this package provides both the
 [`firetender-admin`](https://www.npmjs.com/package/firetender-admin) npms, we
 cannot simply use `npm version` followed by `npm publish`.  Instead:
 
+1. Optionally update dependencies:  
+   `npm run use-web-firestore && npm update --save && cp package.json package-web.json && npm run use-admin-firestore && npm update --save && cp package.json package-admin.json && npm run use-web-firestore`
 1. Run `npm run check` and fix any issues.
 1. Switch to admin mode and run the tests:  
    `npm run use-admin-firestore && npm run test && npm run use-web-firestore`
