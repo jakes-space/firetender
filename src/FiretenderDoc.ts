@@ -820,7 +820,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       const priority = convertPatcherReturnCodeToPriority(returnCode);
       maxWritePriority = Math.max(maxWritePriority, priority);
     }
-    if (maxWritePriority > PatchPriority.NO_WRITE) {
+    if (maxWritePriority > PatchPriority.NO_WRITE && !this.isReadonly) {
       this.isSettingNewContents = true;
     }
     return maxWritePriority;
@@ -828,7 +828,8 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
 
   /**
    * Applies patches to the document after reading and parsing.  The .w proxy is
-   * used to track changes, so it's safe for documents with protected fields.
+   * used to track changes for writable documents, so it's safe for documents
+   * with protected fields.
    *
    * @returns the priority for writing the updates.
    */
@@ -836,7 +837,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     let maxWritePriority: PatchPriority = PatchPriority.NO_WRITE;
     const docPath = this.ref.path.split("/");
     for (const hook of this.afterParse) {
-      const returnCode = await hook(this.w, docPath);
+      const returnCode = await hook(
+        this.isReadonly ? this.data! : this.w,
+        docPath,
+      );
       const priority = convertPatcherReturnCodeToPriority(returnCode);
       maxWritePriority = Math.max(maxWritePriority, priority);
     }

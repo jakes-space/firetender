@@ -778,6 +778,27 @@ describe("beforeParse", () => {
       arrayOfObjects: [],
     });
   });
+
+  it("works with read-only docs.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice",
+    });
+    const patcher: BeforeParse = (data: any) => {
+      data.email += "@example.com";
+      return "write-now";
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      beforeParse: [patcher],
+      readonly: true,
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("alice@example.com");
+    expect(testDoc.isPendingWrite).toBeFalsy();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "alice",
+    });
+  });
 });
 
 describe("afterParse", () => {
@@ -905,6 +926,27 @@ describe("afterParse", () => {
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
       email: "robert@example.com",
+    });
+  });
+
+  it("works with read-only docs.", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "alice@example.com",
+    });
+    const patcher: AfterParse<typeof testDataSchema> = (data: any) => {
+      data.email = data.email.replace("alice", "bob");
+      return "write-now";
+    };
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      afterParse: [patcher],
+      readonly: true,
+    });
+    await testDoc.load();
+    expect(testDoc.r.email).toBe("bob@example.com");
+    expect(testDoc.isPendingWrite).toBeFalsy();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "alice@example.com",
     });
   });
 });

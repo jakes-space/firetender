@@ -432,9 +432,11 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     }
     return Promise.all(
       querySnapshot.docs.map((queryDoc) =>
-        new FiretenderDoc(this.schema, queryDoc.ref, {
-          ...this.defaultDocOptions,
-        }).loadRawData(queryDoc.data()),
+        new FiretenderDoc(
+          this.schema,
+          queryDoc.ref,
+          this.defaultDocOptions,
+        ).loadRawData(queryDoc.data()),
       ),
     );
   }
