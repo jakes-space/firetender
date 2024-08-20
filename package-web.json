@@ -28,6 +28,7 @@
     "use-admin-firestore": "cp package-admin.json package.json && cp src/firestore-deps-admin.ts src/firestore-deps.ts && npm install",
     "use-web-firestore": "echo Already using web firestore.",
     "diff-web-admin": "diff package-web.json package-admin.json",
+    "update-deps": "npm run use-web-firestore && npm update --save && cp package.json package-web.json && npm run use-admin-firestore && npm update --save && cp package.json package-admin.json && npm run use-web-firestore",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint --fix src --ext .ts",
     "style": "prettier --check src/*.ts src/**/*.ts",
