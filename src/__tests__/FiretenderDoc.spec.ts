@@ -314,6 +314,50 @@ describe("listener", () => {
     const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - nowMillis);
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
+
+  it("reports parsing errors to onListenError", async () => {
+    const docRef = await addDoc(testCollection, { email: "alice@example.com" });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    const listen = jest.fn();
+    let error: Error | undefined;
+    const onListenError = jest.fn((e) => {
+      error = e;
+    });
+    await testDoc.load({ listen, onListenError });
+    expect(listen).toHaveBeenCalledTimes(0);
+    expect(onListenError).toHaveBeenCalledTimes(0);
+    expect(testDoc.r.email).toBe("alice@example.com");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await updateDoc(testDoc.docRef, { email: "invalid-email" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(listen).toHaveBeenCalledTimes(0);
+    expect(onListenError).toHaveBeenCalledTimes(1);
+    expect(error).toBeInstanceOf(Error);
+    expect(error?.message).toContain("Invalid email");
+  });
+
+  it("reports uncaught listener errors to onListenError", async () => {
+    const docRef = await addDoc(testCollection, { email: "alice@example.com" });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    const listen = jest.fn(() => {
+      throw Error("Uncaught error");
+    });
+    let error: Error | undefined;
+    const onListenError = jest.fn((e) => {
+      error = e;
+    });
+    await testDoc.load({ listen, onListenError });
+    expect(listen).toHaveBeenCalledTimes(0);
+    expect(onListenError).toHaveBeenCalledTimes(0);
+    expect(testDoc.r.email).toBe("alice@example.com");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await updateDoc(testDoc.docRef, { email: "bob@example.com" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(listen).toHaveBeenCalledTimes(1);
+    expect(onListenError).toHaveBeenCalledTimes(1);
+    expect(error).toBeInstanceOf(Error);
+    expect(error?.message).toBe("Uncaught error");
+  });
 });
 
 describe("read-only accessor (.r)", () => {

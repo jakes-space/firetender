@@ -207,6 +207,13 @@ export type LoadOptions<FiretenderDocType> = {
   listen?:
     | boolean
     | ((doc: FiretenderDocType, snapshot: DocumentSnapshot) => void);
+
+  /**
+   * Catch errors that occur when changes happen.  Errors may be caused by
+   * reading or parsing the document, in which case `listen` is not called, or
+   * they may be uncaught errors from the `listen` callback.
+   */
+  onListenError?: (error: Error, doc: FiretenderDocType) => void;
 };
 
 type InternalLoadOptions<FiretenderDocType> = LoadOptions<FiretenderDocType> & {
@@ -547,6 +554,11 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     if (options.listen) {
       const callback =
         typeof options.listen === "function" ? options.listen : undefined;
+      const handleListenerError = (error: unknown): void =>
+        options.onListenError?.(
+          error instanceof Error ? error : new Error(`${error}`),
+          this,
+        );
       const listener = async (
         newSnapshot: DocumentSnapshot,
         initialResolve: (ns: DocumentSnapshot) => void,
@@ -567,13 +579,20 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           this.isNewDoc = true;
           this.isSettingNewContents = true;
           this.dataProxy = undefined;
-          callback?.(this, newSnapshot);
+          try {
+            callback?.(this, newSnapshot);
+          } catch (error) {
+            handleListenerError(error);
+          }
           return;
         }
-        if (!(await this.loadFromSnapshot(newSnapshot, true))) {
-          return;
+        try {
+          if (await this.loadFromSnapshot(newSnapshot, true)) {
+            callback?.(this, newSnapshot);
+          }
+        } catch (error) {
+          handleListenerError(error);
         }
-        callback?.(this, newSnapshot);
       };
       let detach: Unsubscribe | undefined;
       snapshot = await new Promise((resolve) => {
