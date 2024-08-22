@@ -7,18 +7,17 @@ module.exports = {
   },
   extends: [
     "eslint:recommended",
-    "plugin:import/recommended",
     "plugin:@typescript-eslint/recommended",
     "prettier",
   ],
-  parser: "@typescript-eslint/parser",
   parserOptions: {
+    parser: "@typescript-eslint/parser",
     ecmaVersion: 2020,
     project: "./tsconfig.json",
+    tsconfigRootDir: __dirname,
   },
   plugins: ["@typescript-eslint", "prettier", "simple-import-sort"],
   rules: {
-    "import/extensions": ["error", "never"],
     "import/prefer-default-export": "off",
     "lines-between-class-members": [
       "error",

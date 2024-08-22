@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 
 if grep -q '"name": "firetender-admin"' package.json; then
-  echo "Switch to the web variant before committing: npm run use-web-firestore"
+  echo "Switch to the web variant before committing: pnpm run use-web-firestore"
   exit 1
 fi
 
-npm run check
-npm test
+pnpm run check
+pnpm test

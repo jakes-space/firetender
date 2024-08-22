@@ -40,7 +40,7 @@ async function clearFirestore(testEnv: RulesTestEnvironment): Promise<void> {
     } catch (error: any) {
       if (error.code === "ECONNREFUSED") {
         console.error(
-          `\n\nFailed to connect to the Firestore emulator at ${EMULATOR_HOST}:${EMULATOR_PORT}.\nUse "npm run start-emulator" to start it.\n`,
+          `\n\nFailed to connect to the Firestore emulator at ${EMULATOR_HOST}:${EMULATOR_PORT}.\nUse "pnpm run start-emulator" to start it.\n`,
         );
         throw error;
       }
