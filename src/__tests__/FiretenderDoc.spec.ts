@@ -96,13 +96,13 @@ async function createAndLoadDoc(
 }
 
 describe("constructor", () => {
-  it("throws when creating a new doc without initial data.", async () => {
+  it("throws when creating a new doc without initial data", async () => {
     expect(() => {
       new FiretenderDoc(testDataSchema, testCollection, { createDoc: true });
     }).toThrow("Initial data must be given when creating a new doc.");
   });
 
-  it("throws if given a collection ref without createDoc.", async () => {
+  it("throws if given a collection ref without createDoc", async () => {
     expect(() => {
       new FiretenderDoc(testDataSchema, testCollection);
     }).toThrow(
@@ -112,7 +112,7 @@ describe("constructor", () => {
 });
 
 describe("load", () => {
-  it("must be called before referencing the accessors.", async () => {
+  it("must be called before referencing the accessors", async () => {
     const testDoc = new FiretenderDoc(
       testDataSchema,
       doc(testCollection, "foo"),
@@ -126,7 +126,7 @@ describe("load", () => {
     );
   });
 
-  it("throws for a non-existent doc.", async () => {
+  it("throws for a non-existent doc", async () => {
     const testDoc = new FiretenderDoc(
       testDataSchema,
       doc(testCollection, "foo"),
@@ -134,7 +134,7 @@ describe("load", () => {
     await expect(testDoc.load()).rejects.toThrow("does not exist");
   });
 
-  it("throws for a doc blocked by Firestore rules.", async () => {
+  it("throws for a doc blocked by Firestore rules", async () => {
     // Admin can read anywhere, so this test does not throw an error.
     if (FIRESTORE_DEPS_TYPE === "admin") return;
     const docRef = await addDoc(testCollection, {
@@ -145,7 +145,7 @@ describe("load", () => {
     await expect(testDoc.load()).rejects.toThrow(FiretenderIOError);
   });
 
-  it("throws for a created but not yet written doc.", async () => {
+  it("throws for a created but not yet written doc", async () => {
     const testDoc = FiretenderDoc.createNewDoc(testDataSchema, testCollection, {
       email: "bob@example.com",
     });
@@ -154,13 +154,13 @@ describe("load", () => {
     );
   });
 
-  it("throws for an invalid doc.", async () => {
+  it("throws for an invalid doc", async () => {
     const docRef = await addDoc(testCollection, {}); // Missing email.
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
     await expect(testDoc.load()).rejects.toThrow('"message": "Required"');
   });
 
-  it("does not throw for an invalid doc with parsing disabled.", async () => {
+  it("does not throw for an invalid doc with parsing disabled", async () => {
     const docRef = await addDoc(testCollection, {
       // Missing email.
       nonexistentField: "foo",
@@ -180,7 +180,7 @@ describe("load", () => {
     });
   });
 
-  it("always reads from Firestore if force is set.", async () => {
+  it("always reads from Firestore if force is set", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
@@ -206,7 +206,7 @@ describe("load", () => {
     expect(testDoc.r.email).toBe("bob@example.com");
   });
 
-  it("retries on snapshot issues.", async () => {
+  it("retries on snapshot issues", async () => {
     const docRef = await addDoc(testCollection, {
       email: "bob@example.com",
       ttl: null, // Simulate a missing server timestamp.
@@ -317,14 +317,14 @@ describe("listener", () => {
 });
 
 describe("read-only accessor (.r)", () => {
-  it("reads a primitive field.", async () => {
+  it("reads a primitive field", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
     expect(testDoc.r.email).toBe("bob@example.com");
   });
 
-  it("does not contain a missing optional field.", async () => {
+  it("does not contain a missing optional field", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
@@ -333,7 +333,7 @@ describe("read-only accessor (.r)", () => {
 });
 
 describe("writable accessor (.w)", () => {
-  it("enforces schema rules when a field is set.", async () => {
+  it("enforces schema rules when a field is set", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
@@ -342,7 +342,7 @@ describe("writable accessor (.w)", () => {
     }).toThrow("Invalid email");
   });
 
-  it("allows symbol properties to pass through objects.", async () => {
+  it("allows symbol properties to pass through objects", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
       recordOfObjects: {
@@ -355,7 +355,7 @@ describe("writable accessor (.w)", () => {
     expect(String(testDoc.w.recordOfObjects)).toBe("[object Object]");
   });
 
-  it("allows symbol properties to pass through arrays.", async () => {
+  it("allows symbol properties to pass through arrays", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
       arrayOfObjects: [
@@ -452,7 +452,7 @@ describe("writable accessor (.w)", () => {
     });
   });
 
-  it("throws in readonly mode.", async () => {
+  it("throws in readonly mode", async () => {
     const testDoc = await createAndLoadDoc(
       {
         email: "bob@example.com",
@@ -467,7 +467,7 @@ describe("writable accessor (.w)", () => {
 });
 
 describe("write", () => {
-  it("sets a primitive field and updates Firestore.", async () => {
+  it("sets a primitive field and updates Firestore", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
@@ -479,7 +479,7 @@ describe("write", () => {
     expect(result).toEqual({ email: "alice@example.com" });
   });
 
-  it("can update multiple fields.", async () => {
+  it("can update multiple fields", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
@@ -493,7 +493,7 @@ describe("write", () => {
     });
   });
 
-  it("provides context on errors when adding a doc.", async () => {
+  it("provides context on errors when adding a doc", async () => {
     // Admin can read anywhere, so this test does not throw an error.
     if (FIRESTORE_DEPS_TYPE === "admin") return;
     const badRef = collection(firestore, "not-in-access-rules");
@@ -518,7 +518,7 @@ describe("write", () => {
     }
   });
 
-  it("provides context on errors when updating a doc.", async () => {
+  it("provides context on errors when updating a doc", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
     });
@@ -536,7 +536,7 @@ describe("write", () => {
     }
   });
 
-  it("throws in readonly mode.", async () => {
+  it("throws in readonly mode", async () => {
     const testDoc = await createAndLoadDoc(
       {
         email: "bob@example.com",
@@ -548,7 +548,7 @@ describe("write", () => {
     );
   });
 
-  it("throws if adding a doc with a given ID fails.", async () => {
+  it("throws if adding a doc with a given ID fails", async () => {
     if (FIRESTORE_DEPS_TYPE === "admin") return; // Admin can write anywhere.
     const collectionRef = doc(firestore, "not-in-access-rules", "some-id");
     const testDoc = FiretenderDoc.createNewDoc(testDataSchema, collectionRef, {
@@ -557,7 +557,7 @@ describe("write", () => {
     await expect(testDoc.write()).rejects.toThrow("PERMISSION_DENIED");
   });
 
-  it("throws if adding a doc without a given ID fails.", async () => {
+  it("throws if adding a doc without a given ID fails", async () => {
     if (FIRESTORE_DEPS_TYPE === "admin") return; // Admin can write anywhere.
     const collectionRef = collection(firestore, "not-in-access-rules");
     const testDoc = FiretenderDoc.createNewDoc(testDataSchema, collectionRef, {
@@ -586,7 +586,7 @@ describe("update", () => {
     });
   });
 
-  it("throws in readonly mode.", async () => {
+  it("throws in readonly mode", async () => {
     const testDoc = await createAndLoadDoc(
       {
         email: "bob@example.com",
@@ -601,7 +601,7 @@ describe("update", () => {
     ).rejects.toThrow("An attempt was made to modify or write a read-only doc");
   });
 
-  it("updates a new doc.", async () => {
+  it("updates a new doc", async () => {
     const testDoc = new FiretenderDoc(testDataSchema, testCollection, {
       createDoc: true,
       initialData: {
@@ -624,7 +624,7 @@ describe("update", () => {
 });
 
 describe("beforeParse", () => {
-  it("writes changes with other data if true is returned.", async () => {
+  it("writes changes with other data if true is returned", async () => {
     const docRef = await addDoc(testCollection, { email: "alice" });
     const patcher: BeforeParse = (data, path) => {
       expect(path).toEqual(["doctests", docRef.id]);
@@ -654,7 +654,7 @@ describe("beforeParse", () => {
     });
   });
 
-  it("does not write changes if false is returned.", async () => {
+  it("does not write changes if false is returned", async () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
       constantField: 1,
@@ -687,7 +687,7 @@ describe("beforeParse", () => {
     });
   });
 
-  it("throws if an unwriteable field is modified (web only).", async () => {
+  it("throws if an unwriteable field is modified (web only)", async () => {
     if (FIRESTORE_DEPS_TYPE === "admin") {
       return; // Admin can write anywhere.
     }
@@ -719,7 +719,7 @@ describe("beforeParse", () => {
     ).rejects.toThrow("PERMISSION_DENIED");
   });
 
-  it("writes after a delay.", async () => {
+  it("writes after a delay", async () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
     });
@@ -748,7 +748,7 @@ describe("beforeParse", () => {
     });
   });
 
-  it("writes immediately.", async () => {
+  it("writes immediately", async () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
     });
@@ -772,7 +772,7 @@ describe("beforeParse", () => {
     });
   });
 
-  it("applies asynchronous patches.", async () => {
+  it("applies asynchronous patches", async () => {
     const docRef = await addDoc(testCollection, {});
     const patcher1: BeforeParse = async (data: any): Promise<"write-now"> => {
       data.email = "alice";
@@ -799,7 +799,7 @@ describe("beforeParse", () => {
     });
   });
 
-  it("works with read-only docs.", async () => {
+  it("works with read-only docs", async () => {
     const docRef = await addDoc(testCollection, {
       email: "alice",
     });
@@ -822,7 +822,7 @@ describe("beforeParse", () => {
 });
 
 describe("afterParse", () => {
-  it("writes changes with other data if true is returned.", async () => {
+  it("writes changes with other data if true is returned", async () => {
     const docRef = await addDoc(testCollection, { email: "alice@example.com" });
     const patcher: AfterParse<typeof testDataSchema> = (data, path) => {
       expect(path).toEqual(["doctests", docRef.id]);
@@ -848,7 +848,7 @@ describe("afterParse", () => {
     });
   });
 
-  it("is OK if an unwriteable field is defined.", async () => {
+  it("is OK if an unwriteable field is defined", async () => {
     const docRef = await addDoc(testCollection, {
       email: "alice@example.com",
       constantField: 1,
@@ -879,7 +879,7 @@ describe("afterParse", () => {
     });
   });
 
-  it("writes after a delay.", async () => {
+  it("writes after a delay", async () => {
     const docRef = await addDoc(testCollection, {
       email: "alice@example.com",
     });
@@ -904,7 +904,7 @@ describe("afterParse", () => {
     });
   });
 
-  it("writes synchronously.", async () => {
+  it("writes synchronously", async () => {
     const docRef = await addDoc(testCollection, {
       email: "alice@example.com",
     });
@@ -924,7 +924,7 @@ describe("afterParse", () => {
     });
   });
 
-  it("applies asynchronous patches.", async () => {
+  it("applies asynchronous patches", async () => {
     const docRef = await addDoc(testCollection, {
       email: "alice@example.com",
     });
@@ -949,7 +949,7 @@ describe("afterParse", () => {
     });
   });
 
-  it("works with read-only docs.", async () => {
+  it("works with read-only docs", async () => {
     const docRef = await addDoc(testCollection, {
       email: "alice@example.com",
     });
@@ -1026,12 +1026,12 @@ describe("record of primitives", () => {
     },
   };
 
-  it("reads an entry.", async () => {
+  it("reads an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect(testDoc.r.recordOfPrimitives.foo).toBe("xyz");
   });
 
-  it("modifies an existing entry.", async () => {
+  it("modifies an existing entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.recordOfPrimitives.foo = "abc";
     await testDoc.write();
@@ -1044,7 +1044,7 @@ describe("record of primitives", () => {
     });
   });
 
-  it("adds an entry.", async () => {
+  it("adds an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.recordOfPrimitives.bar = "abc";
     await testDoc.write();
@@ -1058,7 +1058,7 @@ describe("record of primitives", () => {
     });
   });
 
-  it("deletes an entry.", async () => {
+  it("deletes an entry", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
       recordOfPrimitives: { foo: "xyz" },
@@ -1072,7 +1072,7 @@ describe("record of primitives", () => {
     });
   });
 
-  it("can set all record contents.", async () => {
+  it("can set all record contents", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
       recordOfPrimitives: { foo: "xyz" },
@@ -1103,7 +1103,7 @@ describe("record of objects", () => {
     },
   };
 
-  it("reads an entry.", async () => {
+  it("reads an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect("ice cream" in testDoc.r.recordOfObjects).toBe(true);
     expect(testDoc.r.recordOfObjects["ice cream"].rating).toBe(10);
@@ -1111,7 +1111,7 @@ describe("record of objects", () => {
     expect(testDoc.r.recordOfObjects.spinach.tags.includes("green")).toBe(true);
   });
 
-  it("modifies an entry.", async () => {
+  it("modifies an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.recordOfObjects["ice cream"] = {
       rating: 8,
@@ -1135,7 +1135,7 @@ describe("record of objects", () => {
     });
   });
 
-  it("correctly updates a parent field followed by a child.", async () => {
+  it("correctly updates a parent field followed by a child", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.recordOfObjects["ice cream"] = { rating: 4, tags: ["abc"] };
     testDoc.w.recordOfObjects["ice cream"].rating = 5;
@@ -1165,7 +1165,7 @@ describe("record of objects", () => {
     });
   });
 
-  it("correctly updates a child field followed by a parent.", async () => {
+  it("correctly updates a child field followed by a parent", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.recordOfObjects["ice cream"].rating = 5;
     testDoc.w.recordOfObjects["ice cream"].tags.push("xyz");
@@ -1233,7 +1233,7 @@ describe("record of objects", () => {
     });
   });
 
-  it("can set all record contents.", async () => {
+  it("can set all record contents", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.recordOfObjects = {
       tacos: {
@@ -1269,7 +1269,7 @@ describe("nested records", () => {
     },
   };
 
-  it("reads an entry.", async () => {
+  it("reads an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect("x" in testDoc.r.nestedRecords).toBe(true);
     expect("a" in testDoc.r.nestedRecords.x).toBe(true);
@@ -1278,7 +1278,7 @@ describe("nested records", () => {
     expect(testDoc.r.nestedRecords.y.c).toBe(333);
   });
 
-  it("modifies an entry.", async () => {
+  it("modifies an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.nestedRecords.x.b = 234;
     testDoc.w.nestedRecords.y = { d: 444 };
@@ -1349,7 +1349,7 @@ describe("array of objects", () => {
     ],
   };
 
-  it("reads an entry.", async () => {
+  it("reads an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect(testDoc.r.arrayOfObjects.length).toBe(2);
     expect(testDoc.r.arrayOfObjects[0].name).toBe("foo");
@@ -1358,7 +1358,7 @@ describe("array of objects", () => {
     expect(testDoc.r.arrayOfObjects[1].entries.b).toBe(222);
   });
 
-  it("modifies an entry.", async () => {
+  it("modifies an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.arrayOfObjects[0] = {
       name: "constants",
@@ -1405,19 +1405,19 @@ describe("array of objects", () => {
     });
   });
 
-  it("handles an array index that is out of bounds.", async () => {
+  it("handles an array index that is out of bounds", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect(delete testDoc.w.arrayOfObjects[99]).toBeTruthy();
   });
 
-  it("fails to delete for malformed indices.", async () => {
+  it("fails to delete for malformed indices", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect(() => {
       delete testDoc.w.arrayOfObjects[-99];
     }).toThrow(TypeError);
   });
 
-  it("deletes the correct entry when there are multiple copies.", async () => {
+  it("deletes the correct entry when there are multiple copies", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
       arrayOfObjects: [
@@ -1478,7 +1478,7 @@ describe("array of objects", () => {
     });
   });
 
-  it("can set the array contents.", async () => {
+  it("can set the array contents", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.arrayOfObjects = [
       { name: "baz", entries: {} },
@@ -1495,7 +1495,7 @@ describe("array of objects", () => {
     });
   });
 
-  it("truncates an array using its length property.", async () => {
+  it("truncates an array using its length property", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     testDoc.w.arrayOfObjects.length = 1;
     await testDoc.write();
@@ -1517,7 +1517,7 @@ describe("array of discriminating unions", () => {
     ],
   };
 
-  it("reads entries.", async () => {
+  it("reads entries", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect(testDoc.r.arrayOfDiscUnions).toBeDefined();
     expect(testDoc.r.arrayOfDiscUnions!.length).toBe(3);
@@ -1563,7 +1563,7 @@ describe("createNewDoc", () => {
     email: "bob@example.com",
   };
 
-  it("does not provide an ID or doc ref until write is called.", async () => {
+  it("does not provide an ID or doc ref until write is called", async () => {
     const testDoc = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
@@ -1573,7 +1573,7 @@ describe("createNewDoc", () => {
     expect(() => testDoc.docRef).toThrow("docRef can only be accessed after");
   });
 
-  it("adds a document without a specified ID.", async () => {
+  it("adds a document without a specified ID", async () => {
     const testDoc = await FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
@@ -1593,7 +1593,7 @@ describe("createNewDoc", () => {
     });
   });
 
-  it("adds a document with a given ID.", async () => {
+  it("adds a document with a given ID", async () => {
     const docID = "abcdef123456";
     const testDoc = await FiretenderDoc.createNewDoc(
       testDataSchema,
@@ -1611,7 +1611,7 @@ describe("createNewDoc", () => {
     });
   });
 
-  it("can change an added document, before and after writing.", async () => {
+  it("can change an added document, before and after writing", async () => {
     const testDoc = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
@@ -1660,7 +1660,7 @@ describe("copy", () => {
     },
   };
 
-  it("performs a deep copy of a document.", async () => {
+  it("performs a deep copy of a document", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
@@ -1707,13 +1707,13 @@ describe("copy", () => {
     });
   });
 
-  it("throws if the copied doc exists but was not loaded.", async () => {
+  it("throws if the copied doc exists but was not loaded", async () => {
     const docRef = await addDoc(testCollection, initialState);
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
     expect(() => testDoc.copy()).toThrow();
   });
 
-  it("can copy into a specified collection.", async () => {
+  it("can copy into a specified collection", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
@@ -1740,7 +1740,7 @@ describe("copy", () => {
     });
   });
 
-  it("can copy into a specified doc reference.", async () => {
+  it("can copy into a specified doc reference", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
@@ -1768,7 +1768,7 @@ describe("copy", () => {
     });
   });
 
-  it("can copy into a specified ID.", async () => {
+  it("can copy into a specified ID", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       doc(testCollection, "copy-original"),
@@ -1796,7 +1796,7 @@ describe("copy", () => {
     });
   });
 
-  it("can copy into a doc given by string[].", async () => {
+  it("can copy into a doc given by string[]", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1"),
@@ -1808,7 +1808,7 @@ describe("copy", () => {
     );
   });
 
-  it("can copy into a collection using string[] (for new doc).", async () => {
+  it("can copy into a collection using string[] (for new doc)", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1"),
@@ -1818,7 +1818,7 @@ describe("copy", () => {
     expect(testDoc2.docRef.path).toMatch(/^doctests\/id-B\/subcol-1\/[^/]+$/);
   });
 
-  it("can copy into a collection using string[] (existing doc).", async () => {
+  it("can copy into a collection using string[] (existing doc)", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1"),
@@ -1829,7 +1829,7 @@ describe("copy", () => {
     expect(testDoc2.docRef.path).toMatch(/^doctests\/id-B\/subcol-1\/[^/]+$/);
   });
 
-  it("throws when given string[] with the wrong number of IDs.", async () => {
+  it("throws when given string[] with the wrong number of IDs", async () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1", "id-B", "subcol-2"),
@@ -1963,7 +1963,7 @@ describe("timestamps", () => {
     expect(doc.data()?.ttl.toDate()).toEqual(now);
   });
 
-  it("reads Firestore's Timestamp type.", async () => {
+  it("reads Firestore's Timestamp type", async () => {
     const now = new Date();
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",

@@ -38,7 +38,7 @@ beforeAll(async () => {
 afterAll(cleanupFirestoreEmulator);
 
 describe("newDoc", () => {
-  it("creates a doc with the given ID.", () => {
+  it("creates a doc with the given ID", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -50,7 +50,7 @@ describe("newDoc", () => {
     expect(testDoc.r).toEqual({ foo: "hello" });
   });
 
-  it("creates a doc without an ID.", () => {
+  it("creates a doc without an ID", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -62,7 +62,7 @@ describe("newDoc", () => {
     expect(testDoc.r).toEqual({ foo: "hello" });
   });
 
-  it("creates a doc in a subcollection.", () => {
+  it("creates a doc in a subcollection", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -75,7 +75,7 @@ describe("newDoc", () => {
     expect(testDoc.docRef.path).toBe(`${collectionName}/abc/subcollection/xyz`);
   });
 
-  it("fails if an ID for a parent collection is missing.", () => {
+  it("fails if an ID for a parent collection is missing", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -85,7 +85,7 @@ describe("newDoc", () => {
     expect(() => testCollection.newDoc()).toThrow("requires an ID");
   });
 
-  it("merges given initial field values into the defaults.", () => {
+  it("merges given initial field values into the defaults", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -96,7 +96,7 @@ describe("newDoc", () => {
     expect(testDoc.r).toEqual({ foo: "hello", bar: 123 });
   });
 
-  it("takes a factory method for the initial data.", () => {
+  it("takes a factory method for the initial data", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -107,7 +107,7 @@ describe("newDoc", () => {
     expect(testDoc.r).toEqual({ foo: "hello", bar: 123 });
   });
 
-  it("fails in readonly mode.", () => {
+  it("fails in readonly mode", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -122,7 +122,7 @@ describe("newDoc", () => {
 });
 
 describe("existingDoc", () => {
-  it("wraps a doc in a collection.", () => {
+  it("wraps a doc in a collection", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -133,7 +133,7 @@ describe("existingDoc", () => {
     expect(testDoc.id).toBe("xyz");
   });
 
-  it("wraps a doc in a subcollection.", () => {
+  it("wraps a doc in a subcollection", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -145,7 +145,7 @@ describe("existingDoc", () => {
     expect(testDoc.docRef.path).toBe(`${collectionName}/abc/subcollection/xyz`);
   });
 
-  it("fails if an ID for a parent collection is missing.", () => {
+  it("fails if an ID for a parent collection is missing", () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
@@ -277,7 +277,7 @@ describe("query functions", () => {
   });
 
   describe("getAllDocs", () => {
-    it("returns all docs in a collection.", async () => {
+    it("returns all docs in a collection", async () => {
       const docs = await cityCollection.getAllDocs();
       expect(docs.length).toBe(5);
       expect(docs[0].r).toEqual({
@@ -298,13 +298,13 @@ describe("query functions", () => {
       });
     });
 
-    it("fails when called on a subcollection without parent ID.", async () => {
+    it("fails when called on a subcollection without parent ID", async () => {
       await expect(cityLandmarkCollection.getAllDocs()).rejects.toThrow(
         "requires the IDs of all parent collections",
       );
     });
 
-    it("provides context on errors.", async () => {
+    it("provides context on errors", async () => {
       const nonexistentCollection = new FiretenderCollection(
         testSchema,
         firestore,
@@ -323,7 +323,7 @@ describe("query functions", () => {
       }
     });
 
-    it("applies patches to the raw data.", async () => {
+    it("applies patches to the raw data", async () => {
       cityCollection.addBeforeParseHook((data) => {
         if (data.name === "Los Angeles") {
           data.regions?.push("home");
@@ -341,7 +341,7 @@ describe("query functions", () => {
       expect(docs[iLA].r.regions).toEqual(["home", "socal", "west_coast"]);
     });
 
-    it("applies patches to the parsed data.", async () => {
+    it("applies patches to the parsed data", async () => {
       cityCollection.addAfterParseHook((data) => {
         if (data.name === "Washington, D.C.") {
           data.regions?.push("capital");
@@ -361,7 +361,7 @@ describe("query functions", () => {
   });
 
   describe("query", () => {
-    it("performs a simple query on a collection.", async () => {
+    it("performs a simple query on a collection", async () => {
       const docs = await cityCollection.query(where("population", ">=", 1e6));
       expect(docs.map((d) => d.r.name).sort()).toEqual([
         "Beijing",
@@ -370,7 +370,7 @@ describe("query functions", () => {
       ]);
     });
 
-    it("performs a compound query on a collection.", async () => {
+    it("performs a compound query on a collection", async () => {
       const docs = await cityCollection.query(
         where("population", ">=", 1e6),
         where("regions", "array-contains", "west_coast"),
@@ -378,7 +378,7 @@ describe("query functions", () => {
       expect(docs.map((d) => d.r.name).sort()).toEqual(["Los Angeles"]);
     });
 
-    it("performs a simple query on a subcollection.", async () => {
+    it("performs a simple query on a subcollection", async () => {
       const docs = await cityLandmarkCollection.query(
         "LA",
         where("type", "==", "park"),
@@ -386,7 +386,7 @@ describe("query functions", () => {
       expect(docs.map((d) => d.r.name).sort()).toEqual(["Griffith Park"]);
     });
 
-    it("takes an array for the ID path.", async () => {
+    it("takes an array for the ID path", async () => {
       const docs = await cityLandmarkCollection.query(
         ["BJ"],
         where("type", "==", "museum"),
@@ -396,7 +396,7 @@ describe("query functions", () => {
       ]);
     });
 
-    it("performs a simple query across a subcollection group.", async () => {
+    it("performs a simple query across a subcollection group", async () => {
       const docs = await cityLandmarkCollection.query(
         where("type", "==", "museum"),
       );
@@ -409,7 +409,7 @@ describe("query functions", () => {
       ]);
     });
 
-    it("provides context on errors.", async () => {
+    it("provides context on errors", async () => {
       // Admin can read anywhere, so this test does not throw an error.
       if (FIRESTORE_DEPS_TYPE === "admin") return;
       const nonexistentCollection = new FiretenderCollection(
@@ -428,7 +428,7 @@ describe("query functions", () => {
       }
     });
 
-    it("applies patches to the data.", async () => {
+    it("applies patches to the data", async () => {
       cityLandmarkCollection.addBeforeParseHook((data) => {
         if (data.name === "The Getty") {
           data.name = "The Getty Center";
@@ -442,7 +442,7 @@ describe("query functions", () => {
       expect(docs.map((d) => d.r.name).sort()).toEqual(["The Getty Center"]);
     });
 
-    it("works with timestamps.", async () => {
+    it("works with timestamps", async () => {
       // Write doc with a server timestamp.  Confirm timestamp is set.
       const uniqueFoo = `foo-${Date.now()}`;
       const docRef = (
@@ -480,7 +480,7 @@ describe("query functions", () => {
 });
 
 describe("delete", () => {
-  it("deletes a document in a collection.", async () => {
+  it("deletes a document in a collection", async () => {
     const testCollection = new FiretenderCollection(
       testSchema,
       firestore,
