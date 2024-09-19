@@ -36,12 +36,12 @@
     "style:fix": "prettier --write src/*.ts src/**/*.ts",
     "check": "pnpm run lint && pnpm run style",
     "start-emulator": "firebase --config=./src/__tests__/firebase.json --project=firetender --only=firestore emulators:start",
-    "test": "VSCODE_CWD='' firebase --config=./src/__tests__/firebase.json --project=firetender --only=firestore emulators:exec 'jest --forceExit --detectOpenHandles'",
-    "test:manual": "jest --forceExit --detectOpenHandles",
+    "test": "jest --forceExit --detectOpenHandles",
+    "test:auto": "VSCODE_CWD='' firebase --config=./src/__tests__/firebase.json --project=firetender --only=firestore emulators:exec 'jest --forceExit --detectOpenHandles'",
     "prepare": "husky",
     "clean": "rm -rf dist/*",
     "build": "pnpm run clean && tsc",
-    "prepublishOnly": "pnpm run check && pnpm run test && pnpm run build"
+    "prepublishOnly": "pnpm run check && pnpm run test:auto && pnpm run build"
   },
   "dependencies": {
     "firebase": "^10.13.0",
