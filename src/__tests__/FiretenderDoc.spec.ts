@@ -496,6 +496,45 @@ describe("writable accessor (.w)", () => {
     });
   });
 
+  it("deeply removes undefined fields for a new doc", async () => {
+    const testDoc = new FiretenderDoc(testDataSchema, testCollection, {
+      createDoc: true,
+      initialData: {
+        email: "bob@example.com",
+        recordOfObjects: {
+          c: { rating: 3, tags: ["111", "222"], favoriteColor: "red" },
+          d: { rating: 4, tags: ["333", "444"] },
+        },
+        arrayOfObjects: [
+          { name: "abc", entries: { x: 1, y: 2 } },
+          { name: "xyz", favoriteColor: "blue" },
+        ],
+      },
+    });
+    await testDoc.update((doc) => {
+      doc.recordOfObjects.c = { rating: 5, tags: [], favoriteColor: undefined };
+      doc.arrayOfObjects[1] = {
+        name: "xyz",
+        entries: {},
+        favoriteColor: undefined,
+      };
+    });
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      recordOfObjects: {
+        c: { rating: 5, tags: [] },
+        d: { rating: 4, tags: ["333", "444"] },
+      },
+      arrayOfObjects: [
+        { name: "abc", entries: { x: 1, y: 2 } },
+        { name: "xyz", entries: {} },
+      ],
+      nestedRecords: {},
+      recordOfPrimitives: {},
+    });
+  });
+
   it("throws in readonly mode", async () => {
     const testDoc = await createAndLoadDoc(
       {

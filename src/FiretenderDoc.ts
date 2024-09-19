@@ -243,7 +243,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * Firestore document ID, which is the last part of the document path.
    * Undefined for new docs not yet on Firestore.
    */
-  private docID: string | undefined = undefined;
+  private docID: string | undefined;
 
   /** If set, writes will throw and patches will not be written. */
   readonly isReadonly: boolean;
@@ -270,10 +270,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   private readonly writeSoonDelay: number;
 
   /** Local copy of the document data, parsed into the Zod type */
-  private data: z.infer<SchemaType> | undefined = undefined;
+  private data: z.infer<SchemaType> | undefined;
 
   /** Proxy to intercept write (.w) access to the data and track the changes. */
-  private dataProxy: ProxyHandler<z.infer<SchemaType>> | undefined = undefined;
+  private dataProxy: ProxyHandler<z.infer<SchemaType>> | undefined;
 
   /** Map from the dot-delimited field path (per updateDoc()) to new value. */
   private updates = new Map<string, any>();
@@ -720,6 +720,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           "Internal error.  New documents should always have data before calling write().",
         );
       }
+      this.pruneUndefinedFields();
       this.runBeforeWriteHooks();
       if (this.ref instanceof DocumentReference) {
         try {
@@ -945,5 +946,22 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       pathString = fieldPath.join(".");
     }
     this.updates.set(pathString, newValue);
+  }
+
+  /**
+   * Walk `this.data` and delete all fields with a value of `undefined`.
+   */
+  private pruneUndefinedFields(): void {
+    if (!this.data) return;
+    const recursivePrune = (data: Record<string, any>): void => {
+      for (const key in data) {
+        if (data[key] === undefined) {
+          delete data[key];
+        } else if (typeof data[key] === "object") {
+          recursivePrune(data[key]);
+        }
+      }
+    };
+    recursivePrune(this.data);
   }
 }
