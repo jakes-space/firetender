@@ -69,7 +69,6 @@ describe("newDoc", () => {
       [collectionName, "subcollection"],
       { foo: "hello" },
     );
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const testDoc = testCollection.newDoc(["abc", "xyz"]);
     expect(testDoc.id).toBe("xyz");
     expect(testDoc.docRef.path).toBe(`${collectionName}/abc/subcollection/xyz`);
@@ -494,7 +493,6 @@ describe("delete", () => {
     expect(docsBeforeDelete.map((d) => d.r.foo).sort()).toEqual([
       "delete-doc-in-collection",
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     await testCollection.delete(testDoc.id);
     const docsAfterDelete = await testCollection.query(
       where("foo", "==", "delete-doc-in-collection"),

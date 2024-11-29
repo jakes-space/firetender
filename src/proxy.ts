@@ -190,7 +190,6 @@ function getPropertySchema(
   propertyKey: string,
 ): z.ZodTypeAny {
   let schema: any = parentSchema;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     switch (schema._def.typeName) {
       // If the schema object is wrapped (e.g., by being optional or having a
