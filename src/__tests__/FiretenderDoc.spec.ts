@@ -71,6 +71,7 @@ const testDataSchema = z.object({
   unreadable: z.boolean().optional(),
   constantField: z.number().optional(),
 });
+type TestData = z.infer<typeof testDataSchema>;
 type TestDataInput = z.input<typeof testDataSchema>;
 
 let firestore: Firestore;
@@ -647,6 +648,24 @@ describe("write", () => {
       email: "bob@example.com",
     });
     await expect(testDoc.write()).rejects.toThrow("PERMISSION_DENIED");
+  });
+
+  it("always writes with the force option", async () => {
+    const docRef = await addDoc(testCollection, { email: "bob@example.com" });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef, {
+      beforeWrite: [
+        (data: TestData) => {
+          data.email = "patcher.wuz.here@example.com";
+        },
+      ],
+    });
+    await testDoc.load();
+    await testDoc.write(); // Does nothing.
+    const withoutForce = (await getDoc(testDoc.docRef)).data();
+    expect(withoutForce).toEqual({ email: "bob@example.com" });
+    await testDoc.write({ force: true });
+    const withForce = (await getDoc(testDoc.docRef)).data();
+    expect(withForce).toEqual({ email: "patcher.wuz.here@example.com" });
   });
 });
 

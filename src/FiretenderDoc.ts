@@ -230,6 +230,17 @@ type InternalLoadOptions<FiretenderDocType> = LoadOptions<FiretenderDocType> & {
 const NUM_LOAD_RETRIES = 3;
 
 /**
+ * Options for writing a document to Firestore.
+ */
+type WriteOptions = {
+  /**
+   * Force a write to Firestore.  Normally write() does nothing if the document
+   * has not changed.
+   */
+  force?: boolean;
+};
+
+/**
  * A local representation of a Firestore document.
  */
 export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
@@ -709,8 +720,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
 
   /**
    * Writes the document or any updates to Firestore.
+   *
+   * @param options options for writing the document.  See {@link WriteOptions}.
    */
-  async write(): Promise<this> {
+  async write(options?: WriteOptions): Promise<this> {
     this.throwIfReadonly();
     // For new docs, this.data should contain its initial state.
     if (this.isSettingNewContents) {
@@ -749,7 +762,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           "Internal error.  Firetender object should always reference a document when updating an existing doc.",
         );
       }
-      if (this.updates.size > 0) {
+      if (this.updates.size > 0 || options?.force) {
         this.runBeforeWriteHooks();
         const updateData = Object.fromEntries(this.updates);
         this.updates.clear();
