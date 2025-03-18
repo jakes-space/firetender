@@ -5,6 +5,9 @@
  * compatible with the v9 modular calls used by the web version.
  */
 
+/* eslint-disable import/no-unresolved */
+/* eslint-disable @typescript-eslint/unbound-method */
+
 import {
   CollectionGroup,
   CollectionReference,

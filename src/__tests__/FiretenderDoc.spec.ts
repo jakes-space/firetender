@@ -97,13 +97,13 @@ async function createAndLoadDoc(
 }
 
 describe("constructor", () => {
-  it("throws when creating a new doc without initial data", async () => {
+  it("throws when creating a new doc without initial data", () => {
     expect(() => {
       new FiretenderDoc(testDataSchema, testCollection, { createDoc: true });
     }).toThrow("Initial data must be given when creating a new doc.");
   });
 
-  it("throws if given a collection ref without createDoc", async () => {
+  it("throws if given a collection ref without createDoc", () => {
     expect(() => {
       new FiretenderDoc(testDataSchema, testCollection);
     }).toThrow(
@@ -113,7 +113,7 @@ describe("constructor", () => {
 });
 
 describe("load", () => {
-  it("must be called before referencing the accessors", async () => {
+  it("must be called before referencing the accessors", () => {
     const testDoc = new FiretenderDoc(
       testDataSchema,
       doc(testCollection, "foo"),
@@ -305,14 +305,14 @@ describe("listener", () => {
       },
     });
     const nowMillis = Date.now();
-    await testDoc.update((doc) => {
-      doc.ttl = serverTimestamp();
+    await testDoc.update((td) => {
+      td.ttl = serverTimestamp();
     });
     // Wait a moment for the timestamp to be set by the server.
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(callbackCount).toEqual(1);
-    const doc = await getDoc(testDoc.docRef);
-    const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - nowMillis);
+    const snapshot = await getDoc(testDoc.docRef);
+    const millisDiff = Math.abs(snapshot.data()?.ttl.toMillis() - nowMillis);
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
 
@@ -417,6 +417,7 @@ describe("writable accessor (.w)", () => {
       },
     });
     // Converting an Object to a string gets its Symbol.toStringTag property.
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
     expect(String(testDoc.w.recordOfObjects)).toBe("[object Object]");
   });
 
@@ -429,6 +430,7 @@ describe("writable accessor (.w)", () => {
       ],
     });
     // Converting an Array to a string gets its Symbol.toStringTag property.
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
     expect(String(testDoc.w.arrayOfObjects)).toBe(
       "[object Object],[object Object]",
     );
@@ -495,9 +497,9 @@ describe("writable accessor (.w)", () => {
         { name: "xyz", favoriteColor: "blue" },
       ],
     });
-    await testDoc.update((doc) => {
-      doc.recordOfObjects.c = { rating: 5, tags: [], favoriteColor: undefined };
-      doc.arrayOfObjects[1] = {
+    await testDoc.update((td) => {
+      td.recordOfObjects.c = { rating: 5, tags: [], favoriteColor: undefined };
+      td.arrayOfObjects[1] = {
         name: "xyz",
         entries: {},
         favoriteColor: undefined,
@@ -532,9 +534,9 @@ describe("writable accessor (.w)", () => {
         ],
       },
     });
-    await testDoc.update((doc) => {
-      doc.recordOfObjects.c = { rating: 5, tags: [], favoriteColor: undefined };
-      doc.arrayOfObjects[1] = {
+    await testDoc.update((td) => {
+      td.recordOfObjects.c = { rating: 5, tags: [], favoriteColor: undefined };
+      td.arrayOfObjects[1] = {
         name: "xyz",
         entries: {},
         favoriteColor: undefined,
@@ -1516,6 +1518,7 @@ describe("array of objects", () => {
 
   it("deletes an entry", async () => {
     const testDoc = await createAndLoadDoc(initialState);
+    // eslint-disable-next-line @typescript-eslint/no-array-delete
     delete testDoc.w.arrayOfObjects[0];
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
@@ -1529,12 +1532,14 @@ describe("array of objects", () => {
 
   it("handles an array index that is out of bounds", async () => {
     const testDoc = await createAndLoadDoc(initialState);
+    // eslint-disable-next-line @typescript-eslint/no-array-delete
     expect(delete testDoc.w.arrayOfObjects[99]).toBeTruthy();
   });
 
   it("fails to delete for malformed indices", async () => {
     const testDoc = await createAndLoadDoc(initialState);
     expect(() => {
+      // eslint-disable-next-line @typescript-eslint/no-array-delete
       delete testDoc.w.arrayOfObjects[-99];
     }).toThrow(TypeError);
   });
@@ -1554,6 +1559,7 @@ describe("array of objects", () => {
         { name: "E", entries: {} },
       ],
     });
+    // eslint-disable-next-line @typescript-eslint/no-array-delete
     delete testDoc.w.arrayOfObjects[5];
     await testDoc.write();
     const result = (await getDoc(testDoc.docRef)).data();
@@ -1685,7 +1691,7 @@ describe("createNewDoc", () => {
     email: "bob@example.com",
   };
 
-  it("does not provide an ID or doc ref until write is called", async () => {
+  it("does not provide an ID or doc ref until write is called", () => {
     const testDoc = FiretenderDoc.createNewDoc(
       testDataSchema,
       testCollection,
@@ -1918,7 +1924,7 @@ describe("copy", () => {
     });
   });
 
-  it("can copy into a doc given by string[]", async () => {
+  it("can copy into a doc given by string[]", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1"),
@@ -1951,7 +1957,7 @@ describe("copy", () => {
     expect(testDoc2.docRef.path).toMatch(/^doctests\/id-B\/subcol-1\/[^/]+$/);
   });
 
-  it("throws when given string[] with the wrong number of IDs", async () => {
+  it("throws when given string[] with the wrong number of IDs", () => {
     const testDoc1 = FiretenderDoc.createNewDoc(
       testDataSchema,
       collection(testCollection, "id-A", "subcol-1", "id-B", "subcol-2"),
@@ -1978,11 +1984,11 @@ describe("other zod types", () => {
     const docRef = await addDoc(testCollection, data);
     const testDoc = await new FiretenderDoc(schema, docRef).load();
     expect(testDoc.r).toEqual(data);
-    await testDoc.update((data) => {
-      data.anything = "I can haz primitive?";
-      data.arrayOfAnythings[1] = data.arrayOfAnythings[0];
-      const a = data.arrayOfAnythings[1].a;
-      data.arrayOfAnythings.push(a);
+    await testDoc.update((td) => {
+      td.anything = "I can haz primitive?";
+      td.arrayOfAnythings[1] = td.arrayOfAnythings[0];
+      const a = td.arrayOfAnythings[1].a;
+      td.arrayOfAnythings.push(a);
     });
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({
@@ -2081,8 +2087,8 @@ describe("timestamps", () => {
         ttl: Timestamp.fromDate(now),
       },
     ).write();
-    const doc = await getDoc(testDoc.docRef);
-    expect(doc.data()?.ttl.toDate()).toEqual(now);
+    const snapshot = await getDoc(testDoc.docRef);
+    expect(snapshot.data()?.ttl.toDate()).toEqual(now);
   });
 
   it("reads Firestore's Timestamp type", async () => {
@@ -2103,8 +2109,8 @@ describe("timestamps", () => {
         ttl: serverTimestamp(),
       },
     ).write();
-    const doc = await getDoc(testDoc.docRef);
-    const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - Date.now());
+    const snapshot = await getDoc(testDoc.docRef);
+    const millisDiff = Math.abs(snapshot.data()?.ttl.toMillis() - Date.now());
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
 
@@ -2121,24 +2127,20 @@ describe("timestamps", () => {
     expect((await getDoc(testDoc.docRef)).data()?.ttl.toDate()).toEqual(
       pastDate,
     );
-    await testDoc.update((doc) => {
-      doc.ttl = serverTimestamp();
+    await testDoc.update((td) => {
+      td.ttl = serverTimestamp();
     });
-    const doc = await getDoc(testDoc.docRef);
-    const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - Date.now());
+    const snapshot = await getDoc(testDoc.docRef);
+    const millisDiff = Math.abs(snapshot.data()?.ttl.toMillis() - Date.now());
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
 
   it("provides temporary client-generated timestamps", async () => {
     const now = new Date();
-    const testDoc = await FiretenderDoc.createNewDoc(
-      testDataSchema,
-      testCollection,
-      {
-        email: "bob@example.com",
-        ttl: serverTimestampWithClientTime(),
-      },
-    );
+    const testDoc = FiretenderDoc.createNewDoc(testDataSchema, testCollection, {
+      email: "bob@example.com",
+      ttl: serverTimestampWithClientTime(),
+    });
 
     // Wait 100 ms before writing to avoid coincident timestamps.  The test
     // server runs locally, so this should always work....
@@ -2186,9 +2188,9 @@ describe("timestamps", () => {
         ttl: futureTimestamp({ days: 30 }),
       },
     ).write();
-    const doc = await getDoc(testDoc.docRef);
+    const snapshot = await getDoc(testDoc.docRef);
     const futureMillis = Date.now() + 30 * 86400e3;
-    const millisDiff = Math.abs(doc.data()?.ttl.toMillis() - futureMillis);
+    const millisDiff = Math.abs(snapshot.data()?.ttl.toMillis() - futureMillis);
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
 });

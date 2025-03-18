@@ -257,12 +257,12 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
             .join("/")}".  IDs must fully specify a document path.`,
         );
       }
-      const doc = new FiretenderDoc(this.schema, ref, {
+      const batchDoc = new FiretenderDoc(this.schema, ref, {
         ...this.defaultDocOptions,
         initialData,
       });
-      batch.set(ref, doc.r);
-      return doc;
+      batch.set(ref, batchDoc.r);
+      return batchDoc;
     });
     try {
       await batch.commit();
@@ -417,16 +417,18 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
    * FiretenderDoc objects.
    */
   private async getAndWrapDocs(
-    query: CollectionReference | Query,
+    queryOrCollection: Query | CollectionReference,
   ): Promise<FiretenderDoc<SchemaType>[]> {
     let querySnapshot: QuerySnapshot;
     try {
-      querySnapshot = await getDocs(query);
+      querySnapshot = await getDocs(queryOrCollection);
     } catch (error) {
       addContextToError(
         error,
         "getDocs",
-        query instanceof CollectionReference ? query : undefined,
+        queryOrCollection instanceof CollectionReference
+          ? queryOrCollection
+          : undefined,
       );
       throw error;
     }

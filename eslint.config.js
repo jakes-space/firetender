@@ -1,31 +1,26 @@
-import pluginJs from "@eslint/js";
-import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
+import eslint from "@eslint/js";
+import importPlugin from "eslint-plugin-import";
+import prettierRecommendedConfig from "eslint-plugin-prettier/recommended";
+import simpleImportSortPlugin from "eslint-plugin-simple-import-sort";
 import globals from "globals";
-import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
 
-/** @type {import('eslint').Linter.Config[]} */
-export default [
-  pluginJs.configs.recommended,
-  ...tseslint.configs.recommended,
-  eslintPluginPrettierRecommended,
+const baseConfig = tseslint.config(
+  eslint.configs.recommended,
+  prettierRecommendedConfig,
+  importPlugin.flatConfigs.recommended,
   {
     ignores: ["dist/", "node_modules/"],
   },
   {
-    files: ["src/**/*.ts"],
     plugins: {
-      "simple-import-sort": simpleImportSort,
+      "simple-import-sort": simpleImportSortPlugin,
     },
     languageOptions: {
-      parserOptions: {
-        parser: "@typescript-eslint/parser",
-        ecmaVersion: 2020,
-        project: "./tsconfig.json",
-      },
-      globals: globals.browser,
+      ecmaVersion: 2020,
     },
     rules: {
+      "import/no-extraneous-dependencies": ["error", { devDependencies: true }],
       "import/prefer-default-export": "off",
       "lines-between-class-members": [
         "error",
@@ -33,6 +28,7 @@ export default [
         { exceptAfterSingleLine: true },
       ],
       "no-bitwise": "off",
+      "no-cond-assign": ["warn", "except-parens"],
       "no-console": process.env.NODE_ENV === "production" ? "warn" : "off",
       "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
       "no-else-return": "off",
@@ -41,6 +37,7 @@ export default [
         { allow: ["arrowFunctions", "constructors"] },
       ],
       "no-lonely-if": "off",
+      "no-nested-ternary": "off",
       "no-param-reassign": ["error", { props: false }],
       "no-unused-vars": "off",
       "no-use-before-define": ["error", { functions: false }],
@@ -48,16 +45,38 @@ export default [
       "prettier/prettier": "warn",
       "simple-import-sort/imports": "warn",
       "simple-import-sort/exports": "warn",
-      "@typescript-eslint/ban-ts-comment": [
-        "warn",
-        {
-          "ts-expect-error": "allow-with-description",
-          "ts-ignore": "allow-with-description",
-          "ts-nocheck": true,
-          "ts-check": false,
-          minimumDescriptionLength: 3,
+    },
+  },
+  {
+    files: ["eslint.config.js"],
+    languageOptions: {
+      globals: globals.node,
+    },
+    rules: {
+      "import/extensions": ["error", "ignorePackages"],
+      "import/no-unresolved": "off",
+    },
+  },
+);
+
+const typescriptConfig = tseslint.config(
+  tseslint.configs.recommendedTypeChecked,
+  {
+    languageOptions: {
+      sourceType: "module",
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+        project: "./tsconfig.json",
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: "./tsconfig.json",
         },
-      ],
+      },
+    },
+    rules: {
       "@typescript-eslint/explicit-function-return-type": [
         "warn",
         { allowExpressions: true, allowIIFEs: true },
@@ -71,17 +90,40 @@ export default [
         "error",
         { ignoreIIFE: true },
       ],
+      "@typescript-eslint/no-misused-promises": [
+        "error",
+        {
+          checksVoidReturn: {
+            arguments: false,
+            variables: false,
+            properties: false,
+          },
+        },
+      ],
       "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/no-shadow": [
+        "warn",
+        { ignoreOnInitialization: true },
+      ],
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
-        { destructuredArrayIgnorePattern: "^_" },
+        {
+          argsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
       ],
+      "@typescript-eslint/restrict-template-expressions": "off",
     },
   },
-  {
-    files: ["eslint.config.js"],
-    languageOptions: {
-      globals: globals.node,
-    },
-  },
-];
+);
+
+export default tseslint.config(
+  baseConfig,
+  typescriptConfig.map((config) => ({ ...config, files: ["src/**/*.ts"] })),
+);

@@ -219,9 +219,7 @@ function getPropertySchema(
       case z.ZodFirstPartyTypeKind.ZodObject:
         return schema.shape[propertyKey];
       case z.ZodFirstPartyTypeKind.ZodDiscriminatedUnion:
-        schema = (schema as any).optionsMap.get(
-          parent[(schema as any).discriminator],
-        );
+        schema = schema.optionsMap.get(parent[schema.discriminator]);
         continue;
       // If the parent is of type ZodAny, so are its properties.
       case z.ZodFirstPartyTypeKind.ZodAny:

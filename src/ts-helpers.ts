@@ -25,5 +25,4 @@ export type DeepReadonly<T> =
  */
 export type AsyncOrSync<T> = T | Promise<T>;
 
-export type AsyncOrSyncType<AsyncOrSyncType> =
-  AsyncOrSyncType extends AsyncOrSync<infer Type> ? Type : never;
+export type AsyncOrSyncType<AOS> = AOS extends AsyncOrSync<infer T> ? T : never;
