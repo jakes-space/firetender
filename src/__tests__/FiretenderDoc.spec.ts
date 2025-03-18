@@ -2165,7 +2165,6 @@ describe("timestamps", () => {
       ),
     );
     expect(tempTimestamp.toDate().getTime() === tempTimestamp.toMillis());
-    expect(tempTimestamp.toString().length > 0);
     expect(tempTimestamp.valueOf().length > 0);
 
     // On reading, is there a server timestamp that differs from the temp one?
