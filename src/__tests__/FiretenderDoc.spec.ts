@@ -16,6 +16,7 @@ import {
   Firestore,
   FIRESTORE_DEPS_TYPE,
   getDoc,
+  snapshotExists,
   Timestamp,
   updateDoc,
 } from "../firestore-deps.js";
@@ -338,6 +339,8 @@ describe("listener", () => {
   });
 
   it("reports Firestore errors to onListenError", async () => {
+    // Admin can read anywhere, so this test does not produce an error.
+    if (FIRESTORE_DEPS_TYPE === "admin") return;
     const docRef = await addDoc(testCollection, { email: "alice@example.com" });
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
     const listen = jest.fn();
@@ -350,7 +353,7 @@ describe("listener", () => {
     await updateDoc(testDoc.docRef, { unreadable: true });
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(listen).toHaveBeenCalledTimes(1);
-    expect(listen.mock.calls[0][1].exists()).toBe(true);
+    expect(snapshotExists(listen.mock.calls[0][1])).toBe(true);
     expect(listen.mock.calls[0][1].data()?.unreadable).toBe(true);
     expect(onListenError).toHaveBeenCalledTimes(1);
     expect(onListenError.mock.calls[0][0]).toBeInstanceOf(Error);
