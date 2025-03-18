@@ -572,7 +572,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         );
       const listener = async (
         newSnapshot: DocumentSnapshot,
-        initialResolve: (ns: DocumentSnapshot) => void,
+        initialResolve: (ns: DocumentSnapshot | undefined) => void,
       ): Promise<void> => {
         if (!this.detachListener) {
           initialResolve(newSnapshot);
@@ -605,17 +605,33 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           handleListenerError(error);
         }
       };
+      const onListenerError = (
+        error: Error,
+        initialResolve: (ns: DocumentSnapshot | undefined) => void,
+      ): void => {
+        if (!this.detachListener) {
+          initialResolve(undefined);
+          return;
+        }
+        handleListenerError(error);
+        this.stopListening();
+      };
       let detach: Unsubscribe | undefined;
       snapshot = await new Promise((resolve) => {
         try {
-          detach = onSnapshot(this.ref as DocumentReference, (newSnapshot) =>
-            listener(newSnapshot, resolve),
+          detach = onSnapshot(
+            this.ref as DocumentReference,
+            (newSnapshot) => listener(newSnapshot, resolve),
+            (error) => onListenerError(error, resolve),
           );
         } catch (error) {
           addContextToError(error, "onSnapshot", this.ref);
           throw error;
         }
       });
+      // Defer saving the detach function until the first snapshot is received.
+      // Resolving the initial snapshot promise is gated on this.detachListener
+      // not being set.
       this.detachListener = detach;
     } else {
       try {

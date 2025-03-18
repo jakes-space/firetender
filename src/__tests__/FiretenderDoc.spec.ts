@@ -337,6 +337,26 @@ describe("listener", () => {
     expect(error?.message).toContain("Invalid email");
   });
 
+  it("reports Firestore errors to onListenError", async () => {
+    const docRef = await addDoc(testCollection, { email: "alice@example.com" });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    const listen = jest.fn();
+    const onListenError = jest.fn();
+    await testDoc.load({ listen, onListenError });
+    expect(listen).toHaveBeenCalledTimes(0);
+    expect(onListenError).toHaveBeenCalledTimes(0);
+    expect(testDoc.r.email).toBe("alice@example.com");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await updateDoc(testDoc.docRef, { unreadable: true });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(listen).toHaveBeenCalledTimes(1);
+    expect(listen.mock.calls[0][1].exists()).toBe(true);
+    expect(listen.mock.calls[0][1].data()?.unreadable).toBe(true);
+    expect(onListenError).toHaveBeenCalledTimes(1);
+    expect(onListenError.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(onListenError.mock.calls[0][0].message).toContain("evaluation err");
+  });
+
   it("reports uncaught listener errors to onListenError", async () => {
     const docRef = await addDoc(testCollection, { email: "alice@example.com" });
     const testDoc = new FiretenderDoc(testDataSchema, docRef);

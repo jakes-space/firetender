@@ -96,8 +96,9 @@ export const getDocs = <T>(query: Query<T>): Promise<QuerySnapshot<T>> =>
 export const onSnapshot = (
   ref: DocumentReference,
   callback: (snapshot: DocumentSnapshot) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe => {
-  return ref.onSnapshot(callback);
+  return ref.onSnapshot(callback, onError);
 };
 
 export const query = <T extends DocumentData>(
