@@ -687,10 +687,10 @@ describe("write", () => {
     await testDoc.load();
     await testDoc.write(); // Does nothing.
     const withoutForce = (await getDoc(testDoc.docRef)).data();
-    expect(withoutForce).toEqual({ email: "bob@example.com" });
+    expect(withoutForce?.email).toBe("bob@example.com");
     await testDoc.write({ force: true });
     const withForce = (await getDoc(testDoc.docRef)).data();
-    expect(withForce).toEqual({ email: "patcher.wuz.here@example.com" });
+    expect(withForce?.email).toBe("patcher.wuz.here@example.com");
   });
 });
 

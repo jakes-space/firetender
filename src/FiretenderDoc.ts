@@ -234,8 +234,10 @@ const NUM_LOAD_RETRIES = 3;
  */
 type WriteOptions = {
   /**
-   * Force a write to Firestore.  Normally write() does nothing if the document
-   * has not changed.
+   * Force writing the full document to Firestore.
+   *
+   * Normally `write()` makes a minimal update: it does nothing if there are no
+   * pending changes, and it writes only the changes if the document isn't new.
    */
   force?: boolean;
 };
@@ -742,12 +744,18 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   async write(options?: WriteOptions): Promise<this> {
     this.throwIfReadonly();
     // For new docs, this.data should contain its initial state.
-    if (this.isSettingNewContents) {
+    if (this.isSettingNewContents || options?.force) {
       if (!this.data) {
-        // We should never get here: the constructor should have checked this.
-        throw new FiretenderInternalError(
-          "Internal error.  New documents should always have data before calling write().",
-        );
+        if (options?.force) {
+          throw new FiretenderUsageError(
+            "Can't force write: the document has no data.  Call load() first.",
+          );
+        } else {
+          // We should never get here: the constructor should have checked this.
+          throw new FiretenderInternalError(
+            "Internal error.  New documents should always have data before calling write().",
+          );
+        }
       }
       this.pruneUndefinedFields();
       this.runBeforeWriteHooks();
@@ -778,7 +786,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           "Internal error.  Firetender object should always reference a document when updating an existing doc.",
         );
       }
-      if (this.updates.size > 0 || options?.force) {
+      if (this.updates.size > 0) {
         this.runBeforeWriteHooks();
         const updateData = Object.fromEntries(this.updates);
         this.updates.clear();
