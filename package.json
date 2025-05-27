@@ -42,8 +42,7 @@
     "prepare": "husky",
     "clean": "rm -rf dist/*",
     "build": "pnpm run clean && tsc",
-    "prepublishOnly": "pnpm run check && pnpm run test:auto && pnpm run build",
-    "release:create": "gh release create v${npm_package_version} --repo=jakes-space/firetender --generate-notes"
+    "prepublishOnly": "pnpm run check && pnpm run test:auto && pnpm run build"
   },
   "dependencies": {
     "firebase": "^11.8.1",
