@@ -1143,6 +1143,29 @@ describe("beforeWrite", () => {
     const millisDiff = Math.abs(result?.ttl.toMillis() - Date.now());
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
+
+  it("can be asynchronous", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "bob@example.com",
+    });
+    const testDoc = await new FiretenderDoc(testDataSchema, docRef, {
+      beforeWrite: [
+        async (data, path) => {
+          expect(path).toEqual(["doctests", docRef.id]);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          data.recordOfPrimitives.foo = "bar";
+        },
+      ],
+    }).load();
+    expect(testDoc.r.recordOfPrimitives.foo).toBeUndefined();
+    await testDoc.update((data) => {
+      data.email = "alice@example.com";
+    });
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toBeDefined();
+    expect(result?.email).toBe("alice@example.com");
+    expect(result?.recordOfPrimitives.foo).toBe("bar");
+  });
 });
 
 describe("record of primitives", () => {

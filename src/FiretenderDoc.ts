@@ -52,7 +52,7 @@ export type AfterParse<SchemaType extends z.SomeZodObject> = (
 export type BeforeWrite<SchemaType extends z.SomeZodObject> = (
   data: z.infer<SchemaType>,
   docPath: string[],
-) => void;
+) => void | Promise<void>;
 
 /**
  * Internally used priority for writing changes made by the before/after parse
@@ -758,7 +758,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         }
       }
       this.pruneUndefinedFields();
-      this.runBeforeWriteHooks();
+      await this.runBeforeWriteHooks();
       if (this.ref instanceof DocumentReference) {
         try {
           await setDoc(this.ref, this.data);
@@ -787,7 +787,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         );
       }
       if (this.updates.size > 0) {
-        this.runBeforeWriteHooks();
+        await this.runBeforeWriteHooks();
         const updateData = Object.fromEntries(this.updates);
         this.updates.clear();
         try {
@@ -942,10 +942,10 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * Applies the beforeWrite updates to the document.  The .w proxy is used to
    * track changes, making it safe for documents with protected fields.
    */
-  private runBeforeWriteHooks(): void {
+  private async runBeforeWriteHooks(): Promise<void> {
     const docPath = this.ref.path.split("/");
     for (const hook of this.beforeWrite) {
-      hook(this.w, docPath);
+      await hook(this.w, docPath);
     }
   }
 
