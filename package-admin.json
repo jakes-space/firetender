@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "firebase-admin": "^13.4.0",
-    "zod": "^3.25.28"
+    "zod": "^3.25.30"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
@@ -54,7 +54,7 @@
     "@rushstack/eslint-patch": "^1.11.0",
     "@types/jest": "^29.5.14",
     "eslint": "^9.27.0",
-    "eslint-import-resolver-typescript": "^4.4.0",
+    "eslint-import-resolver-typescript": "^4.4.1",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^5.4.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
