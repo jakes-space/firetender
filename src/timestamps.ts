@@ -19,6 +19,18 @@ export const timestampSchema = z.custom<Timestamp>((data: any) => {
 });
 
 /**
+ * Timestamp representation used by Firestore: seconds and nanoseconds since the
+ * epoch.
+ *
+ * This schema is for server-generated timestamps, which are null when first
+ * reported to the listener.
+ */
+export const serverTimestampSchema = z.preprocess(
+  (data) => data ?? Timestamp.now(),
+  timestampSchema,
+);
+
+/**
  * Returns a Firestore Timestamp for some future date.  The result is typically
  * used for writing TTLs.
  *

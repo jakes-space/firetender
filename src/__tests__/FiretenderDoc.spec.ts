@@ -29,6 +29,7 @@ import {
 import {
   futureTimestamp,
   serverTimestamp,
+  serverTimestampSchema,
   serverTimestampWithClientTime,
   timestampSchema,
 } from "../timestamps.js";
@@ -40,6 +41,7 @@ import {
 const testDataSchema = z.object({
   email: z.string().email(),
   ttl: timestampSchema.optional(),
+  serverTTL: serverTimestampSchema.optional(),
   recordOfPrimitives: z.record(z.string()).default({}),
   recordOfObjects: z
     .record(
@@ -2195,7 +2197,7 @@ describe("timestamps", () => {
 
     // On reading, is there a server timestamp that differs from the temp one?
     await testDoc.load({ force: true });
-    const assignedTimestamp = testDoc.r.ttl as Timestamp;
+    const assignedTimestamp = testDoc.r.ttl!;
     expect(assignedTimestamp).toBeDefined();
     expect(assignedTimestamp.toMillis() !== tempTimestamp.toMillis());
 
@@ -2216,6 +2218,20 @@ describe("timestamps", () => {
     const snapshot = await getDoc(testDoc.docRef);
     const futureMillis = Date.now() + 30 * 86400e3;
     const millisDiff = Math.abs(snapshot.data()?.ttl.toMillis() - futureMillis);
+    expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
+  });
+
+  it("handles missing server timestamps", async () => {
+    const docRef = await addDoc(testCollection, {
+      email: "bob@example.com",
+      serverTTL: null, // Simulate a missing server timestamp.
+    });
+    const testDoc = new FiretenderDoc(testDataSchema, docRef);
+    await testDoc.load();
+    const assignedTimestamp = testDoc.r.serverTTL;
+    expect(assignedTimestamp).toBeTruthy();
+    console.log(assignedTimestamp);
+    const millisDiff = Math.abs(assignedTimestamp!.toMillis() - Date.now());
     expect(millisDiff).toBeLessThan(10000); // Less than 10 seconds apart.
   });
 });

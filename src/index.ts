@@ -17,6 +17,7 @@ export {
 export {
   futureTimestamp,
   serverTimestamp,
+  serverTimestampSchema,
   serverTimestampWithClientTime,
   timestampSchema,
 } from "./timestamps.js";
