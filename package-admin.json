@@ -29,7 +29,7 @@
     "use-web-firestore": "cp package-web.json package.json && cp src/firestore-deps-web.ts src/firestore-deps.ts && pnpm install",
     "use-admin-firestore": "echo Already using admin firestore.",
     "diff-web-admin": "diff package-web.json package-admin.json",
-    "update-deps": "pnpm run use-web-firestore && pnpm update && cp package.json package-web.json && pnpm run use-admin-firestore && pnpm update && cp package.json package-admin.json && pnpm run use-web-firestore",
+    "update-deps": "pnpm run use-web-firestore && pnpm update && ( pnpm outdated; true ) && cp package.json package-web.json && pnpm run use-admin-firestore && pnpm update && ( pnpm outdated; true ) && cp package.json package-admin.json && pnpm run use-web-firestore",
     "update-deps:latest": "pnpm run use-web-firestore && pnpm update --latest && cp package.json package-web.json && pnpm run use-admin-firestore && pnpm update --latest && cp package.json package-admin.json && pnpm run use-web-firestore",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
@@ -46,29 +46,29 @@
   },
   "dependencies": {
     "firebase-admin": "^13.4.0",
-    "zod": "^3.25.63"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@eslint/js": "^9.28.0",
+    "@eslint/js": "^9.31.0",
     "@firebase/rules-unit-testing": "^4.0.1",
-    "@rushstack/eslint-patch": "^1.11.0",
-    "@types/jest": "^29.5.14",
-    "eslint": "^9.28.0",
-    "eslint-import-resolver-typescript": "^4.4.3",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-prettier": "^5.4.1",
+    "@rushstack/eslint-patch": "^1.12.0",
+    "@types/jest": "^30.0.0",
+    "eslint": "^9.31.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "firebase": "^11.9.1",
-    "firebase-tools": "^14.7.0",
+    "firebase": "^11.10.0",
+    "firebase-tools": "^14.11.0",
     "gh": "^2.8.9",
-    "globals": "^16.2.0",
+    "globals": "^16.3.0",
     "husky": "^9.1.7",
-    "jest": "^30.0.0",
-    "prettier": "^3.5.3",
+    "jest": "^30.0.4",
+    "prettier": "^3.6.2",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "tslib": "^2.8.1",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.34.0"
+    "typescript-eslint": "^8.37.0"
   }
 }
