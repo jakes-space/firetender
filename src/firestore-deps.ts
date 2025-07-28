@@ -41,4 +41,4 @@ export const snapshotExists = (snapshot: DocumentSnapshot): boolean =>
   snapshot.exists();
 
 export const isServerTimestamp = (data: any): boolean =>
-  !!data && data._methodName === "serverTimestamp";
+  data?._methodName === "serverTimestamp";

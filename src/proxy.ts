@@ -49,7 +49,11 @@ export function watchForChanges<
   return new Proxy(field, {
     get(target, propertyKey): any {
       const property = target[propertyKey];
-      if (property instanceof Function) {
+      if (!property) {
+        // If the property is null or undefined, return it as is.
+        return property;
+      }
+      if (typeof property === "function") {
         const result = (...args: any[]): any => property.apply(field, args);
         if (arrayAncestor) {
           // All methods of an array or its children are presumed to make
@@ -72,7 +76,7 @@ export function watchForChanges<
         // Allow all other symbols to pass through.
         return property;
       }
-      if (property instanceof Object) {
+      if (typeof property === "object") {
         // Child objects need to be wrapped with another watchForChanges() call.
         let nextPath: string[];
         let nextArrayAncestor: any[] | undefined;
@@ -84,7 +88,7 @@ export function watchForChanges<
           // Otherwise the next proxy should point to this child.  If it's an
           // array, establish it as a top-level array.
           nextPath = [...updatePath, propertyKey];
-          if (property instanceof Array) {
+          if (Array.isArray(property)) {
             nextArrayAncestor = property;
           }
         }
@@ -106,7 +110,7 @@ export function watchForChanges<
       }
       // If this is an array and its length is being set, truncate the array if
       // needed.
-      if ((target as any) instanceof Array && propertyKey === "length") {
+      if (Array.isArray(target) && propertyKey === "length") {
         if (typeof value !== "number") {
           throw TypeError(
             `Failed to set array length to ${value} (type: ${typeof value}).`,
@@ -122,7 +126,7 @@ export function watchForChanges<
       // If the new value is an object wrapped in a Firetender proxy, which can
       // commonly happen when referencing it inside a mutator function passed to
       // FiretenderDoc.prototype.update(), unwrap it.
-      if (value instanceof Object && value[PROXY_TARGET_SYMBOL]) {
+      if (value && typeof value === "object" && value[PROXY_TARGET_SYMBOL]) {
         processedValue = value[PROXY_TARGET_SYMBOL];
       }
       // A property of this object is being set to a new value.  Parse the new
@@ -153,7 +157,7 @@ export function watchForChanges<
         return Reflect.deleteProperty(target, propertyKey);
       }
       let result = true;
-      if ((target as any) instanceof Array) {
+      if (Array.isArray(target)) {
         // Calling Reflect.deleteProperty on an array item sets it to undefined,
         // which causes Firestore writes to fail if ignoreUndefinedProperties is
         // not set, and which is generally not what we want.  Hence splice.
@@ -247,7 +251,7 @@ function pruneUndefinedFields<T>(obj: T): T {
   ) {
     return obj;
   }
-  if (obj instanceof Array) {
+  if (Array.isArray(obj)) {
     return obj
       .filter((v) => v !== undefined)
       .map((v) => pruneUndefinedFields(v)) as T;

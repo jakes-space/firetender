@@ -104,7 +104,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     initialData: DeepPartial<z.input<SchemaType>> | undefined = undefined,
     options: FiretenderDocOptions<SchemaType> = {},
   ): FiretenderDoc<SchemaType> {
-    const ids = id instanceof Array ? id : id ? [id] : [];
+    const ids = Array.isArray(id) ? id : id ? [id] : [];
     let ref: DocumentReference | CollectionReference | undefined =
       this.makeDocRefInternal(ids);
     if (!ref) {
@@ -191,7 +191,7 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
   ): Promise<FiretenderDoc<SchemaType>[]> {
     let ids: string[];
     let whereClauses: QueryConstraint[];
-    if (idOrWhereClause instanceof Array) {
+    if (Array.isArray(idOrWhereClause)) {
       ids = idOrWhereClause;
       whereClauses = moreWhereClauses;
     } else if (typeof idOrWhereClause === "string") {
