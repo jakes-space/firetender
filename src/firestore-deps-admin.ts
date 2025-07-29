@@ -46,6 +46,9 @@ export const serverTimestamp = FieldValue.serverTimestamp;
 
 export const isServerTimestamp = (x: any): boolean => x instanceof FieldValue;
 
+export const isDocRef = (ref: any): ref is DocumentReference =>
+  ref instanceof DocumentReference;
+
 // DocumentSnapshot.prototype.exists is a function for "firebase/firestore" and
 // a boolean for "firebase-admin/firestore".
 export const snapshotExists = (snapshot: DocumentSnapshot): boolean =>

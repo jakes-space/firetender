@@ -15,6 +15,7 @@ import {
   DocumentReference,
   DocumentSnapshot,
   getDoc,
+  isDocRef,
   onSnapshot,
   setDoc,
   snapshotExists,
@@ -337,7 +338,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         "Initial data must be given when creating a new doc.",
       );
     }
-    if (this.ref.type === "document") {
+    if (isDocRef(ref)) {
       this.docID = this.ref.path.split("/").at(-1);
     } else if (!this.isNewDoc) {
       throw TypeError(
@@ -439,8 +440,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
           : collection(this.ref.firestore, path[0], ...path.slice(1));
     } else {
       // For a string or undefined ...
-      const collectionRef =
-        this.ref.type === "document" ? this.ref.parent : this.ref;
+      const collectionRef = isDocRef(this.ref) ? this.ref.parent : this.ref;
       if (dest) {
         ref = doc(collectionRef, dest);
       } else {
@@ -475,7 +475,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * @throws Throws an error if the document does not yet have a reference.
    */
   get docRef(): DocumentReference {
-    if (this.ref.type !== "document") {
+    if (!isDocRef(this.ref)) {
       throw new FiretenderUsageError(
         "docRef can only be accessed after the new doc has been written.",
       );
@@ -535,7 +535,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   async load(
     options: InternalLoadOptions<FiretenderDoc<SchemaType>> = {},
   ): Promise<this> {
-    if (this.isNewDoc || this.ref.type === "collection") {
+    if (this.isNewDoc || !isDocRef(this.ref)) {
       throw new FiretenderUsageError(
         "load() should not be called for new documents.",
       );
@@ -756,7 +756,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       }
       this.pruneUndefinedFields();
       await this.runBeforeWriteHooks();
-      if (this.ref.type === "document") {
+      if (isDocRef(this.ref)) {
         try {
           await setDoc(this.ref, this.data);
         } catch (error) {
@@ -777,7 +777,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
     }
     // For existing docs, this.updates should contain a list of changes.
     else {
-      if (this.ref.type !== "document") {
+      if (!isDocRef(this.ref)) {
         // We should never get here.
         throw new FiretenderInternalError(
           "Internal error.  Firetender object should always reference a document when updating an existing doc.",

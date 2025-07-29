@@ -4,7 +4,7 @@
  * For web clients, the "firebase/firestore" API is simply re-exported.
  */
 
-import { DocumentSnapshot } from "firebase/firestore";
+import { DocumentReference, DocumentSnapshot } from "firebase/firestore";
 
 export type { Unsubscribe } from "firebase/firestore";
 export {
@@ -42,3 +42,6 @@ export const snapshotExists = (snapshot: DocumentSnapshot): boolean =>
 
 export const isServerTimestamp = (data: any): boolean =>
   data?._methodName === "serverTimestamp";
+
+export const isDocRef = (ref: any): ref is DocumentReference =>
+  ref && typeof ref === "object" && ref.type === "document";
