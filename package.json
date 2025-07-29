@@ -45,12 +45,12 @@
     "prepublishOnly": "pnpm run check && pnpm run test:auto && pnpm run build"
   },
   "dependencies": {
-    "firebase": "^12.0.0",
+    "firebase": "^11.10.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@firebase/rules-unit-testing": "^5.0.0",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@rushstack/eslint-patch": "^1.12.0",
     "@types/jest": "^30.0.0",
     "eslint": "^9.32.0",
