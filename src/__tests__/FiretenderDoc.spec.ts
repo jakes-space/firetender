@@ -750,6 +750,37 @@ describe("update", () => {
       arrayOfObjects: [],
     });
   });
+
+  it("unwraps proxy when copying existing fields", async () => {
+    const testDoc = await createAndLoadDoc({
+      email: "bob@example.com",
+      recordOfObjects: {
+        "ice cream": { rating: 10, tags: ["chocolate", "vanilla"] },
+      },
+    });
+    await testDoc.update((data) => {
+      const foo = data.recordOfObjects["ice cream"];
+      data.recordOfObjects["cake"] = foo;
+    });
+    expect(testDoc.r).toEqual({
+      email: "bob@example.com",
+      recordOfObjects: {
+        "ice cream": { rating: 10, tags: ["chocolate", "vanilla"] },
+        cake: { rating: 10, tags: ["chocolate", "vanilla"] },
+      },
+      recordOfPrimitives: {},
+      nestedRecords: {},
+      arrayOfObjects: [],
+    });
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      recordOfObjects: {
+        "ice cream": { rating: 10, tags: ["chocolate", "vanilla"] },
+        cake: { rating: 10, tags: ["chocolate", "vanilla"] },
+      },
+    });
+  });
 });
 
 describe("beforeParse", () => {

@@ -49,6 +49,14 @@ export function watchForChanges<
   return new Proxy(field, {
     get(target, propertyKey): any {
       const property = target[propertyKey];
+      if (typeof propertyKey === "symbol") {
+        // PROXY_TARGET_SYMBOL unwraps this proxy.
+        if (propertyKey === PROXY_TARGET_SYMBOL) {
+          return target;
+        }
+        // Allow all other symbols to pass through.
+        return property;
+      }
       if (!property) {
         // If the property is null or undefined, return it as is.
         return property;
@@ -66,14 +74,6 @@ export function watchForChanges<
           addToUpdateList(updatePath, arrayAncestor);
         }
         return property.bind(field);
-      }
-      if (typeof propertyKey === "symbol") {
-        // PROXY_TARGET_SYMBOL unwraps this proxy.
-        if (propertyKey === PROXY_TARGET_SYMBOL) {
-          return target;
-        }
-        // Allow all other symbols to pass through.
-        return property;
       }
       if (typeof property === "object") {
         // Child objects need to be wrapped with another watchForChanges() call.
@@ -125,8 +125,11 @@ export function watchForChanges<
       // If the new value is an object wrapped in a Firetender proxy, which can
       // commonly happen when referencing it inside a mutator function passed to
       // FiretenderDoc.prototype.update(), unwrap it.
-      if (value && typeof value === "object" && value[PROXY_TARGET_SYMBOL]) {
-        processedValue = value[PROXY_TARGET_SYMBOL];
+      if (value && typeof value === "object") {
+        const proxyTarget = value[PROXY_TARGET_SYMBOL];
+        if (proxyTarget) {
+          processedValue = proxyTarget;
+        }
       }
       // A property of this object is being set to a new value.  Parse the new
       // value with the appropriate schema, set it in the local data, and mark

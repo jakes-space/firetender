@@ -970,7 +970,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
         return;
       }
       // Remove any previous updates that this one overwrites.
-      this.updates.forEach((value, key) => {
+      this.updates.forEach((_value, key) => {
         if (key.startsWith(pathString)) {
           this.updates.delete(key);
         }
