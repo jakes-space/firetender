@@ -1661,6 +1661,30 @@ describe("array of objects", () => {
       arrayOfObjects: [{ name: "foo", entries: {} }],
     });
   });
+
+  it("supports in-place modification methods", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    testDoc.w.arrayOfObjects.push({ name: "baa", entries: {} });
+    testDoc.w.arrayOfObjects.sort((a, b) => a.name.localeCompare(b.name));
+    testDoc.w.arrayOfObjects.splice(
+      // Replace the second element (should be "bar") with two new entries.
+      1,
+      1,
+      { name: "qux", entries: { a: 111 } },
+      { name: "gorp", entries: { b: 222 } },
+    );
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      email: "bob@example.com",
+      arrayOfObjects: [
+        { name: "baa", entries: {} },
+        { name: "qux", entries: { a: 111 } },
+        { name: "gorp", entries: { b: 222 } },
+        { name: "foo", entries: {} },
+      ],
+    });
+  });
 });
 
 describe("array of discriminating unions", () => {

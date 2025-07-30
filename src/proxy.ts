@@ -54,7 +54,6 @@ export function watchForChanges<
         return property;
       }
       if (typeof property === "function") {
-        const result = (...args: any[]): any => property.apply(field, args);
         if (arrayAncestor) {
           // All methods of an array or its children are presumed to make
           // modifications, thus triggering an update of the full array.
@@ -66,7 +65,7 @@ export function watchForChanges<
           // methods.
           addToUpdateList(updatePath, arrayAncestor);
         }
-        return result;
+        return property.bind(field);
       }
       if (typeof propertyKey === "symbol") {
         // PROXY_TARGET_SYMBOL unwraps this proxy.
