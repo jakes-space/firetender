@@ -1284,6 +1284,18 @@ describe("record of primitives", () => {
       },
     });
   });
+
+  it("fails if the record key is not a string", async () => {
+    const schema = z.object({
+      record: z.record(z.number(), z.string()),
+    });
+    const data = { record: {} };
+    const docRef = await addDoc(testCollection, data);
+    const testDoc = await new FiretenderDoc(schema, docRef).load();
+    expect(() => {
+      testDoc.w.record[123] = "abc";
+    }).toThrow("Only strings are supported");
+  });
 });
 
 describe("record of objects", () => {
@@ -1705,6 +1717,14 @@ describe("array of objects", () => {
       email: "bob@example.com",
       arrayOfObjects: [{ name: "foo", entries: {} }],
     });
+  });
+
+  it("fails if length property is not a number", async () => {
+    const testDoc = await createAndLoadDoc(initialState);
+    expect(() => {
+      // @ts-expect-error - Intentionally setting length to a string.
+      testDoc.w.arrayOfObjects.length = "not-a-number";
+    }).toThrow(TypeError);
   });
 
   it("supports in-place modification methods", async () => {
@@ -2134,6 +2154,35 @@ describe("other zod types", () => {
     });
     const result = (await getDoc(testDoc.docRef)).data();
     expect(result).toEqual({ x: null, y: 222, z: { a: "foo", b: "baz" } });
+  });
+
+  it("handles Zod effects", async () => {
+    const schema = z.object({
+      sortedArray: z
+        .array(z.object({ n: z.number() }))
+        .transform((arr) => arr.sort((a, b) => a.n - b.n)),
+    });
+    const docRef = await addDoc(testCollection, {
+      sortedArray: [{ n: 2 }, { n: 1 }, { n: 3 }],
+    });
+    const testDoc = await new FiretenderDoc(schema, docRef).load();
+    expect(testDoc.r).toEqual({
+      sortedArray: [{ n: 1 }, { n: 2 }, { n: 3 }],
+    });
+    testDoc.w.sortedArray[0].n = 4;
+    // Effect only runs on load, not on setting or writing.
+    expect(testDoc.r).toEqual({
+      sortedArray: [{ n: 4 }, { n: 2 }, { n: 3 }],
+    });
+    await testDoc.write();
+    const result = (await getDoc(testDoc.docRef)).data();
+    expect(result).toEqual({
+      sortedArray: [{ n: 4 }, { n: 2 }, { n: 3 }],
+    });
+    const testDoc2 = await new FiretenderDoc(schema, docRef).load();
+    expect(testDoc2.r).toEqual({
+      sortedArray: [{ n: 2 }, { n: 3 }, { n: 4 }],
+    });
   });
 
   it("handles discriminating unions", async () => {
