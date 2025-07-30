@@ -84,10 +84,10 @@ export function serverTimestampWithClientTime(): Timestamp {
   const sentinel = firestoreServerTimestamp();
   const timestamp = Timestamp.now();
   Object.assign(sentinel, timestamp);
-  (sentinel as any).isEqual = (other: Timestamp) => timestamp.isEqual(other);
-  (sentinel as any).toDate = () => timestamp.toDate();
-  (sentinel as any).toMillis = () => timestamp.toMillis();
-  (sentinel as any).valueOf = () => timestamp.valueOf();
+  (sentinel as any).isEqual = timestamp.isEqual.bind(timestamp);
+  (sentinel as any).toDate = timestamp.toDate.bind(timestamp);
+  (sentinel as any).toMillis = timestamp.toMillis.bind(timestamp);
+  (sentinel as any).valueOf = timestamp.valueOf.bind(timestamp);
   // Note: .toJSON() is not polyfilled because it is undocumented
   // (https://firebase.google.com/docs/reference/node/firebase.firestore.Timestamp)
   // and is not present in the firestore-admin Timestamp implementation.
