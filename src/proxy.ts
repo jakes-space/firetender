@@ -104,8 +104,9 @@ export function watchForChanges<
     },
     set(target, propertyKey, value): boolean {
       if (typeof propertyKey === "symbol") {
-        // Allow symbols to pass through.
-        return Reflect.set(target, propertyKey, value);
+        throw TypeError(
+          `Failed to set property "${propertyKey.toString()}": symbols are not supported.`,
+        );
       }
       // If this is an array and its length is being set, truncate the array if
       // needed.
@@ -155,8 +156,9 @@ export function watchForChanges<
     },
     deleteProperty(target, propertyKey): boolean {
       if (typeof propertyKey === "symbol") {
-        // Allow symbols to pass through.
-        return Reflect.deleteProperty(target, propertyKey);
+        throw TypeError(
+          `Failed to delete property "${propertyKey.toString()}": symbols are not supported.`,
+        );
       }
       let result = true;
       if (Array.isArray(target)) {

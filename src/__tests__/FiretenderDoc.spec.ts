@@ -441,6 +441,20 @@ describe("writable accessor (.w)", () => {
     );
   });
 
+  it("does not allow symbols to be set", async () => {
+    const testDoc = await createAndLoadDoc({ email: "bob@example.com" });
+    expect(() => {
+      (testDoc.w as any)[Symbol("testing")] = "foo";
+    }).toThrow("symbols are not supported");
+  });
+
+  it("does not allow symbols to be deleted", async () => {
+    const testDoc = await createAndLoadDoc({ email: "bob@example.com" });
+    expect(() => {
+      delete (testDoc.w as any)[Symbol("testing")];
+    }).toThrow("symbols are not supported");
+  });
+
   it("can replace all document data", async () => {
     const testDoc = await createAndLoadDoc({
       email: "bob@example.com",
