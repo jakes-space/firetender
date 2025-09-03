@@ -22,11 +22,12 @@ export const timestampSchema = z.custom<Timestamp>((data: any) => {
  * Timestamp representation used by Firestore: seconds and nanoseconds since the
  * epoch.
  *
- * This schema is for server-generated timestamps, which are null when first
- * reported to the listener.
+ * This schema allows the safe use of server-generated timestamps, which are set
+ * to `{ _methodName: "serverTimestamp" }` by the client, then initially set to
+ * `null` by Firestore.  In these cases, a current timestamp is substituted.
  */
 export const serverTimestampSchema = z.preprocess(
-  (data) => data ?? Timestamp.now(),
+  (data) => (!data || isServerTimestamp(data) ? Timestamp.now() : data),
   timestampSchema,
 );
 
