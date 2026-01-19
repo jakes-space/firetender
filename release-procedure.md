@@ -17,5 +17,6 @@ release procedure has a few more steps than usual:
 1. Push the commits to github.
 1. Create a github release:  
    `gh release create v${VERSION} --repo=jakes-space/firetender --generate-notes`
-1. Run `pnpm run use-admin-firestore && pnpm publish --no-git-checks`.
+1. Run `pnpm login`
+1. Run `pnpm run use-admin-firestore && pnpm publish`.
 1. Run `pnpm run use-web-firestore && pnpm publish`.
