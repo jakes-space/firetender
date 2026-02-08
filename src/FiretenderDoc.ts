@@ -42,7 +42,7 @@ type HookReturnCode = AsyncOrSyncType<ReturnType<BeforeParse>>;
 /*
  * Functions that can update the document after it has been read and parsed.
  */
-export type AfterParse<SchemaType extends z.SomeZodObject> = (
+export type AfterParse<SchemaType extends z.ZodObject> = (
   data: z.infer<SchemaType>,
   docPath: string[],
 ) => AsyncOrSync<void | false | "write-soon" | "write-now">;
@@ -50,7 +50,7 @@ export type AfterParse<SchemaType extends z.SomeZodObject> = (
 /*
  * Functions that can update the document before it is written.
  */
-export type BeforeWrite<SchemaType extends z.SomeZodObject> = (
+export type BeforeWrite<SchemaType extends z.ZodObject> = (
   data: z.infer<SchemaType>,
   docPath: string[],
 ) => void | Promise<void>;
@@ -84,7 +84,7 @@ const convertPatcherReturnCodeToPriority = (
 /**
  * Public options for initializing a FiretenderDoc object.
  */
-export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
+export type FiretenderDocOptions<SchemaType extends z.ZodObject> = {
   /**
    * If set, using the `.w` accessor or `.update()` method will throw an error
    * and changes made by hooks will not be written.
@@ -163,7 +163,7 @@ export type FiretenderDocOptions<SchemaType extends z.SomeZodObject> = {
  * This type includes options meant for internal use (createDoc, initialData)
  * as well as the options in FiretenderDocOptions.
  */
-export type AllFiretenderDocOptions<SchemaType extends z.SomeZodObject> =
+export type AllFiretenderDocOptions<SchemaType extends z.ZodObject> =
   FiretenderDocOptions<SchemaType> & {
     /**
      * Does this FiretenderDoc represent a new document in Firestore?
@@ -246,7 +246,7 @@ type WriteOptions = {
 /**
  * A local representation of a Firestore document.
  */
-export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
+export class FiretenderDoc<SchemaType extends z.ZodObject> {
   /** Zod schema used to parse and validate the document's data. */
   readonly schema: SchemaType;
 
@@ -362,7 +362,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * @param options optional parameters for the resulting FiretenderDoc; see
    *   FiretenderDocOptions for detail.
    */
-  static createNewDoc<SchemaType1 extends z.SomeZodObject>(
+  static createNewDoc<SchemaType1 extends z.ZodObject>(
     schema: SchemaType1,
     ref: DocumentReference | CollectionReference,
     initialData: z.input<SchemaType1>,
@@ -832,7 +832,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
   /** Parses or clones the given data, depending on `isParsingDisabled`. */
   private parseOrClone(data: Record<string, unknown>): z.infer<SchemaType> {
     return this.isParsingDisabled
-      ? structuredClone(data)
+      ? (structuredClone(data) as z.infer<SchemaType>)
       : this.schema.parse(data);
   }
 
@@ -952,7 +952,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
    * document data.
    */
   private addToUpdateList<FieldSchemaType extends z.ZodTypeAny>(
-    fieldPath: string[],
+    fieldPath: (string | number)[],
     newValue: z.infer<FieldSchemaType>,
   ): void {
     let pathString = "";
@@ -963,7 +963,7 @@ export class FiretenderDoc<SchemaType extends z.SomeZodObject> {
       // reflect this change; no additional Firestore mutation is needed.
       if (
         fieldPath.some((field, i) => {
-          pathString = pathString ? `${pathString}.${field}` : field;
+          pathString = pathString ? `${pathString}.${field}` : `${field}`;
           return i < fieldPath.length - 1 && this.updates.has(pathString);
         })
       ) {

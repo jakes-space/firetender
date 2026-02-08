@@ -37,18 +37,18 @@ const PROXY_TARGET_SYMBOL = Symbol("proxy_target");
  * @param arrayAncestor a reference to the top-level array, if any.
  */
 export function watchForChanges<
-  FieldSchemaType extends z.ZodTypeAny,
+  FieldSchemaType extends z.ZodObject,
   ArrayElementType,
 >(
-  updatePath: string[],
+  updatePath: (string | number)[],
   fieldSchema: FieldSchemaType,
   field: z.infer<FieldSchemaType>,
-  addToUpdateList: (path: string[], newValue: any) => void,
+  addToUpdateList: (path: (string | number)[], newValue: any) => void,
   arrayAncestor: ArrayElementType[] | undefined = undefined,
 ): z.infer<FieldSchemaType> {
-  return new Proxy(field, {
+  return new Proxy<z.infer<FieldSchemaType>>(field, {
     get(target, propertyKey): any {
-      const property = target[propertyKey];
+      const property = target[propertyKey as keyof typeof target];
       if (typeof propertyKey === "symbol") {
         // PROXY_TARGET_SYMBOL unwraps this proxy.
         if (propertyKey === PROXY_TARGET_SYMBOL) {
@@ -77,7 +77,7 @@ export function watchForChanges<
       }
       if (typeof property === "object") {
         // Child objects need to be wrapped with another watchForChanges() call.
-        let nextPath: string[];
+        let nextPath: (string | number)[];
         let nextArrayAncestor: any[] | undefined;
         if (arrayAncestor) {
           // Array ancestors should continue pointing to the top-level array.
@@ -91,10 +91,16 @@ export function watchForChanges<
             nextArrayAncestor = property;
           }
         }
+        const propertySchema = getPropertySchema(
+          field,
+          fieldSchema,
+          propertyKey,
+        ) as z.ZodObject;
+        const propertyObject = property as Record<string, unknown>;
         return watchForChanges(
           nextPath,
-          getPropertySchema(field, fieldSchema, propertyKey),
-          property,
+          propertySchema,
+          propertyObject,
           addToUpdateList,
           nextArrayAncestor,
         );
@@ -194,48 +200,58 @@ export function watchForChanges<
  */
 function getPropertySchema(
   parent: any,
-  parentSchema: z.ZodTypeAny,
-  propertyKey: string,
+  parentSchema: z.ZodType,
+  propertyKey: string | number,
 ): z.ZodTypeAny {
   let schema: any = parentSchema;
   while (true) {
-    switch (schema._def.typeName) {
-      // If the schema object is wrapped (e.g., by being optional or having a
-      // default), unwrap it until we get to the underlying collection type.
-      case z.ZodFirstPartyTypeKind.ZodOptional:
-      case z.ZodFirstPartyTypeKind.ZodNullable:
-        schema = schema.unwrap();
-        continue;
-      case z.ZodFirstPartyTypeKind.ZodDefault:
-        schema = schema.removeDefault();
-        continue;
-      case z.ZodFirstPartyTypeKind.ZodEffects:
-        schema = schema.innerType();
-        continue;
-      // Return the sub-schemas of supported collection types.
-      case z.ZodFirstPartyTypeKind.ZodRecord:
-        if (
-          schema.keySchema._def.typeName !== z.ZodFirstPartyTypeKind.ZodString
-        ) {
-          throw TypeError(
-            `The ZodRecord for property ${propertyKey} has keys of type ${schema.keySchema._def.typeName}.  Only strings are supported.`,
-          );
-        }
-        return schema.valueSchema;
-      case z.ZodFirstPartyTypeKind.ZodArray:
-        return schema.element;
-      case z.ZodFirstPartyTypeKind.ZodObject:
-        return schema.shape[propertyKey];
-      case z.ZodFirstPartyTypeKind.ZodDiscriminatedUnion:
-        schema = schema.optionsMap.get(parent[schema.discriminator]);
-        continue;
-      // If the parent is of type ZodAny, so are its properties.
-      case z.ZodFirstPartyTypeKind.ZodAny:
-        return z.any();
-      default:
+    if (
+      schema.type === "optional" ||
+      schema.type === "nullable" ||
+      schema.type === "default"
+    ) {
+      const unwrappableSchema = schema as
+        | z.ZodOptional
+        | z.ZodNullable
+        | z.ZodDefault;
+      schema = unwrappableSchema.unwrap();
+    } else if (schema.type === "pipe") {
+      const pipeSchema = schema as z.ZodPipe;
+      schema = pipeSchema.in;
+    } else if (schema.type === "record") {
+      const recordSchema = schema as z.ZodRecord<z.ZodString, z.ZodTypeAny>;
+      if (recordSchema.keyType.type !== "string") {
         throw TypeError(
-          `Unsupported schema type for property "${propertyKey}": ${schema._def.typeName}`,
+          `The ZodRecord for property ${propertyKey} has keys of type ${recordSchema.keyType.type}.  Only strings are supported.`,
         );
+      }
+      return recordSchema.valueType;
+    } else if (schema.type === "array") {
+      const arraySchema = schema as z.ZodArray<z.ZodTypeAny>;
+      return arraySchema.element;
+    } else if (schema.type === "object") {
+      const objectSchema = schema as z.ZodObject;
+      return objectSchema.shape[propertyKey];
+    } else if ("discriminator" in schema.def) {
+      const discSchema = schema as z.ZodDiscriminatedUnion;
+      const discValue: string = parent[discSchema.def.discriminator];
+      const discKeys = [...discSchema._zod.propValues.type];
+      const i = discKeys.findIndex((k) => k === discValue);
+      if (i === -1) {
+        throw TypeError(
+          `Invalid discriminator value "${discValue}" for property "${propertyKey}".  Expected one of: ${discKeys.join(
+            ", ",
+          )}.`,
+        );
+      }
+      schema = discSchema.options[i];
+    } else if (schema.type === "any") {
+      // If the parent is of type ZodAny, so are its properties.
+      return z.any();
+    } else {
+      throw TypeError(
+        `Unsupported schema type for property "${propertyKey}": ${schema.type}`,
+      );
     }
   }
 }

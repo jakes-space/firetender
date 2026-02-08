@@ -32,7 +32,7 @@ import { DeepPartial, DeepReadonly } from "./ts-helpers.js";
  * reference, sans IDs.  All docs at /databases/{db}/documents/foo/{*}/bar/{*}
  * are covered by a FiretenderCollection for the path ["foo", "bar"].
  */
-export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
+export class FiretenderCollection<SchemaType extends z.ZodObject> {
   /** Zod schema used to parse and validate the document's data. */
   readonly schema: SchemaType;
 
@@ -122,10 +122,12 @@ export class FiretenderCollection<SchemaType extends z.SomeZodObject> {
     if (initialData) {
       Object.assign(data, initialData);
     }
-    return FiretenderDoc.createNewDoc(this.schema, ref, data, {
-      ...this.defaultDocOptions,
-      ...options,
-    });
+    return FiretenderDoc.createNewDoc(
+      this.schema,
+      ref,
+      data as z.input<SchemaType>,
+      { ...this.defaultDocOptions, ...options },
+    );
   }
 
   /**

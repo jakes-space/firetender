@@ -42,9 +42,10 @@ const testDataSchema = z.object({
   email: z.string().email(),
   ttl: timestampSchema.optional(),
   serverTTL: serverTimestampSchema.optional(),
-  recordOfPrimitives: z.record(z.string()).default({}),
+  recordOfPrimitives: z.record(z.string(), z.string()).default({}),
   recordOfObjects: z
     .record(
+      z.string(),
       z.object({
         rating: z.number(),
         tags: z.array(z.string()).default([]),
@@ -52,12 +53,14 @@ const testDataSchema = z.object({
       }),
     )
     .default({}),
-  nestedRecords: z.record(z.record(z.number())).default({}),
+  nestedRecords: z
+    .record(z.string(), z.record(z.string(), z.number()))
+    .default({}),
   arrayOfObjects: z
     .array(
       z.object({
         name: z.string(),
-        entries: z.record(z.number()).default({}),
+        entries: z.record(z.string(), z.number()).default({}),
         favoriteColor: z.string().optional(),
       }),
     )
@@ -161,7 +164,9 @@ describe("load", () => {
   it("throws for an invalid doc", async () => {
     const docRef = await addDoc(testCollection, {}); // Missing email.
     const testDoc = new FiretenderDoc(testDataSchema, docRef);
-    await expect(testDoc.load()).rejects.toThrow('"message": "Required"');
+    await expect(testDoc.load()).rejects.toThrow(
+      '"message": "Invalid input: expected string, received undefined"',
+    );
   });
 
   it("does not throw for an invalid doc with parsing disabled", async () => {
